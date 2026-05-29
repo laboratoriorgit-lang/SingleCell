@@ -13,7 +13,7 @@
 #  1. QC AND VISUALIZATION FUNCTIONS
 #     - load_cellbender_filtered_h5
 #     - plot_qc_violin_grid
-#     - resumen_nFeature_plot
+#     - summarize_nfeature_plot
 #
 #  2. PREPROCESSING AND DOUBLET DETECTION
 #     - preprocesar_y_doubletfinder
@@ -23,7 +23,7 @@
 #     - process_sample       (shortcut: load_sample + filter_sample)
 #
 #  3. BULK / PSEUDOBULK UTILITIES
-#     - normalizar_bulk_pseudobulk
+#     - normalize_bulk_pseudobulk
 #     - clasificar_residuos
 #     - generate_pseudobulk
 #     - plot_replicate_correlation
@@ -31,7 +31,7 @@
 #  4. SEURAT UTILITIES
 #     - unificar_nombres
 #     - mostrar_tabla
-#     - exportar_para_scanpy
+#     - export_to_scanpy
 #     - safe_vln
 #     - unir_layers_counts
 #
@@ -39,16 +39,16 @@
 #     - find_markers
 #     - annotate_by_markers
 #     - annotate_by_reference
-#     - subclustar_tipo
+#     - subcluster_cell_type
 #
 #  6. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
-#     - asignar_pseudoreplicados
-#     - hacer_pseudobulk
+#     - assign_pseudo_replicates
+#     - run_pseudobulk
 #     - correr_deseq2
-#     - hacer_volcano
+#     - plot_volcano
 #     - procesar_deseq2_resultado
-#     - hacer_heatmap
-#     - hacer_dotplot_marcadores
+#     - plot_heatmap
+#     - plot_marker_dotplot
 #
 #  7. GO ENRICHMENT
 #     - correr_enriquecimiento_go
@@ -107,6 +107,13 @@ load_cellbender_filtered_h5 <- function(h5_path, project = "Sample") {
 #' @param color Color for plotting.
 #' @return A ggplot object.
 #' @export
+plot_qc_batch <- function(seurat_list, colors, file) {
+  plots <- imap(seurat_list, ~ plot_qc_violin_grid(.x, .y, colors[[.y]]))
+  save_qc(plots, file)
+  invisible(plots)
+}
+
+
 plot_qc_violin_grid <- function(obj1, label, color) {
 
   n1        <- ncol(obj1)
@@ -135,26 +142,26 @@ plot_qc_violin_grid <- function(obj1, label, color) {
 #' Creates a boxplot alongside quartile and quintile summary tables.
 #'
 #' @param obj_list  List of Seurat objects.
-#' @param etiquetas Labels for each object.
+#' @param labels Labels for each object.
 #' @param colores   Color vector (named or positional).
 #' @export
-resumen_nFeature_plot <- function(obj_list, etiquetas = NULL, colores = NULL) {
+summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 
-  if (is.null(etiquetas)) etiquetas <- paste0("Group", seq_along(obj_list))
-  if (length(etiquetas) != length(obj_list)) stop("Labels must match objects.")
+  if (is.null(labels)) labels <- paste0("Group", seq_along(obj_list))
+  if (length(labels) != length(obj_list)) stop("Labels must match objects.")
 
   if (is.null(colores)) {
     colores       <- c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854")[1:length(obj_list)]
-    names(colores) <- etiquetas
+    names(colores) <- labels
   }
 
   lista_df <- lapply(seq_along(obj_list), function(i) {
     obj <- obj_list[[i]]
-    data.frame(nFeature_RNA = obj@meta.data$nFeature_RNA, grupo = etiquetas[i])
+    data.frame(nFeature_RNA = obj@meta.data$nFeature_RNA, grupo = labels[i])
   })
 
   meta_comb       <- bind_rows(lista_df)
-  meta_comb$grupo <- factor(meta_comb$grupo, levels = etiquetas)
+  meta_comb$grupo <- factor(meta_comb$grupo, levels = labels)
 
   p_box <- ggplot(meta_comb, aes(x = grupo, y = nFeature_RNA, fill = grupo)) +
     geom_boxplot(outlier.shape = NA, width = 0.6) +
@@ -174,7 +181,7 @@ resumen_nFeature_plot <- function(obj_list, etiquetas = NULL, colores = NULL) {
       Max    = quantile(nFeature_RNA, 1),
       .groups = "drop"
     ) %>%
-    arrange(factor(grupo, levels = etiquetas))
+    arrange(factor(grupo, levels = labels))
 
   quintiles <- meta_comb %>%
     group_by(grupo) %>%
@@ -187,7 +194,7 @@ resumen_nFeature_plot <- function(obj_list, etiquetas = NULL, colores = NULL) {
       `100%` = quantile(nFeature_RNA, 1.0),
       .groups = "drop"
     ) %>%
-    arrange(factor(grupo, levels = etiquetas))
+    arrange(factor(grupo, levels = labels))
 
   tabla_cuartiles <- tableGrob(cuartiles)
   tabla_quintiles <- tableGrob(quintiles)
@@ -376,6 +383,13 @@ load_sample <- function(sample_info,
 #' @param run_doubletfinder Whether to run DoubletFinder (default TRUE).
 #' @return Filtered Seurat object.
 #' @export
+filter_seurat_samples <- function(seurat_list, ...) {
+  result        <- lapply(seurat_list, filter_sample, ...)
+  names(result) <- names(seurat_list)
+  result
+}
+
+
 filter_sample <- function(obj,
                           min_features      = 200,
                           max_features      = Inf,
@@ -457,7 +471,7 @@ process_sample <- function(sample_info,
 #' @param bulk_counts        Named numeric vector of bulk counts.
 #' @return Data frame with columns gene, pseudobulk, bulk (log2-normalized).
 #' @export
-normalizar_bulk_pseudobulk <- function(pseudobulk_counts, bulk_counts) {
+normalize_bulk_pseudobulk <- function(pseudobulk_counts, bulk_counts) {
 
   common_genes <- intersect(names(pseudobulk_counts), names(bulk_counts))
 
@@ -532,7 +546,7 @@ generate_pseudobulk <- function(seurat_obj,
                                 merge_replicates  = TRUE) {
 
   groups <- unique(seurat_obj@meta.data[[group_by]])
-  cat("Generando pseudobulk para:", paste(groups, collapse = ", "), "\n")
+  cat("Generating pseudobulk for:", paste(groups, collapse = ", "), "\n")
 
   process_group <- function(group_name) {
     cells  <- subset(seurat_obj,
@@ -599,7 +613,7 @@ generate_pseudobulk <- function(seurat_obj,
 #'
 #' @param pseudobulk_mat A numeric matrix with genes as rows and samples as
 #'   columns. Typically the output of generate_pseudobulk() or
-#'   hacer_pseudobulk().
+#'   run_pseudobulk().
 #' @param main           Title for the heatmap (default: "Replicate Correlation").
 #' @return Invisible: the correlation matrix.
 #' @export
@@ -690,7 +704,7 @@ mostrar_tabla <- function(filtered_vec, cellbender_vec, titulo = "Annotations") 
 #' @param overwrite  Overwrite existing file (default TRUE).
 #' @return Invisible SingleCellExperiment.
 #' @export
-exportar_para_scanpy <- function(seurat_obj,
+export_to_scanpy <- function(seurat_obj,
                                  outfile,
                                  assay_name = "RNA",
                                  use_reduc  = c("pca", "umap", "harmony"),
@@ -854,10 +868,10 @@ find_markers <- function(seurat_obj,
   Idents(seurat_obj) <- "seurat_clusters"
 
   if (file.exists(output_file) && !force) {
-    cat("Cargando marcadores existentes:", output_file, "\n")
+    cat("Loading existing markers:", output_file, "\n")
     markers <- read.table(output_file, header = TRUE, sep = "\t", quote = "")
   } else {
-    cat("Calculando marcadores...\n")
+    cat("Computing markers...\n")
     markers <- FindAllMarkers(
       seurat_obj,
       only.pos        = only_pos,
@@ -888,10 +902,10 @@ annotate_by_markers <- function(seurat_obj,
                                 reference_file = NULL) {
 
   if (is.null(reference_file)) {
-    reference_file <- file.choose(caption = "Selecciona archivo de referencia (gene | cell.types)")
+    reference_file <- file.choose(caption = "Select reference file (gene | cell.types)")
   }
 
-  cat("Usando referencia:", reference_file, "\n")
+  cat("Using reference:", reference_file, "\n")
 
   reference <- read.table(reference_file, header = TRUE, sep = "\t", quote = "")
 
@@ -933,22 +947,22 @@ annotate_by_reference <- function(seurat_obj,
                                   dims          = 1:30) {
 
   if (is.null(reference_obj)) {
-    ref_file      <- file.choose(caption = "Selecciona objeto Seurat de referencia (.rds)")
-    cat("Cargando referencia:", ref_file, "\n")
+    ref_file      <- file.choose(caption = "Select reference Seurat object (.rds) (.rds)")
+    cat("Loading reference:", ref_file, "\n")
     reference_obj <- readRDS(ref_file)
   }
 
   if (is.null(reference_col)) {
-    cat("\nColumnas disponibles en referencia:\n")
+    cat("\nAvailable columns in reference:\n")
     cols <- colnames(reference_obj@meta.data)
     for (i in seq_along(cols)) {
       cat(" ", i, "->", cols[i], "\n")
     }
-    selection     <- as.integer(readline("Selecciona numero de columna: "))
+    selection     <- as.integer(readline("Select column number: "))
     reference_col <- cols[selection]
   }
 
-  cat("Usando columna:", reference_col, "\n")
+  cat("Using column:", reference_col, "\n")
 
   anchors <- FindTransferAnchors(
     reference = reference_obj,
@@ -964,7 +978,7 @@ annotate_by_reference <- function(seurat_obj,
 
   seurat_obj$celltype_reference <- predictions$predicted.id
 
-  cat("\nAnotacion por referencia:\n")
+  cat("\nReference annotation:\n")
   print(table(seurat_obj$celltype_reference))
 
   return(seurat_obj)
@@ -983,19 +997,138 @@ annotate_by_reference <- function(seurat_obj,
 #' @param dims       Dimensions for UMAP and neighbor finding.
 #' @return Seurat object with cluster_subtipo metadata.
 #' @export
-subclustar_tipo <- function(obj, tipo, annot_col = "annotation_agrupada",
+#' Plot and Save a Subcluster UMAP
+#'
+#' Creates a labeled DimPlot for a subclustered object, saves it to disk,
+#' and returns the plot invisibly for use in composite figures.
+#'
+#' @param obj        Subclustered Seurat object (output of subcluster_cell_type).
+#' @param label      Cell-type label used as the plot title and to derive
+#'   the output filename (spaces replaced with underscores).
+#' @param output_dir Directory where the PDF will be saved.
+#'
+#' @return ggplot object (invisibly).
+#' @export
+plot_subcluster_umap <- function(obj, label, output_dir) {
+  p <- DimPlot(obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
+    ggtitle(paste0(label, " — subclusters"))
+  filename <- paste0("subcluster_", tolower(gsub(" ", "_", label)), ".pdf")
+  ggsave(file.path(output_dir, filename), p, width = 10, height = 8, dpi = 300)
+  invisible(p)
+}
+
+
+subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
                             resolution = 0.3, dims = 1:20) {
 
   sub <- subset(obj, cells = colnames(obj)[obj@meta.data[[annot_col]] %in% tipo])
+
+  # For small subsets, recompute variable features
+  ncells <- ncol(sub)
+  npcs <- min(ncells - 1, 30)
+
   sub <- sub %>%
-    RunPCA() %>%
-    RunUMAP(dims = dims) %>%
-    FindNeighbors(dims = dims) %>%
-    FindClusters(resolution = resolution)
+    NormalizeData(verbose = FALSE) %>%
+    FindVariableFeatures(verbose = FALSE) %>%
+    ScaleData(verbose = FALSE) %>%
+    RunPCA(npcs = npcs, verbose = FALSE) %>%
+    RunUMAP(dims = dims, verbose = FALSE) %>%
+    FindNeighbors(dims = dims, verbose = FALSE) %>%
+    FindClusters(resolution = resolution, verbose = FALSE)
 
   sub$cluster_subtipo <- as.character(sub$seurat_clusters)
 
   return(sub)
+}
+
+
+#' Generate Marker Gene Feature Plots for Subset
+#'
+#' Creates a list of FeaturePlots for genes in a marker table on a subset object.
+#'
+#' @param subset_obj Seurat object (e.g., subclustered population)
+#' @param marker_table Data frame with columns: gene, cell.types
+#'
+#' @return List of ggplot objects
+#' @export
+plot_markers_for_subset <- function(subset_obj, marker_table) {
+  lapply(seq_len(nrow(marker_table)), function(i) {
+    FeaturePlot(subset_obj, features = marker_table$gene[i]) +
+      ggtitle(paste0(marker_table$cell.types[i], "\n", marker_table$gene[i])) +
+      theme(plot.title = element_text(size = 8))
+  })
+}
+
+
+#' Save Subcluster Composite Inspection Figure (multi-page PDF)
+#'
+#' Saves a multi-page PDF:
+#'   Page 1 — all UMAP subcluster panels side by side
+#'   Page 2+ — marker gene FeaturePlots for each cell type (one page per type)
+#'
+#' @param subcluster_list List of entries, each with:
+#'   $umap_plot — DimPlot ggplot for that cell type.
+#'   $obj       — Subclustered Seurat object for FeaturePlots.
+#' @param marker_table  Data frame with columns: gene, cell.types.
+#' @param output_dir    Directory where the PDF will be saved.
+#' @param filename      Output filename (default "subclustering_inspection.pdf").
+#' @param n_marker_cols Number of marker columns per page (default 4).
+#' @export
+save_subcluster_composite <- function(subcluster_list, marker_table, output_dir,
+                                       filename      = "subclustering_inspection.pdf",
+                                       n_marker_cols = 4) {
+  n_marker_rows <- ceiling(nrow(marker_table) / n_marker_cols)
+  path <- file.path(output_dir, filename)
+
+  pdf(path, width = max(20, n_marker_cols * 4), height = 10 + n_marker_rows * 4)
+
+  # For each cell type: UMAP page → markers page
+  for (x in subcluster_list) {
+    # Center the UMAP on the wide page so it doesn't stretch
+    print(plot_spacer() | x$umap_plot | plot_spacer())
+    markers <- plot_markers_for_subset(x$obj, marker_table)
+    print(wrap_plots(markers, ncol = n_marker_cols))
+  }
+
+  dev.off()
+  message("Saved → ", path)
+}
+
+
+#' Apply Subcluster Reassignment to Global Object
+#'
+#' Maps subcluster IDs from subclustered objects back to the global Seurat
+#' object, updating cell-type labels based on a user-defined reassignment table.
+#'
+#' @param obj           Global Seurat object to update.
+#' @param subcluster_list Named list of subclustered Seurat objects (names must
+#'   match keys in reassign).
+#' @param reassign      Named list of named character vectors. Each key is an
+#'   object name in subcluster_list; each value maps subcluster IDs to cell-type
+#'   labels. Use "others" as a catch-all for unlisted subcluster IDs.
+#' @param source_col    Metadata column to copy as baseline before reassigning.
+#' @param dest_col      Metadata column to write final labels into.
+#'
+#' @return Updated global Seurat object with dest_col populated.
+#' @export
+apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
+                                           source_col = "celltype_grouped",
+                                           dest_col   = "celltype_curated") {
+  obj[[dest_col]] <- as.character(obj@meta.data[[source_col]])
+
+  for (obj_name in names(reassign)) {
+    sub    <- subcluster_list[[obj_name]]
+    ids    <- as.character(sub$cluster_subtipo)
+    labels <- reassign[[obj_name]][ids]
+
+    if ("others" %in% names(reassign[[obj_name]])) {
+      labels[is.na(labels)] <- reassign[[obj_name]]["others"]
+    }
+
+    obj@meta.data[colnames(sub), dest_col] <- unname(labels)
+  }
+
+  obj
 }
 
 
@@ -1006,32 +1139,32 @@ subclustar_tipo <- function(obj, tipo, annot_col = "annotation_agrupada",
 #' Assign Pseudo-replicates
 #'
 #' Randomly assigns cells within each condition to pseudo-replicate groups.
-#' Conditions are auto-detected from orig.ident_uni unless explicitly provided.
+#' Conditions are auto-detected from the 'condition' column unless explicitly provided.
 #'
-#' @param obj         Seurat object with orig.ident_uni metadata.
-#' @param condiciones Character vector of condition names to include. NULL
+#' @param obj         Seurat object with a 'condition' metadata column.
+#' @param conditions Character vector of condition names to include. NULL
 #'   (default) uses all conditions present in the data.
 #' @param n_reps      Number of pseudo-replicates per condition.
 #' @param seed        Random seed for reproducibility.
 #' @return Seurat object with a replicate metadata column, or NULL if fewer
 #'   than 2 conditions are present.
 #' @export
-asignar_pseudoreplicados <- function(obj,
-                                     condiciones = NULL,
+assign_pseudo_replicates <- function(obj,
+                                     conditions = NULL,
                                      n_reps      = 3,
                                      seed        = 1807) {
 
   set.seed(seed)
 
   # Auto-detect conditions from data if not provided
-  all_conds <- unique(obj$orig.ident_uni)
-  condiciones_presentes <- if (!is.null(condiciones)) intersect(all_conds, condiciones) else all_conds
+  all_conds <- unique(obj$condition)
+  present_conditions <- if (!is.null(conditions)) intersect(all_conds, conditions) else all_conds
 
-  if (length(condiciones_presentes) < 2) return(NULL)
+  if (length(present_conditions) < 2) return(NULL)
 
   obj$replicate <- NA
-  for (cond in condiciones_presentes) {
-    idx              <- obj$orig.ident_uni == cond
+  for (cond in present_conditions) {
+    idx              <- obj$condition == cond
     obj$replicate[idx] <- sample(paste0(cond, "_rep", 1:n_reps), sum(idx), replace = TRUE)
   }
 
@@ -1046,7 +1179,7 @@ asignar_pseudoreplicados <- function(obj,
 #' @param obj Seurat object with a replicate metadata column.
 #' @return Data frame with genes as rows and replicate groups as columns.
 #' @export
-hacer_pseudobulk <- function(obj) {
+run_pseudobulk <- function(obj) {
 
   if (!"replicate" %in% colnames(obj@meta.data)) {
     stop("Object lacks 'replicate' metadata.")
@@ -1143,7 +1276,7 @@ guardar_tablas_pseudobulk <- function(obj_list,
     }
 
     counts_reps_df <- tryCatch(
-      hacer_pseudobulk(obj),
+      run_pseudobulk(obj),
       error = function(e) {
         warning("Skipping ", tipo, " due to pseudobulk error: ", e$message)
         NULL
@@ -1241,7 +1374,7 @@ correr_deseq2 <- function(counts_mat, comparaciones, output_dir, tipo = NULL) {
 #' @param lfc_cut    Log2 fold-change cutoff.
 #' @return A ggplot object.
 #' @export
-hacer_volcano <- function(file, padj_cut = 0.05, lfc_cut = 1) {
+plot_volcano <- function(file, padj_cut = 0.05, lfc_cut = 1) {
 
   nombre_base <- tools::file_path_sans_ext(basename(file))
   titulo      <- gsub("DESeq2_", "", nombre_base)
@@ -1357,7 +1490,7 @@ render_volcano_plots <- function(results_dir,
   plots <- list()
 
   for (file in csv_files) {
-    p <- hacer_volcano(file, padj_cut = padj_cut, lfc_cut = lfc_cut) +
+    p <- plot_volcano(file, padj_cut = padj_cut, lfc_cut = lfc_cut) +
       labs(title = paste("Volcano Plot:", gsub("DESeq2_", "", tools::file_path_sans_ext(basename(file))))) +
       theme(plot.title = element_text(hjust = 0.5))
 
@@ -1449,7 +1582,7 @@ build_differential_tables <- function(results_dir,
 #' @param deepSplit_val deepSplit parameter for cutreeDynamic.
 #' @param breaks       Two-element vector c(min, max) for the color scale.
 #' @export
-hacer_heatmap <- function(matriz,
+plot_heatmap <- function(matriz,
                           min_genes    = 1,
                           deepSplit_val = 0,
                           breaks       = c(-5, 5)) {
@@ -1516,9 +1649,9 @@ hacer_heatmap <- function(matriz,
 #' @param base_size         Base font size.
 #' @return A ggplot object.
 #' @export
-hacer_dotplot_marcadores <- function(seurat_obj,
+plot_marker_dotplot <- function(seurat_obj,
                                      marks,
-                                     annot_col       = "celltype_reference_curated",
+                                     annot_col       = "celltype_grouped",
                                      cell_order      = NULL,
                                      clusters_remove = NULL,
                                      rename_map      = NULL,
@@ -2019,6 +2152,7 @@ run_coexpression_cluster_suite <- function(diff_table,
   breaks_seq  <- seq(breaks[1], breaks[2], length.out = 80)
   color_scale <- colorRampPalette(c("blue", "black", "yellow"))(length(breaks_seq) - 1)
 
+  pdf(file.path(output_dir, heatmap_pdf), width = 10, height = 20)
   heatmap_obj <- pheatmap(
     Mz,
     cluster_rows      = hc_rows,
@@ -2036,10 +2170,9 @@ run_coexpression_cluster_suite <- function(diff_table,
     treeheight_row    = 50,
     treeheight_col    = 50,
     main              = sprintf("Heatmap (%d genes) - min %d genes por cluster",
-                                nrow(Mz), min_genes),
-    silent            = TRUE
+                                nrow(Mz), min_genes)
   )
-  ggsave(file.path(output_dir, heatmap_pdf), heatmap_obj$gtable, width = 10, height = 20, dpi = 300)
+  dev.off()
 
   datExpr <- t(Mz)
   gene_cor <- suppressWarnings(cor(datExpr, method = cor_method, use = "pairwise.complete.obs"))
@@ -2076,7 +2209,8 @@ run_coexpression_cluster_suite <- function(diff_table,
   tom_order <- gene_tree$order
   tom_plot_mat <- TOM[tom_order, tom_order, drop = FALSE]
   tom_plot_ann <- tom_annotation[tom_order, , drop = FALSE]
-  tom_plot <- pheatmap(
+  pdf(file.path(output_dir, tom_pdf), width = 10, height = 10)
+  pheatmap(
     tom_plot_mat,
     cluster_rows      = FALSE,
     cluster_cols      = FALSE,
@@ -2087,10 +2221,9 @@ run_coexpression_cluster_suite <- function(diff_table,
     annotation_colors = list(Module = tom_paleta),
     color             = colorRampPalette(c("white", "steelblue", "navy"))(80),
     border_color      = NA,
-    main              = sprintf("TOM Heatmap (%d genes)", nrow(Mz)),
-    silent            = TRUE
+    main              = sprintf("TOM Heatmap (%d genes)", nrow(Mz))
   )
-  ggsave(file.path(output_dir, tom_pdf), tom_plot$gtable, width = 10, height = 10, dpi = 300)
+  dev.off()
 
   cluster_assignments <- data.frame(
     gene_id         = rownames(Mz),
@@ -2233,7 +2366,8 @@ build_heatmap_clusters <- function(Mz,
   breaks_seq  <- seq(breaks[1], breaks[2], length.out = 80)
   color_scale <- colorRampPalette(c("blue", "black", "yellow"))(length(breaks_seq) - 1)
 
-  heatmap_obj <- pheatmap(
+  pdf(file.path(output_dir, heatmap_pdf), width = 10, height = 20)
+  pheatmap(
     Mz,
     cluster_rows      = hc_rows,
     cluster_cols      = hc_cols,
@@ -2250,10 +2384,9 @@ build_heatmap_clusters <- function(Mz,
     treeheight_row    = 50,
     treeheight_col    = 50,
     main              = sprintf("Heatmap (%d genes) - min %d genes por cluster",
-                                nrow(Mz), min_genes),
-    silent            = TRUE
+                                nrow(Mz), min_genes)
   )
-  ggsave(file.path(output_dir, heatmap_pdf), heatmap_obj$gtable, width = 10, height = 20, dpi = 300)
+  dev.off()
 
   cluster_assignments <- data.frame(
     gene_id         = rownames(Mz),
@@ -2269,8 +2402,7 @@ build_heatmap_clusters <- function(Mz,
     row_tree             = hc_rows,
     col_tree             = hc_cols,
     heatmap_clusters     = clust,
-    cluster_assignments  = cluster_assignments,
-    heatmap              = heatmap_obj
+    cluster_assignments  = cluster_assignments
   ))
 }
 
@@ -2337,7 +2469,8 @@ build_coexpression_modules <- function(Mz,
   tom_order <- gene_tree$order
   tom_plot_mat <- TOM[tom_order, tom_order, drop = FALSE]
   tom_plot_ann <- tom_annotation[tom_order, , drop = FALSE]
-  tom_plot <- pheatmap(
+  pdf(file.path(output_dir, tom_pdf), width = 10, height = 10)
+  pheatmap(
     tom_plot_mat,
     cluster_rows      = FALSE,
     cluster_cols      = FALSE,
@@ -2348,10 +2481,9 @@ build_coexpression_modules <- function(Mz,
     annotation_colors = list(Module = tom_paleta),
     color             = colorRampPalette(c("white", "steelblue", "navy"))(80),
     border_color      = NA,
-    main              = sprintf("TOM Heatmap (%d genes)", nrow(Mz)),
-    silent            = TRUE
+    main              = sprintf("TOM Heatmap (%d genes)", nrow(Mz))
   )
-  ggsave(file.path(output_dir, tom_pdf), tom_plot$gtable, width = 10, height = 10, dpi = 300)
+  dev.off()
 
   module_assignments <- data.frame(
     gene_id     = rownames(Mz),
@@ -2458,11 +2590,11 @@ save_qc <- function(plot_list, file)
 #' Create All Pipeline Output Directories
 #'
 #' Creates the standard folder structure under base_dir and returns a named
-#' list of paths. Call list2env() on the result to assign dir_00…dir_13 in
+#' list of paths. Call list2env() on the result to assign dir_01…dir_08 in
 #' the global environment.
 #'
 #' @param base_dir Root results directory (e.g. file.path(DATA_DIR, "results")).
-#' @return Named list with dir_00 through dir_13.
+#' @return Named list with dir_01 through dir_08 plus dir_objects.
 #' @export
 create_pipeline_dirs <- function(base_dir) {
   mkd <- function(name) {
@@ -2471,20 +2603,15 @@ create_pipeline_dirs <- function(base_dir) {
     d
   }
   list(
-    dir_00 = mkd("00_workflow"),
-    dir_01 = mkd("01_qc"),
-    dir_02 = mkd("02_filtering"),
-    dir_03 = mkd("03_integration"),
-    dir_04 = mkd("04_clustering"),
-    dir_05 = mkd("05_annotation"),
-    dir_06 = mkd("06_expression"),
-    dir_07 = mkd("07_curation"),
-    dir_08 = mkd("08_export"),
-    dir_09 = mkd("09_pseudobulk"),
-    dir_10 = mkd("10_deseq2"),
-    dir_11 = mkd("11_volcano"),
-    dir_12 = mkd("12_heatmaps"),
-    dir_13 = mkd("13_go")
+    dir_01      = mkd("01_qc"),
+    dir_02      = mkd("02_clustering"),
+    dir_03      = mkd("03_annotation"),
+    dir_04      = mkd("04_expression"),
+    dir_05 = mkd("05_curacion"),
+    dir_06      = mkd("06_de_results"),
+    dir_07      = mkd("07_go"),
+    dir_08      = mkd("08_networks"),
+    dir_objects = mkd("objects")
   )
 }
 
@@ -2531,7 +2658,7 @@ run_pseudobulk_pipeline <- function(obj,
                                      comparaciones,
                                      orgdb,
                                      keytype,
-                                     annot_col      = "celltype_reference_curated",
+                                     annot_col      = "celltype_grouped",
                                      n_reps         = 3,
                                      padj_cut       = 0.05,
                                      lfc_cut        = 1,
@@ -2554,15 +2681,15 @@ run_pseudobulk_pipeline <- function(obj,
   # ── [2/6] Per-cell-type subsets + pseudo-replicates ──────────────────────────
   message("[2/6] Building cell-type subsets and pseudo-replicates...")
   cell_types <- unique(obj@meta.data[[annot_col]])
-  celular_subsets <- setNames(
+  cell_type_subsets <- setNames(
     lapply(cell_types, function(t)
       subset(obj, cells = colnames(obj)[obj@meta.data[[annot_col]] == t])),
     gsub("[^[:alnum:]_]", "_", cell_types)
   )
 
-  celular_subsets_replicados <- Filter(Negate(is.null),
-    lapply(celular_subsets, asignar_pseudoreplicados, n_reps = n_reps))
-  pseudobulk_list <- lapply(celular_subsets_replicados, hacer_pseudobulk)
+  cell_type_subsets_replicates <- Filter(Negate(is.null),
+    lapply(cell_type_subsets, assign_pseudo_replicates, n_reps = n_reps))
+  pseudobulk_list <- lapply(cell_type_subsets_replicates, run_pseudobulk)
 
   rep_dir <- file.path(dir_pseudobulk, "pseudobulk_replicas")
   dir.create(rep_dir, recursive = TRUE, showWarnings = FALSE)
@@ -2591,7 +2718,7 @@ run_pseudobulk_pipeline <- function(obj,
         width = 12, height = 6)
     plots <- list()
     for (f in csv_files) {
-      plots <- c(plots, list(hacer_volcano(f, padj_cut = padj_cut, lfc_cut = lfc_cut)))
+      plots <- c(plots, list(plot_volcano(f, padj_cut = padj_cut, lfc_cut = lfc_cut)))
       if (length(plots) == 2) { grid.arrange(grobs = plots, ncol = 2); plots <- list() }
     }
     if (length(plots)) grid.arrange(grobs = plots, ncol = 1)
@@ -2626,7 +2753,7 @@ run_pseudobulk_pipeline <- function(obj,
     matriz[is.na(matriz)] <- 0
     if (nrow(matriz) > 1) {
       pdf(file.path(diff_dir, paste0("heatmap_", tag, ".pdf")), width = 14, height = 18)
-      tryCatch(hacer_heatmap(matriz), error = function(e) message("Heatmap error: ", e$message))
+      tryCatch(plot_heatmap(matriz), error = function(e) message("Heatmap error: ", e$message))
       dev.off()
     }
   }
@@ -2687,73 +2814,115 @@ run_pseudobulk_pipeline <- function(obj,
 #' @export
 plot_pipeline_workflow <- function(outfile) {
 
-  top <- data.frame(
-    x     = 1:10,
-    y     = rep(2, 10),
-    label = c("FASTQ\nFiles", "CellRanger\nCount", "CellBender\n(optional)",
-              "Load &\nQC", "Filter +\nDoubletFinder",
-              "Merge &\nNormalize", "Harmony\nIntegration",
-              "Clustree +\nElbow plot", "Final\nClustering", "Annotate\n+ Export"),
-    group = c(rep("Pre-processing", 3), rep("Chapter 1", 7)),
+  # \u2500\u2500 Node positions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  # Layout: inverted-Y
+  #   Stem  (Part 1) \u2014 center column x = 5, y = 9 \u2192 1
+  #   Junction        \u2014 Export h5ad at (5, 1)
+  #   Left  branch    \u2014 Pseudotime,  x = 2,  y = -1 \u2192 -3
+  #   Right branch    \u2014 Part 2 DE/Networks, x = 8, y = -1 \u2192 -5
+
+  trunk <- data.frame(
+    x = 5,
+    y = c(9, 8, 7, 6, 5, 4, 3, 2, 1),
+    label = c(
+      "FASTQ\n+ CellRanger", "CellBender\n(optional)",
+      "Load &\nQC", "Filter +\nDoubletFinder",
+      "Merge &\nNormalize", "Harmony\nIntegration",
+      "Clustering", "Annotate &\nCurate",
+      "Export\nh5ad"
+    ),
+    group    = c("Pre-processing", "Pre-processing", rep("Part 1", 6), "Junction"),
+    optional = c(FALSE, TRUE, rep(FALSE, 7)),
     stringsAsFactors = FALSE
   )
 
-  bot <- data.frame(
-    x     = 9:5,
-    y     = rep(0, 5),
+  left_nodes <- data.frame(
+    x = 2, y = c(-1, -2, -3),
+    label = c("Load h5ad\n(Python)", "Trajectory\nInference", "Pseudotime\nPlots"),
+    group = "Pseudotime", optional = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  right_nodes <- data.frame(
+    x = 8, y = c(-1, -2, -3, -4, -5),
     label = c("Cell-type\nSubsets", "Pseudobulk\n+ Replicates",
-              "DESeq2\nDE", "Volcano +\nHeatmap", "GO\nEnrichment"),
-    group = rep("Chapter 2", 5),
+              "DESeq2\nDE", "Volcano +\nHeatmap + GO", "Network\nInference"),
+    group = "Part 2", optional = FALSE,
     stringsAsFactors = FALSE
   )
 
-  nodes <- rbind(top, bot)
+  nodes <- rbind(trunk[, c("x","y","label","group","optional")],
+                 left_nodes, right_nodes)
 
+  # \u2500\u2500 Edges \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  trunk_edges <- data.frame(x1 = 5, y1 = 9:2, x2 = 5, y2 = 8:1)
+
+  fork_edges  <- data.frame(      # Export \u2192 branch starts
+    x1 = c(5, 5), y1 = c(1, 1),
+    x2 = c(2, 8), y2 = c(-1, -1)
+  )
+
+  left_edges  <- data.frame(x1 = 2, y1 = c(-1,-2), x2 = 2, y2 = c(-2,-3))
+  right_edges <- data.frame(x1 = 8, y1 = -1:-4,    x2 = 8, y2 = -2:-5)
+
+  edges <- rbind(trunk_edges, fork_edges, left_edges, right_edges)
+
+  # \u2500\u2500 Colors \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   group_colors <- c(
     "Pre-processing" = "#d9d9d9",
-    "Chapter 1"      = "#b3cde3",
-    "Chapter 2"      = "#ccebc5"
+    "Part 1"         = "#b3cde3",
+    "Junction"       = "#fdcdac",
+    "Pseudotime"     = "#e0c8f0",
+    "Part 2"         = "#ccebc5"
   )
 
-  edges_top <- data.frame(x1 = 1:9, y1 = rep(2, 9), x2 = 2:10, y2 = rep(2, 9))
-  edge_down <- data.frame(x1 = 10,  y1 = 2,          x2 = 9,    y2 = 0)
-  edges_bot <- data.frame(x1 = 9:6, y1 = rep(0, 4),  x2 = 8:5,  y2 = rep(0, 4))
-  edges     <- rbind(edges_top, edge_down, edges_bot)
+  w <- 0.82; h <- 0.52
 
-  w <- 0.85; h <- 0.50
+  req  <- nodes[!nodes$optional, ]
+  opt  <- nodes[ nodes$optional, ]
 
   p <- ggplot() +
-    annotate("rect", xmin = 0.4, xmax = 3.6, ymin = 1.4, ymax = 2.6,
-             fill = "#f5f5f5", color = "grey75", linetype = "dashed", linewidth = 0.4) +
-    annotate("text", x = 2,   y = 2.70,
-             label = "Pre-processing  (bash)", size = 3, color = "grey55", fontface = "italic") +
-    annotate("text", x = 6.5, y = 2.70,
-             label = "CHAPTER 1 \u2014 Single-Cell Analysis",
+    # Section labels
+    annotate("text", x = 5,   y = 9.65,
+             label = "PART 1 \u2014 Single-Cell Analysis",
              size = 3.5, color = "#1565c0", fontface = "bold") +
-    annotate("text", x = 7,   y = -0.70,
-             label = "CHAPTER 2 \u2014 Pseudobulk DE & GO Enrichment",
-             size = 3.5, color = "#2e7d32", fontface = "bold") +
+    annotate("text", x = 2,   y = -0.3,
+             label = "Pseudotime", size = 3.2, color = "#6a1b9a", fontface = "bold") +
+    annotate("text", x = 8,   y = -0.3,
+             label = "PART 2 \u2014 Pseudobulk DE & Networks",
+             size = 3.2, color = "#2e7d32", fontface = "bold") +
+    # Background bands
+    annotate("rect", xmin = 3.9, xmax = 6.1, ymin = 0.35, ymax = 9.45,
+             fill = "#f0f4ff", color = NA) +
+    annotate("rect", xmin = 0.7, xmax = 3.3, ymin = -3.65, ymax = -0.45,
+             fill = "#f8f0ff", color = NA) +
+    annotate("rect", xmin = 6.7, xmax = 9.3, ymin = -5.65, ymax = -0.45,
+             fill = "#f0fff4", color = NA) +
+    # Edges
     geom_segment(data = edges,
                  aes(x = x1, y = y1, xend = x2, yend = y2),
-                 arrow     = arrow(length = unit(0.22, "cm"), type = "closed"),
-                 linewidth = 0.55, color = "grey40", lineend = "round") +
-    geom_rect(data = nodes,
-              aes(xmin = x - w/2, xmax = x + w/2,
-                  ymin = y - h/2, ymax = y + h/2, fill = group),
+                 arrow     = arrow(length = unit(0.20, "cm"), type = "closed"),
+                 linewidth = 0.55, color = "grey45", lineend = "round") +
+    # Required nodes
+    geom_rect(data = req,
+              aes(xmin = x-w/2, xmax = x+w/2, ymin = y-h/2, ymax = y+h/2, fill = group),
               color = "grey35", linewidth = 0.4) +
+    # Optional nodes (dashed border)
+    geom_rect(data = opt,
+              aes(xmin = x-w/2, xmax = x+w/2, ymin = y-h/2, ymax = y+h/2, fill = group),
+              color = "grey55", linewidth = 0.4, linetype = "dashed") +
+    geom_text(data = nodes, aes(x = x, y = y, label = label),
+              size = 2.6, lineheight = 0.9) +
     scale_fill_manual(values = group_colors, name = NULL,
                       guide  = guide_legend(nrow = 1)) +
-    geom_text(data = nodes, aes(x = x, y = y, label = label),
-              size = 2.7, lineheight = 0.9) +
     theme_void() +
     theme(legend.position = "bottom",
-          legend.text      = element_text(size = 10),
-          plot.margin      = margin(20, 10, 20, 10)) +
-    coord_fixed(ratio = 1.5) +
-    xlim(0.3, 10.7) + ylim(-1.1, 3.1)
+          legend.text     = element_text(size = 9),
+          plot.margin     = margin(15, 20, 15, 20)) +
+    xlim(0, 10) + ylim(-6.3, 10.2)
 
   dir.create(dirname(outfile), recursive = TRUE, showWarnings = FALSE)
-  ggsave(outfile, p, width = 18, height = 7, dpi = 300)
+  ggsave(outfile, p, width = 12, height = 20, dpi = 300)
   message("Workflow figure saved: ", outfile)
   invisible(p)
 }
@@ -2762,3 +2931,1485 @@ plot_pipeline_workflow <- function(outfile) {
 # =============================================================================
 # END OF FUNCTIONS
 # =============================================================================
+
+
+# =============================================================================
+# DATA LOADING
+# =============================================================================
+
+#' Load Seurat objects from samples (CellBender or CellRanger)
+#'
+#' @param samples List of sample configurations (file, label, condition)
+#' @param DATA_DIR Root data directory path
+#' @param USE_CELLBENDER Logical; if TRUE load CellBender HDF5, if FALSE load CellRanger
+#' @param mt_pattern Regex pattern for mitochondrial genes (e.g., "^ATMG" for Arabidopsis)
+#' @param cp_pattern Regex pattern for chloroplast genes (e.g., "^ATCG" for Arabidopsis)
+#'
+#' @return Named list of Seurat objects with QC metrics (percent.mt, percent.cp)
+#'
+#' @export
+load_seurat_samples <- function(samples, DATA_DIR, USE_CELLBENDER, mt_pattern, cp_pattern) {
+  
+  if (USE_CELLBENDER) {
+    # Load CellBender-filtered HDF5 files
+    seurat_list <- lapply(samples, load_sample,
+                          mt_pattern = mt_pattern,
+                          cp_pattern = cp_pattern)
+  } else {
+    # Load CellRanger filtered_feature_bc_matrix directories
+    seurat_list <- lapply(samples, function(s) {
+      mat <- Read10X(data.dir = file.path(DATA_DIR, s$file))
+      obj <- CreateSeuratObject(counts = mat, project = s$label,
+                                min.cells = 3, min.features = 200)
+      obj$condition <- s$condition
+      obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = mt_pattern)
+      if (!is.null(cp_pattern))
+        obj[["percent.cp"]] <- PercentageFeatureSet(obj, pattern = cp_pattern)
+      obj
+    })
+  }
+  
+  names(seurat_list) <- sapply(samples, `[[`, "label")
+  return(seurat_list)
+}
+
+
+
+# =============================================================================
+# CELL-TYPE SUBSETTING
+# =============================================================================
+
+#' Create Seurat subsets for each cell type
+#'
+#' @param seurat_obj Seurat object with cell-type annotations
+#' @param annot_col Metadata column name containing cell-type labels
+#'
+#' @return Named list of Seurat subsets (one per cell type), with sanitized names
+#'
+#' @details
+#' Cell-type names are sanitised (special characters replaced with "_") so they
+#' can be used safely as list names and output filenames.
+#'
+#' @export
+create_cell_type_subsets <- function(seurat_obj, annot_col = "celltype_grouped") {
+  
+  # Get unique cell types (excluding NA)
+  cell_types <- sort(unique(na.omit(seurat_obj@meta.data[[annot_col]])))
+  
+  # Create subsets and sanitise names
+  subsets <- setNames(
+    lapply(cell_types, function(tipo) {
+      subset(seurat_obj,
+             cells = colnames(seurat_obj)[seurat_obj@meta.data[[annot_col]] == tipo])
+    }),
+    gsub("[^[:alnum:]_]", "_", cell_types)
+  )
+  
+  # Print summary
+  cell_counts <- setNames(
+    vapply(subsets, function(x) as.integer(ncol(x)), integer(1)),
+    names(subsets)
+  )
+  
+  message("Cell-type subsets created:")
+  print(cell_counts)
+  
+  return(subsets)
+}
+
+
+
+# =============================================================================
+# PSEUDOBULK PREPARATION
+# =============================================================================
+
+#' Assign pseudo-replicates to cell-type subsets
+#'
+#' @param cell_type_subsets Named list of Seurat objects (one per cell type)
+#' @param pseudobulk_conditions Optional character vector of conditions to retain (NULL = all)
+#' @param n_pseudoreps Number of pseudo-replicates per condition
+#'
+#' @return Named list of Seurat subsets with pseudo-replicate assignments,
+#'         filtered to include only subsets with ≥2 conditions
+#'
+#' @details
+#' The random seed must be set globally before calling this function (e.g., set.seed(1807))
+#' to ensure reproducibility.
+#'
+#' @export
+assign_pseudoreplicates_batch <- function(cell_type_subsets,
+                                          pseudobulk_conditions = NULL,
+                                          n_pseudoreps = 3) {
+  
+  subsets_with_reps <- Filter(
+    Negate(is.null),
+    lapply(cell_type_subsets,
+           assign_pseudo_replicates,
+           conditions = pseudobulk_conditions,
+           n_reps = n_pseudoreps)
+  )
+  
+  message("Cell types retained for pseudobulk (≥2 conditions):")
+  print(names(subsets_with_reps))
+  
+  return(subsets_with_reps)
+}
+
+
+
+# =============================================================================
+# PSEUDOBULK AND DESEQ2 ANALYSIS
+# =============================================================================
+
+#' Run pseudobulk aggregation and DESeq2 analysis
+#'
+#' @param cell_type_subsets_replicates Named list of Seurat objects with pseudo-replicate assignments
+#' @param comparisons List of contrast definitions, each with:
+#'                    - conds: character vector c("reference", "treatment")
+#'                    - tag: character label for output folder
+#' @param output_dir Base output directory for results
+#' @param cell_types Optional character vector of specific cell types to process
+#'                   (NULL = process all)
+#' @param pseudobulk_dir Directory to save pseudobulk count tables
+#'
+#' @return Named list of DESeq2 results per cell type
+#'
+#' @export
+run_pseudobulk_deseq2_analysis <- function(cell_type_subsets_replicates,
+                                           comparisons,
+                                           output_dir,
+                                           cell_types = NULL,
+                                           pseudobulk_dir = NULL) {
+  
+  # Set default pseudobulk directory
+  if (is.null(pseudobulk_dir))
+    pseudobulk_dir <- file.path(dirname(output_dir), "pseudobulk_replicas")
+  
+  # Create output directories
+  dir.create(pseudobulk_dir, recursive = TRUE, showWarnings = FALSE)
+  for (tag in sapply(comparisons, `[[`, "tag")) {
+    dir.create(file.path(output_dir, tag), recursive = TRUE, showWarnings = FALSE)
+  }
+  
+  # If cell_types not specified, use all available
+  if (is.null(cell_types))
+    cell_types <- names(cell_type_subsets_replicates)
+  
+  # Generate pseudobulk count tables
+  message("Generating pseudobulk count tables...")
+  pseudobulk_list <- guardar_tablas_pseudobulk(
+    cell_type_subsets_replicates,
+    output_dir = pseudobulk_dir
+  )
+  
+  # Filter to requested cell types
+  pseudobulk_list <- pseudobulk_list[names(pseudobulk_list) %in% cell_types]
+  
+  message("Processing ", length(pseudobulk_list), " cell types:")
+  print(names(pseudobulk_list))
+  
+  # Run DESeq2 for each cell type (shows all output)
+  deseq2_results <- list()
+  for (tipo in names(pseudobulk_list)) {
+    message("
+", strrep("─", 70))
+    message("DESeq2 analysis for cell type: ", tipo)
+    message(strrep("─", 70))
+    
+    deseq2_results[[tipo]] <- correr_deseq2(
+      counts_mat = as.matrix(pseudobulk_list[[tipo]]),
+      comparaciones = comparisons,
+      output_dir = output_dir,
+      tipo = tipo
+    )
+  }
+  
+  message("
+", strrep("═", 70))
+  message("✓ DESeq2 analysis complete for all cell types")
+  message(strrep("═", 70))
+  return(deseq2_results)
+}
+
+
+
+# =============================================================================
+# GO ENRICHMENT (SIMPLE)
+# =============================================================================
+
+#' Simple GO enrichment analysis
+#'
+#' @param diff_table Path to differential expression table (gene IDs in first column)
+#' @param output_dir Output directory for results
+#' @param orgdb OrgDb object for the organism (e.g., org.At.tair.db)
+#' @param keytype Key type matching gene IDs (e.g., "TAIR" for Arabidopsis)
+#' @param go_space Ontology namespace: "BP" (biological process), "MF" (molecular function), "CC" (cellular component)
+#' @param padj_cutoff Adjusted p-value threshold
+#'
+#' @return Enrichment results with GO terms, counts, and visualizations
+#'
+#' @export
+run_simple_go_enrichment <- function(diff_table,
+                                     output_dir,
+                                     orgdb,
+                                     keytype = "TAIR",
+                                     go_space = "BP",
+                                     padj_cutoff = 0.05,
+                                     cell_type = NULL,
+                                     contrast_tag = NULL) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Read table
+  if (is.character(diff_table)) {
+    tabla_df <- read.table(diff_table, header = TRUE, sep = "	", check.names = FALSE)
+  } else {
+    tabla_df <- as.data.frame(diff_table, check.names = FALSE)
+  }
+
+  gene_col <- colnames(tabla_df)[1]
+  genes_all <- tabla_df[[gene_col]]
+
+  # Get universe of genes
+  universo <- keys(orgdb, keytype = keytype)
+
+  # Run enrichment
+  go_result <- enrichGO(
+    gene = genes_all,
+    universe = universo,
+    OrgDb = orgdb,
+    keyType = keytype,
+    ont = go_space,
+    pvalueCutoff = padj_cutoff,
+    pAdjustMethod = "BH",
+    readable = TRUE
+  )
+
+  # If no enrichment results, return early
+  if (is.null(go_result) || nrow(go_result@result) == 0) {
+    return(NULL)
+  }
+
+  # Build filename prefix
+  file_prefix <- "GO"
+  if (!is.null(cell_type)) file_prefix <- paste0(file_prefix, "_", cell_type)
+  if (!is.null(contrast_tag)) file_prefix <- paste0(file_prefix, "_", contrast_tag)
+  file_prefix <- paste0(file_prefix, "_", go_space)
+
+  # Save results
+  write.table(go_result@result,
+              file = file.path(output_dir, paste0(file_prefix, ".tsv")),
+              sep = "	", quote = FALSE, row.names = FALSE)
+
+  # Generate plots with title
+  plot_title <- if (!is.null(cell_type)) paste0("GO Enrichment - ", cell_type) else "GO Enrichment"
+
+  tryCatch({
+    pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 12, height = 8)
+    p <- dotplot(go_result, showCategory = 20) + ggtitle(plot_title)
+    print(p)
+    dev.off()
+  }, error = function(e) message("Could not generate bubble plot: ", e$message))
+
+  return(go_result)
+}
+
+
+# =============================================================================
+# build_logfc_heatmap
+# =============================================================================
+# Builds a log2FC heatmap per cell type with gene clustering.
+# Two clustering methods available:
+#   "hclust" — hierarchical clustering (euclidean + complete + cutreeDynamic)
+#   "wgcna"  — coexpression network (TOM + mergeCloseModules)
+# Returns cluster assignments invisibly.
+build_logfc_heatmap <- function(logfc_table,
+                                contrast_tag,
+                                output_dir,
+                                method           = "wgcna",
+                                limits           = c(-5, 5),
+                                merge_cut        = 0.25,
+                                min_cluster_size = 10) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Build matrix
+  mat <- as.matrix(logfc_table[, -1])
+  rownames(mat) <- logfc_table[[1]]
+  colnames(mat) <- gsub(paste0("_", contrast_tag, "$"), "", colnames(mat))
+  mat[is.na(mat)] <- 0
+
+  # ── Clustering ──────────────────────────────────────────────────────────────
+  if (method == "hclust") {
+
+    dist_rows <- dist(mat, method = "euclidean")
+    hc_rows   <- hclust(dist_rows, method = "complete")
+    clust_num <- cutreeDynamic(
+      dendro = hc_rows, distM = as.matrix(dist_rows),
+      deepSplit = 1, minClusterSize = min_cluster_size, pamRespectsDendro = FALSE
+    )
+    names(clust_num) <- rownames(mat)
+    clust_labels <- as.character(clust_num)
+    row_order    <- rownames(mat)[hc_rows$order]
+
+  } else {
+
+    enableWGCNAThreads(2)
+    sft       <- pickSoftThreshold(t(mat), powerVector = c(1:10, seq(12, 20, 2)),
+                                    verbose = 0, networkType = "signed")
+    power_val <- if (is.na(sft$powerEstimate)) 6 else sft$powerEstimate
+    adj       <- adjacency(t(mat), power = power_val, type = "signed")
+    TOM       <- TOMsimilarity(adj, TOMType = "signed")
+    dissTOM   <- 1 - TOM
+    rownames(dissTOM) <- colnames(dissTOM) <- rownames(mat)
+    gene_tree <- hclust(as.dist(dissTOM), method = "average")
+    mod_num   <- cutreeDynamic(
+      dendro = gene_tree, distM = dissTOM,
+      deepSplit = 1, minClusterSize = min_cluster_size, pamRespectsDendro = FALSE
+    )
+    merged       <- mergeCloseModules(t(mat), labels2colors(mod_num),
+                                      cutHeight = merge_cut, verbose = 0)
+    clust_labels <- merged$colors
+    names(clust_labels) <- rownames(mat)
+    # Use tree order directly (simplest and most robust)
+    row_order    <- rownames(mat)[gene_tree$order]
+    # Remove any NA entries
+    row_order <- row_order[!is.na(row_order)]
+
+  }
+
+  message("Clusters found: ", length(unique(clust_labels[clust_labels != "0"])))
+
+  # ── Annotation ──────────────────────────────────────────────────────────────
+  # Order rows by cluster so genes of the same cluster are grouped together.
+  # Pass integer indices to ComplexHeatmap — character names are unreliable.
+  # hclust: sort numerically (1,2,3...) not alphabetically (1,10,11,2...).
+  # Cluster 0 = unassigned by cutreeDynamic — placed at the bottom.
+  if (method == "hclust") {
+    numeric_labels <- as.numeric(clust_labels)
+    numeric_labels[numeric_labels == 0] <- Inf   # push unassigned to bottom
+    row_order <- order(numeric_labels)
+    u_clust   <- as.character(sort(as.numeric(unique(clust_labels))))
+    pal_clust <- setNames(
+      colorRampPalette(brewer.pal(min(length(u_clust), 12), "Dark2"))(length(u_clust)),
+      u_clust
+    )
+  } else {
+    row_order <- order(clust_labels)
+    u_clust   <- sort(unique(clust_labels))
+    pal_clust <- setNames(u_clust, u_clust)  # WGCNA label names are color names
+  }
+
+  left_ha <- ComplexHeatmap::rowAnnotation(
+    Cluster = clust_labels,
+    col     = list(Cluster = pal_clust),
+    annotation_name_gp = grid::gpar(fontsize = 11, fontface = "bold"),
+    annotation_width   = grid::unit(0.5, "cm")
+  )
+
+  # ── Heatmap ──────────────────────────────────────────────────────────────────
+  ht <- ComplexHeatmap::Heatmap(
+    mat,
+    name = "log2FC",
+    col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
+
+    cluster_rows    = FALSE,  # rows ordered by clustering method, not dendrogram
+    row_order       = row_order,
+    cluster_columns = FALSE,
+
+    left_annotation   = left_ha,
+    show_row_names    = FALSE,
+    show_column_names = TRUE,
+    column_names_gp   = grid::gpar(fontsize = 14, fontface = "bold"),
+    column_names_rot  = 45,
+
+    column_title    = sprintf("[%s] log2FC — %s  (%d genes)", method, contrast_tag, nrow(mat)),
+    column_title_gp = gpar(fontsize = 15, fontface = "bold"),
+
+    heatmap_legend_param = list(
+      title         = "log2FC",
+      title_gp      = gpar(fontsize = 12, fontface = "bold"),
+      legend_height = unit(4, "cm")
+    )
+  )
+
+  pdf(file.path(output_dir, paste0("heatmap_", method, "_", contrast_tag, ".pdf")),
+      width = 12, height = 16)
+  ComplexHeatmap::draw(ht, merge_legend = TRUE, padding = grid::unit(c(2, 2, 2, 10), "mm"))
+  dev.off()
+
+  # ── Save cluster assignments ─────────────────────────────────────────────────
+  assignments <- data.frame(gene_id = rownames(mat), cluster = clust_labels)
+  write.table(assignments,
+              file.path(output_dir, paste0("clusters_", method, "_", contrast_tag, ".tsv")),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+
+  invisible(assignments)
+}
+
+
+
+# =============================================================================
+# get_tfs_from_orgdb
+# =============================================================================
+# Generic helper: returns transcription factor IDs from any Bioconductor OrgDb
+# using GO:0003700 (DNA-binding transcription factor activity).
+# Works for any organism with GO annotation (Arabidopsis, human, mouse, etc.).
+get_tfs_from_orgdb <- function(orgdb, keytype = "TAIR") {
+  tryCatch({
+    tfs <- AnnotationDbi::select(orgdb,
+                                  keys    = "GO:0003700",
+                                  columns = keytype,
+                                  keytype = "GO")[[keytype]]
+    unique(stats::na.omit(tfs))
+  }, error = function(e) {
+    message("Could not retrieve TFs via GO:0003700 (", e$message, ")")
+    character(0)
+  })
+}
+
+
+# =============================================================================
+# load_pseudobulk_matrix
+# =============================================================================
+# Internal helper: loads and merges pseudobulk replicate counts from a directory
+# of files named Pseudobulk_Reps_<celltype>.csv. Returns a CPM + log2 matrix.
+load_pseudobulk_matrix <- function(pseudobulk_dir, normalize = TRUE) {
+  pb_files <- list.files(pseudobulk_dir,
+                         pattern = "^Pseudobulk_Reps_.*\\.csv$",
+                         full.names = TRUE)
+  if (!length(pb_files)) stop("No Pseudobulk_Reps_*.csv files in: ", pseudobulk_dir)
+  pb_list <- lapply(pb_files, function(f) {
+    df <- read.csv(f, row.names = 1, check.names = FALSE)
+    ct <- gsub("Pseudobulk_Reps_|\\.csv$", "", basename(f))
+    colnames(df) <- paste0(ct, "_", colnames(df))
+    df
+  })
+  common <- Reduce(intersect, lapply(pb_list, rownames))
+  mat    <- as.matrix(do.call(cbind, lapply(pb_list, function(d) d[common, ])))
+
+  if (normalize) {
+    lib_sizes <- colSums(mat)
+    mat <- sweep(mat, 2, lib_sizes / 1e6, FUN = "/")
+    mat <- log2(mat + 1)
+  }
+  mat
+}
+
+
+# =============================================================================
+# run_genie3_per_cluster
+# =============================================================================
+# GENIE3-only analysis per cluster. Uses transcription factors as regulators
+# (TF -> target directed edges) and filters edges by absolute Pearson correlation.
+#
+# Generic across organisms: provide an OrgDb (org.At.tair.db, org.Hs.eg.db, ...)
+# and a matching keytype, or pass a custom_tfs vector to override.
+run_genie3_per_cluster <- function(cluster_assignments,
+                                   pseudobulk_dir,
+                                   output_dir,
+                                   orgdb,
+                                   keytype        = "TAIR",
+                                   custom_tfs     = NULL,
+                                   n_top_clusters = 3,
+                                   cor_min        = 0.90,
+                                   genie3_ntrees  = 100,
+                                   n_cores        = 4,
+                                   min_var_filter = 0.01) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # ── Pseudobulk: CPM + log2 ──────────────────────────────────────────────────
+  exprMatr_full <- load_pseudobulk_matrix(pseudobulk_dir, normalize = TRUE)
+  message("Pseudobulk matrix: ", nrow(exprMatr_full), " genes x ",
+          ncol(exprMatr_full), " samples (CPM + log2)")
+
+  # ── Transcription factor list ───────────────────────────────────────────────
+  tf_list <- if (!is.null(custom_tfs)) {
+    unique(custom_tfs)
+  } else {
+    get_tfs_from_orgdb(orgdb, keytype)
+  }
+  if (!length(tf_list)) stop("Empty TF list — provide custom_tfs or check OrgDb/keytype")
+  message("TFs available (organism-wide): ", length(tf_list))
+
+  # ── Top clusters ────────────────────────────────────────────────────────────
+  ca <- cluster_assignments[cluster_assignments$cluster != "grey", ]
+  cluster_sizes <- sort(table(ca$cluster), decreasing = TRUE)
+  n_use <- if (is.null(n_top_clusters)) length(cluster_sizes) else min(n_top_clusters, length(cluster_sizes))
+  top_clusters  <- names(cluster_sizes)[seq_len(n_use)]
+
+  # ── Per-cluster GENIE3 ──────────────────────────────────────────────────────
+  results <- list()
+  for (clust_id in top_clusters) {
+    message("\n── GENIE3 on cluster: ", clust_id, " ──")
+    genes_ok <- intersect(ca$gene_id[ca$cluster == clust_id], rownames(exprMatr_full))
+    expr     <- exprMatr_full[genes_ok, , drop = FALSE]
+    expr     <- expr[apply(expr, 1, var) > min_var_filter, , drop = FALSE]
+
+    TFreg   <- intersect(tf_list, rownames(expr))
+    targets <- setdiff(rownames(expr), TFreg)
+    message("  Genes: ", nrow(expr), " | TFs: ", length(TFreg), " | Targets: ", length(targets))
+
+    if (length(TFreg) == 0 || length(targets) == 0) {
+      message("  Skip (no TFs or no targets)"); next
+    }
+
+    set.seed(123)
+    weightMat <- GENIE3(expr,
+                        regulators = TFreg, targets = targets,
+                        treeMethod = "RF", K = "sqrt",
+                        nCores = n_cores, verbose = FALSE)
+
+    linkList <- getLinkList(weightMat)
+    colnames(linkList) <- c("source", "target", "weight")
+    dt <- data.table::as.data.table(linkList)
+    dt[, source := as.character(source)]
+    dt[, target := as.character(target)]
+    dt <- dt[weight > 0]
+
+    cor_matrix <- cor(t(expr), method = "pearson")
+    dt[, pearson_cor := abs(cor_matrix[cbind(source, target)])]
+
+    final <- dt[pearson_cor >= cor_min]
+    data.table::setorder(final, -pearson_cor, -weight)
+    message("  All edges (weight > 0): ", nrow(dt),
+            " | Filtered (|r| >= ", cor_min, "): ", nrow(final))
+
+    # Save outputs
+    write.table(dt[, .(source, target, weight, pearson_cor)],
+                file.path(output_dir, paste0("GENIE3_", clust_id, "_all_edges.tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+    write.table(final[, .(source, target, weight, pearson_cor)],
+                file.path(output_dir,
+                          paste0("GENIE3_", clust_id,
+                                 "_cor", round(cor_min * 100), ".tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+
+    results[[clust_id]] <- list(
+      cluster      = clust_id,
+      n_genes      = nrow(expr),
+      n_tfs        = length(TFreg),
+      n_targets    = length(targets),
+      all_edges    = dt,
+      filtered     = final,
+      n_all        = nrow(dt),
+      n_filtered   = nrow(final)
+    )
+  }
+
+  saveRDS(results, file.path(output_dir, "GENIE3_results.rds"))
+  message("\n✓ GENIE3 outputs saved to: ", output_dir)
+
+  invisible(results)
+}
+
+
+# =============================================================================
+# run_wgcna_per_cluster
+# =============================================================================
+# WGCNA-only coexpression analysis per cluster. Builds a TOM-based undirected
+# network and filters edges above a TOM threshold.
+run_wgcna_per_cluster <- function(cluster_assignments,
+                                  pseudobulk_dir,
+                                  output_dir,
+                                  n_top_clusters = 3,
+                                  soft_power     = 6,
+                                  network_type   = "signed",
+                                  tom_threshold  = 0.10,
+                                  min_var_filter = 0.01) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  exprMatr_full <- load_pseudobulk_matrix(pseudobulk_dir, normalize = TRUE)
+  message("Pseudobulk matrix: ", nrow(exprMatr_full), " genes x ",
+          ncol(exprMatr_full), " samples (CPM + log2)")
+
+  ca <- cluster_assignments[cluster_assignments$cluster != "grey", ]
+  cluster_sizes <- sort(table(ca$cluster), decreasing = TRUE)
+  n_use <- if (is.null(n_top_clusters)) length(cluster_sizes) else min(n_top_clusters, length(cluster_sizes))
+  top_clusters  <- names(cluster_sizes)[seq_len(n_use)]
+
+  results <- list()
+  for (clust_id in top_clusters) {
+    message("\n── WGCNA on cluster: ", clust_id, " ──")
+    genes_ok <- intersect(ca$gene_id[ca$cluster == clust_id], rownames(exprMatr_full))
+    expr     <- exprMatr_full[genes_ok, , drop = FALSE]
+    expr     <- expr[apply(expr, 1, var) > min_var_filter, , drop = FALSE]
+    if (nrow(expr) < 10) { message("  Skip (<10 genes)"); next }
+
+    adj <- adjacency(t(expr), power = soft_power, type = network_type)
+    TOM <- TOMsimilarity(adj, TOMType = network_type, verbose = 0)
+    rownames(TOM) <- colnames(TOM) <- rownames(expr)
+
+    idx <- which(upper.tri(TOM), arr.ind = TRUE)
+    edges <- data.frame(
+      source = rownames(TOM)[idx[, 1]],
+      target = colnames(TOM)[idx[, 2]],
+      adjacency = adj[idx],
+      TOM       = TOM[idx],
+      stringsAsFactors = FALSE
+    )
+    final <- edges[edges$TOM >= tom_threshold, ]
+    final <- final[order(-final$TOM), ]
+    message("  Total pairs: ", nrow(edges),
+            " | Filtered (TOM >= ", tom_threshold, "): ", nrow(final))
+
+    write.table(edges,
+                file.path(output_dir, paste0("WGCNA_", clust_id, "_all_edges.tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+    write.table(final,
+                file.path(output_dir,
+                          paste0("WGCNA_", clust_id,
+                                 "_TOM", gsub("\\.", "", as.character(tom_threshold)),
+                                 ".tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+
+    results[[clust_id]] <- list(
+      cluster    = clust_id,
+      n_genes    = nrow(expr),
+      all_edges  = edges,
+      filtered   = final,
+      n_all      = nrow(edges),
+      n_filtered = nrow(final)
+    )
+  }
+
+  saveRDS(results, file.path(output_dir, "WGCNA_results.rds"))
+  message("\n✓ WGCNA outputs saved to: ", output_dir)
+
+  invisible(results)
+}
+
+
+# =============================================================================
+# run_synergistic_network
+# =============================================================================
+# SYNERGISTIC analysis (NOT a consensus / intersection).
+#
+# Each method contributes what the other cannot:
+#   - GENIE3 provides DIRECTIONALITY (TF -> target) and predictive power
+#   - WGCNA  provides COEXPRESSION ROBUSTNESS via TOM (shared neighbors)
+#
+# For every TF -> target edge proposed by GENIE3, the WGCNA TOM of that pair
+# is looked up. The synergistic score combines both with a geometric mean of
+# rank-normalized values, which penalizes any edge where one side is weak:
+#
+#   score_synergy = sqrt( rank_norm(weight_genie3) * rank_norm(TOM) )
+#
+# Output: directed edges (TF -> target) with both metrics + synergistic score.
+run_synergistic_network <- function(cluster_assignments,
+                                    pseudobulk_dir,
+                                    output_dir,
+                                    orgdb,
+                                    keytype        = "TAIR",
+                                    custom_tfs     = NULL,
+                                    n_top_clusters = 3,
+                                    soft_power     = 6,
+                                    network_type   = "signed",
+                                    genie3_ntrees  = 100,
+                                    n_cores        = 4,
+                                    min_var_filter = 0.01,
+                                    cor_min        = 0.90,
+                                    tom_min        = 0.15) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  exprMatr_full <- load_pseudobulk_matrix(pseudobulk_dir, normalize = TRUE)
+  message("Pseudobulk matrix: ", nrow(exprMatr_full), " genes x ",
+          ncol(exprMatr_full), " samples (CPM + log2)")
+
+  tf_list <- if (!is.null(custom_tfs)) unique(custom_tfs) else get_tfs_from_orgdb(orgdb, keytype)
+  if (!length(tf_list)) stop("Empty TF list — provide custom_tfs or check OrgDb/keytype")
+  message("TFs available (organism-wide): ", length(tf_list))
+
+  ca <- cluster_assignments[cluster_assignments$cluster != "grey", ]
+  cluster_sizes <- sort(table(ca$cluster), decreasing = TRUE)
+  n_use <- if (is.null(n_top_clusters)) length(cluster_sizes) else min(n_top_clusters, length(cluster_sizes))
+  top_clusters  <- names(cluster_sizes)[seq_len(n_use)]
+
+  rank_norm <- function(x) rank(x, ties.method = "average") / length(x)
+
+  results <- list()
+  for (clust_id in top_clusters) {
+    message("\n── Synergistic analysis on cluster: ", clust_id, " ──")
+    genes_ok <- intersect(ca$gene_id[ca$cluster == clust_id], rownames(exprMatr_full))
+    expr     <- exprMatr_full[genes_ok, , drop = FALSE]
+    expr     <- expr[apply(expr, 1, var) > min_var_filter, , drop = FALSE]
+    if (nrow(expr) < 10) { message("  Skip (<10 genes)"); next }
+
+    TFreg   <- intersect(tf_list, rownames(expr))
+    targets <- setdiff(rownames(expr), TFreg)
+    if (!length(TFreg) || !length(targets)) { message("  Skip (no TFs/targets)"); next }
+    message("  Genes: ", nrow(expr), " | TFs: ", length(TFreg),
+            " | Targets: ", length(targets))
+
+    # WGCNA layer (coexpression backbone)
+    adj <- adjacency(t(expr), power = soft_power, type = network_type)
+    TOM <- TOMsimilarity(adj, TOMType = network_type, verbose = 0)
+    rownames(TOM) <- colnames(TOM) <- rownames(expr)
+    cor_matrix <- cor(t(expr), method = "pearson")
+
+    # GENIE3 layer (directed TF -> target)
+    set.seed(123)
+    weightMat <- GENIE3(expr, regulators = TFreg, targets = targets,
+                        treeMethod = "RF", K = "sqrt",
+                        nCores = n_cores, verbose = FALSE)
+    linkList <- getLinkList(weightMat)
+    colnames(linkList) <- c("source", "target", "weight_genie3")
+    dt <- data.table::as.data.table(linkList)
+    dt[, source := as.character(source)]
+    dt[, target := as.character(target)]
+    dt <- dt[weight_genie3 > 0]
+
+    # Lookup WGCNA metrics for each directed edge
+    dt[, TOM         := TOM[cbind(source, target)]]
+    dt[, adjacency   := adj[cbind(source, target)]]
+    dt[, pearson_cor := abs(cor_matrix[cbind(source, target)])]
+
+    # Synergistic score: geometric mean of rank-normalized values
+    dt[, score_synergy := sqrt(rank_norm(weight_genie3) * rank_norm(TOM))]
+    data.table::setorder(dt, -score_synergy)
+
+    # Filter: BOTH layers must pass their own threshold
+    final <- dt[pearson_cor >= cor_min & TOM >= tom_min]
+    data.table::setorder(final, -score_synergy)
+    message("  All TF->target edges: ", nrow(dt),
+            " | Filtered (|r|>=", cor_min, " AND TOM>=", tom_min, "): ",
+            nrow(final))
+
+    write.table(dt[, .(source, target, weight_genie3, TOM, adjacency,
+                       pearson_cor, score_synergy)],
+                file.path(output_dir, paste0("SYNERGY_", clust_id, "_all_edges.tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+    write.table(final[, .(source, target, weight_genie3, TOM, adjacency,
+                          pearson_cor, score_synergy)],
+                file.path(output_dir, paste0("SYNERGY_", clust_id, "_filtered.tsv")),
+                sep = "\t", quote = FALSE, row.names = FALSE)
+
+    results[[clust_id]] <- list(
+      cluster    = clust_id,
+      n_genes    = nrow(expr),
+      n_tfs      = length(TFreg),
+      n_targets  = length(targets),
+      all_edges  = dt,
+      filtered   = final,
+      n_all      = nrow(dt),
+      n_filtered = nrow(final)
+    )
+  }
+
+  saveRDS(results, file.path(output_dir, "synergy_results.rds"))
+  message("\n✓ Synergistic outputs saved to: ", output_dir)
+
+  invisible(results)
+}
+
+
+# =============================================================================
+# generate_network_pdf
+# =============================================================================
+# Generic PDF report for any of the three network methods (GENIE3, WGCNA, SYNERGY).
+# Per cluster: network plot, top hubs bar chart, summary text.
+#
+# Expects results = list-of-clusters with each cluster providing:
+#   $cluster, $n_genes, $filtered (data.frame/data.table with source, target,
+#                                  + a "weight_col" used for edge width)
+generate_network_pdf <- function(results,
+                                 output_dir,
+                                 method_name,
+                                 weight_col,
+                                 directed     = FALSE,
+                                 n_top_hubs   = 10,
+                                 max_nodes    = 80,
+                                 edge_color   = "#1f78b4") {
+
+  if (!length(results)) { message("No results to plot for ", method_name); return(invisible(NULL)) }
+
+  pdf_path <- file.path(output_dir, paste0(method_name, "_network_report.pdf"))
+  pdf(pdf_path, width = 12, height = 10)
+
+  # ── Cover page with description ─────────────────────────────────────────────
+  grid::grid.newpage()
+  grid::grid.text(paste0(method_name, " - Network Analysis"),
+                  y = 0.92, gp = grid::gpar(fontsize = 22, fontface = "bold"))
+  grid::grid.text(paste0(length(results), " clusters analyzed"),
+                  y = 0.86, gp = grid::gpar(fontsize = 12, fontface = "italic"))
+
+  desc <- switch(method_name,
+    "GENIE3" = paste(
+      "GENIE3 — Gene Network Inference with Ensemble of Trees",
+      "",
+      "  • Random Forest based regulatory network inference",
+      "  • Edges are DIRECTED: regulator (TF) -> target",
+      "  • Edge score = variable importance from RF model",
+      "  • Filtered by absolute Pearson correlation",
+      "",
+      "Each edge represents a putative TF -> target interaction.",
+      "Hubs are TFs that regulate many targets in the cluster.",
+      sep = "\n"
+    ),
+    "WGCNA" = paste(
+      "WGCNA — Weighted Gene Co-expression Network Analysis",
+      "",
+      "  • Pearson correlation raised to soft-power (default 6)",
+      "  • TOM (Topological Overlap Measure) refines using shared neighbors",
+      "  • Edges are UNDIRECTED",
+      "  • Filtered by TOM threshold",
+      "",
+      "Each edge represents two genes that co-vary AND share many neighbors.",
+      "Hubs are genes highly connected within the co-expression module.",
+      sep = "\n"
+    ),
+    "SYNERGY" = paste(
+      "SYNERGY — Complementary GENIE3 + WGCNA",
+      "",
+      "  • Each method contributes what the other cannot:",
+      "      GENIE3 -> directionality (TF -> target)",
+      "      WGCNA  -> coexpression robustness via TOM",
+      "  • score_synergy = sqrt(rank(weight_genie3) * rank(TOM))",
+      "  • Edges retained only if BOTH thresholds are met",
+      "",
+      "Hubs are TFs whose targets are also strongly co-expressed.",
+      "The strongest candidates for biological follow-up.",
+      sep = "\n"
+    ),
+    paste("Method:", method_name)
+  )
+  grid::grid.text(desc, x = 0.05, y = 0.5, just = c("left", "center"),
+                  gp = grid::gpar(fontsize = 11, fontfamily = "mono"))
+
+  # ── Summary table ───────────────────────────────────────────────────────────
+  summary_df <- do.call(rbind, lapply(results, function(r) data.frame(
+    Cluster        = r$cluster,
+    Genes          = r$n_genes,
+    Edges_total    = r$n_all,
+    Edges_filtered = r$n_filtered
+  )))
+  grid::grid.newpage()
+  grid::grid.text("Summary across clusters",
+                  y = 0.92, gp = grid::gpar(fontsize = 18, fontface = "bold"))
+  pushViewport(viewport(y = 0.55, height = 0.7))
+  grid::grid.draw(gridExtra::tableGrob(summary_df, rows = NULL,
+                                       theme = gridExtra::ttheme_default(base_size = 12)))
+  popViewport()
+
+  # ── Per-cluster pages ───────────────────────────────────────────────────────
+  for (r in results) {
+    edges <- as.data.frame(r$filtered)
+    if (nrow(edges) == 0) next
+
+    g <- igraph::graph_from_data_frame(
+      edges[, c("source", "target", weight_col)],
+      directed = directed
+    )
+
+    if (length(igraph::V(g)) > max_nodes) {
+      keep <- names(sort(igraph::degree(g), decreasing = TRUE))[seq_len(max_nodes)]
+      g <- igraph::induced_subgraph(g, keep)
+    }
+    deg <- sort(igraph::degree(g), decreasing = TRUE)
+    hubs <- names(deg)[seq_len(min(n_top_hubs, length(deg)))]
+
+    # Page A: network
+    igraph::V(g)$color <- ifelse(igraph::V(g)$name %in% hubs, "#ff7f0e", "#cccccc")
+    igraph::V(g)$size  <- ifelse(igraph::V(g)$name %in% hubs, 8, 3)
+    igraph::V(g)$label <- ifelse(igraph::V(g)$name %in% hubs, igraph::V(g)$name, "")
+    par(mar = c(0, 0, 3, 0))
+    plot(g, layout = igraph::layout_with_fr(g),
+         vertex.label.cex   = 0.6,
+         vertex.label.color = "black",
+         vertex.frame.color = NA,
+         edge.color = adjustcolor(edge_color, alpha.f = 0.4),
+         edge.width = scales::rescale(igraph::edge_attr(g, weight_col), to = c(0.3, 1.8)),
+         edge.arrow.size = if (directed) 0.3 else 0,
+         main = sprintf("%s - Cluster '%s'  (%d nodes, %d edges)",
+                        method_name, r$cluster,
+                        length(igraph::V(g)), length(igraph::E(g))))
+
+    # Page B: hub barchart
+    hubs_df <- data.frame(gene = hubs, degree = deg[seq_len(length(hubs))])
+    print(ggplot2::ggplot(hubs_df,
+                          ggplot2::aes(x = stats::reorder(gene, degree), y = degree)) +
+          ggplot2::geom_col(fill = edge_color) +
+          ggplot2::coord_flip() +
+          ggplot2::labs(title    = sprintf("Top %d hubs - cluster '%s'",
+                                            n_top_hubs, r$cluster),
+                        subtitle = paste0("Method: ", method_name),
+                        x = NULL, y = "Degree") +
+          ggplot2::theme_bw(base_size = 12))
+
+    # Page C: top edges table + interpretation
+    grid::grid.newpage()
+    grid::grid.text(sprintf("Cluster '%s' - Details", r$cluster),
+                    y = 0.97, gp = grid::gpar(fontsize = 16, fontface = "bold"))
+
+    # Top 15 edges table (above)
+    top15 <- head(edges, 15)
+    pushViewport(viewport(y = 0.70, height = 0.45))
+    grid::grid.text(paste0("Top 15 edges (sorted by ", weight_col, ")"),
+                    y = 1.02, gp = grid::gpar(fontsize = 12, fontface = "bold"))
+    grid::grid.draw(gridExtra::tableGrob(
+      do.call(data.frame, lapply(top15, function(x)
+        if (is.numeric(x)) round(x, 4) else x)),
+      rows = NULL,
+      theme = gridExtra::ttheme_default(base_size = 8)))
+    popViewport()
+
+    # Interpretation text (below)
+    interp <- paste(
+      sprintf("Genes in cluster (after variance filter): %d", r$n_genes),
+      sprintf("Total edges (unfiltered): %d", r$n_all),
+      sprintf("Filtered edges in this network: %d", r$n_filtered),
+      "",
+      sprintf("Top hubs by degree:"),
+      paste0("  ", paste(hubs, collapse = ", ")),
+      "",
+      sprintf("Strongest edge: %s %s %s  (%s = %.4f)",
+              top15$source[1],
+              if (directed) "->" else "--",
+              top15$target[1],
+              weight_col,
+              as.numeric(top15[[weight_col]][1])),
+      sep = "\n"
+    )
+    grid::grid.text(interp, x = 0.05, y = 0.20, just = c("left", "center"),
+                    gp = grid::gpar(fontsize = 10, fontfamily = "mono"))
+  }
+
+  dev.off()
+  message("✓ PDF saved: ", pdf_path)
+  invisible(pdf_path)
+}
+
+
+# =============================================================================
+# visualize_network_per_cluster
+# =============================================================================
+# Create clean, force-directed network visualization for each cluster.
+# Uses igraph with Fruchterman-Reingold layout.
+visualize_network_per_cluster <- function(network_results,
+                                          cluster_assignments,
+                                          output_dir,
+                                          method_name = "GENIE3") {
+
+  weight_col <- if (method_name == "GENIE3") "weight" else "TOM"
+  directed   <- method_name == "GENIE3"
+  edge_color <- if (method_name == "GENIE3") "#2ca02c" else "#1f77b4"
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  if (!length(network_results)) {
+    message("No network results to visualize for ", method_name)
+    return(invisible(NULL))
+  }
+
+  pdf_path <- file.path(output_dir, paste0(method_name, "_network_visualization.pdf"))
+  pdf(pdf_path, width = 14, height = 11)
+
+  grid::grid.newpage()
+  grid::grid.text(paste0(method_name, " - Network Visualization"),
+                  y = 0.92, gp = grid::gpar(fontsize = 22, fontface = "bold"))
+  grid::grid.text("Force-directed layout (Fruchterman-Reingold)",
+                  y = 0.86, gp = grid::gpar(fontsize = 12, fontface = "italic"))
+  grid::grid.text(sprintf("Clusters analyzed: %d", length(network_results)),
+                  y = 0.80, gp = grid::gpar(fontsize = 11))
+
+  for (clust_id in names(network_results)) {
+    res <- network_results[[clust_id]]
+
+    if (is.null(res$filtered) || nrow(res$filtered) == 0) {
+      grid::grid.newpage()
+      grid::grid.text(paste0("Cluster ", clust_id, ": No edges after filtering"),
+                      y = 0.5, gp = grid::gpar(fontsize = 14))
+      next
+    }
+
+    edges_df <- as.data.frame(res$filtered[, c("source", "target", weight_col), with = FALSE])
+    colnames(edges_df) <- c("source", "target", "weight")
+
+    # Normalize to [0.1, 1] to ensure all weights are positive for FR layout
+    w_min <- min(edges_df$weight, na.rm = TRUE)
+    w_max <- max(edges_df$weight, na.rm = TRUE)
+    if (w_min == w_max) {
+      edges_df$weight_norm <- rep(0.5, nrow(edges_df))
+    } else {
+      edges_df$weight_norm <- 0.1 + 0.9 * (edges_df$weight - w_min) / (w_max - w_min)
+    }
+    edges_df$weight_norm <- pmax(edges_df$weight_norm, 0.01)  # Ensure > 0
+
+    g <- igraph::graph_from_data_frame(edges_df[, c("source", "target")],
+                                       directed = directed)
+    # Assign normalized weights (FR layout needs positive weights)
+    igraph::E(g)$weight <- edges_df$weight_norm
+    igraph::E(g)$original_weight <- edges_df$weight
+
+    node_degree <- igraph::degree(g)
+    igraph::V(g)$size <- 4 + (node_degree / max(node_degree)) * 12
+    igraph::V(g)$color <- colorRampPalette(c("#ffffcc", "#ff7f00"))(100)[
+      ceiling(node_degree / max(node_degree) * 100)
+    ]
+
+    set.seed(123)
+    layout <- igraph::layout_with_fr(g, niter = 500, dim = 2, weights = igraph::E(g)$weight)
+
+    grid::grid.newpage()
+    grid::pushViewport(grid::viewport(x = 0.05, y = 0.05, width = 0.9, height = 0.85, just = c("left", "bottom")))
+
+    plot(g,
+         layout = layout,
+         edge.width = edges_df$weight_norm * 3,
+         edge.color = edge_color,
+         edge.arrow.size = ifelse(directed, 0.3, 0),
+         edge.curved = 0.2,
+         vertex.label.cex = 0.8,
+         vertex.label.dist = 1.5,
+         asp = 0.8,
+         margin = 0.1)
+
+    grid::popViewport()
+
+    grid::pushViewport(grid::viewport(x = 0.05, y = 0.88, width = 0.9, height = 0.1, just = c("left", "bottom")))
+    grid::grid.text(paste0("Cluster ", clust_id),
+                    x = 0.05, y = 0.8, just = c("left", "top"),
+                    gp = grid::gpar(fontsize = 14, fontface = "bold"))
+    grid::grid.text(sprintf("Genes: %d | Edges: %d | Layout: Fruchterman-Reingold",
+                            length(unique(c(res$filtered$source, res$filtered$target))),
+                            nrow(res$filtered)),
+                    x = 0.05, y = 0.3, just = c("left", "top"),
+                    gp = grid::gpar(fontsize = 10))
+    grid::popViewport()
+  }
+
+  dev.off()
+  message("✓ Network visualization PDF saved: ", pdf_path)
+  invisible(pdf_path)
+}
+
+
+# =============================================================================
+# generate_cluster_profile_report
+# =============================================================================
+# Generate cluster profile: expression heatmap, box plots, GO enrichment, stats.
+generate_cluster_profile_report <- function(cluster_assignments,
+                                            pseudobulk_matrix,
+                                            output_dir,
+                                            method_name = "MIXED") {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  clusters_to_plot <- unique(cluster_assignments$cluster[cluster_assignments$cluster != "grey"])
+  pdf_path <- file.path(output_dir, paste0(method_name, "_cluster_profiles.pdf"))
+
+  pdf(pdf_path, width = 14, height = 11)
+
+  grid::grid.newpage()
+  grid::grid.text("Gene Cluster Profiles",
+                  y = 0.92, gp = grid::gpar(fontsize = 22, fontface = "bold"))
+  grid::grid.text(sprintf("Method: %s | Clusters: %d", method_name, length(clusters_to_plot)),
+                  y = 0.86, gp = grid::gpar(fontsize = 12, fontface = "italic"))
+
+  for (clust_id in clusters_to_plot) {
+    genes_in_cluster <- cluster_assignments$gene_id[cluster_assignments$cluster == clust_id]
+    genes_in_cluster <- intersect(genes_in_cluster, rownames(pseudobulk_matrix))
+
+    if (length(genes_in_cluster) == 0) next
+
+    expr_matrix <- pseudobulk_matrix[genes_in_cluster, , drop = FALSE]
+
+    grid::grid.newpage()
+    grid::pushViewport(grid::viewport(x = 0.05, y = 0.35, width = 0.9, height = 0.6, just = c("left", "bottom")))
+
+    expr_scaled <- t(scale(t(expr_matrix)))
+    expr_scaled[is.na(expr_scaled)] <- 0
+    expr_scaled <- pmin(pmax(expr_scaled, -3), 3)
+
+    h <- ComplexHeatmap::Heatmap(
+      expr_scaled,
+      name = "log2(CPM)\n(scaled)",
+      cluster_rows = TRUE,
+      cluster_columns = FALSE,
+      show_row_names = length(genes_in_cluster) <= 50,
+      show_column_names = TRUE,
+      column_title = paste0("Cluster ", clust_id, " - Expression Heatmap"),
+      col = circlize::colorRamp2(c(-3, 0, 3), c("#3182bd", "#fff7fb", "#e6550d")),
+      width = grid::unit(10, "cm"),
+      height = grid::unit(8, "cm")
+    )
+
+    ComplexHeatmap::draw(h, newpage = FALSE)
+    grid::popViewport()
+
+    grid::pushViewport(grid::viewport(x = 0.05, y = 0.05, width = 0.9, height = 0.25, just = c("left", "bottom")))
+    stats_text <- sprintf(
+      "Cluster: %s\nGenes: %d | Samples: %d\nExpression: mean(log2 CPM) = %.2f ± %.2f",
+      clust_id, nrow(expr_matrix), ncol(expr_matrix),
+      mean(expr_matrix), sd(as.vector(expr_matrix))
+    )
+    grid::grid.text(stats_text, x = 0.05, y = 0.9, just = c("left", "top"),
+                    gp = grid::gpar(fontsize = 10, fontfamily = "mono"))
+    grid::popViewport()
+  }
+
+  dev.off()
+  message("✓ Cluster profile PDF saved: ", pdf_path)
+
+  summary_list <- list()
+  for (clust_id in clusters_to_plot) {
+    genes <- cluster_assignments$gene_id[cluster_assignments$cluster == clust_id]
+    genes <- intersect(genes, rownames(pseudobulk_matrix))
+
+    if (length(genes) == 0) next
+
+    expr <- pseudobulk_matrix[genes, , drop = FALSE]
+    summary_list[[clust_id]] <- data.frame(
+      cluster = clust_id,
+      n_genes = nrow(expr),
+      mean_expr = round(mean(expr), 3),
+      sd_expr = round(sd(as.vector(expr)), 3),
+      max_expr = round(max(expr), 3),
+      min_expr = round(min(expr), 3)
+    )
+  }
+
+  summary_df <- do.call(rbind, summary_list)
+  rownames(summary_df) <- NULL
+  write.table(summary_df, file.path(output_dir, "cluster_summary_stats.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+
+  message("✓ Cluster profile report saved to: ", output_dir)
+  invisible(list(pdf = pdf_path, stats = summary_df))
+}
+
+
+# =============================================================================
+# run_network_inference_pipeline
+# =============================================================================
+# Encapsulates network inference (GENIE3, WGCNA, SYNERGY) with method selection.
+# Returns all results in a named list for downstream use.
+#
+# Parameters:
+#   heatmap_results      : cluster assignments from Section 20
+#   pseudobulk_dir       : directory with pseudobulk replicas (Section 9)
+#   output_base_dir      : base directory for results (dir_08/<contrast>)
+#   methods              : vector of methods to run ("GENIE3", "WGCNA", "SYNERGY")
+#   orgdb, keytype, custom_tfs : for GENIE3/SYNERGY
+#   cor_min, genie3_ntrees, n_cores : GENIE3/SYNERGY parameters
+#   soft_power, network_type, tom_threshold : WGCNA parameters
+#   n_top_clusters, min_var_filter : common parameters
+#
+# Returns: list with $results and $pdfs (named by method)
+#
+run_network_inference_pipeline <- function(heatmap_results,
+                                           pseudobulk_dir,
+                                           output_base_dir,
+                                           methods = c("GENIE3", "WGCNA", "SYNERGY"),
+                                           orgdb = org.At.tair.db,
+                                           keytype = "TAIR",
+                                           custom_tfs = NULL,
+                                           cor_min = 0.90,
+                                           genie3_ntrees = 100,
+                                           n_cores = 4,
+                                           soft_power = 6,
+                                           network_type = "signed",
+                                           tom_threshold = 0.15,
+                                           n_top_clusters = 3,
+                                           min_var_filter = 0.01) {
+
+  message("\n═══════════════════════════════════════════════════════════════════")
+  message("NETWORK INFERENCE PIPELINE")
+  message("Methods: ", paste(methods, collapse = ", "))
+  message("═══════════════════════════════════════════════════════════════════\n")
+
+  results <- list()
+  pdf_paths <- list()
+
+  # ── Run GENIE3 ──────────────────────────────────────────────────────────────
+  if ("GENIE3" %in% methods) {
+    message("\n▶ Running GENIE3...")
+    results$GENIE3 <- run_genie3_per_cluster(
+      cluster_assignments = heatmap_results,
+      pseudobulk_dir      = pseudobulk_dir,
+      output_dir          = file.path(output_base_dir, "GENIE3"),
+      orgdb               = orgdb,
+      keytype             = keytype,
+      custom_tfs          = custom_tfs,
+      n_top_clusters      = n_top_clusters,
+      cor_min             = cor_min,
+      genie3_ntrees       = genie3_ntrees,
+      n_cores             = n_cores,
+      min_var_filter      = min_var_filter
+    )
+    pdf_paths$GENIE3 <- generate_network_pdf(
+      results[[1]],
+      file.path(output_base_dir, "GENIE3"),
+      method_name = "GENIE3",
+      weight_col = "weight",
+      directed = TRUE,
+      edge_color = "#2ca02c"
+    )
+  }
+
+  # ── Run WGCNA ───────────────────────────────────────────────────────────────
+  if ("WGCNA" %in% methods) {
+    message("\n▶ Running WGCNA...")
+    results$WGCNA <- run_wgcna_per_cluster(
+      cluster_assignments = heatmap_results,
+      pseudobulk_dir      = pseudobulk_dir,
+      output_dir          = file.path(output_base_dir, "WGCNA"),
+      n_top_clusters      = n_top_clusters,
+      soft_power          = soft_power,
+      network_type        = network_type,
+      tom_threshold       = tom_threshold,
+      min_var_filter      = min_var_filter
+    )
+    pdf_paths$WGCNA <- generate_network_pdf(
+      results$WGCNA,
+      file.path(output_base_dir, "WGCNA"),
+      method_name = "WGCNA",
+      weight_col = "TOM",
+      directed = FALSE,
+      edge_color = "#1f77b4"
+    )
+  }
+
+  # ── Run SYNERGY ─────────────────────────────────────────────────────────────
+  if ("SYNERGY" %in% methods) {
+    message("\n▶ Running SYNERGY...")
+    results$SYNERGY <- run_synergistic_network(
+      cluster_assignments = heatmap_results,
+      pseudobulk_dir      = pseudobulk_dir,
+      output_dir          = file.path(output_base_dir, "SYNERGY"),
+      orgdb               = orgdb,
+      keytype             = keytype,
+      custom_tfs          = custom_tfs,
+      n_top_clusters      = n_top_clusters,
+      soft_power          = soft_power,
+      network_type        = network_type,
+      genie3_ntrees       = genie3_ntrees,
+      n_cores             = n_cores,
+      min_var_filter      = min_var_filter,
+      cor_min             = cor_min,
+      tom_min             = tom_threshold
+    )
+    pdf_paths$SYNERGY <- generate_network_pdf(
+      results$SYNERGY,
+      file.path(output_base_dir, "SYNERGY"),
+      method_name = "SYNERGY",
+      weight_col = "score_synergy",
+      directed = TRUE,
+      edge_color = "#d62728"
+    )
+  }
+
+  message("\n═══════════════════════════════════════════════════════════════════")
+  message("✓ NETWORK INFERENCE COMPLETE")
+  message("  Methods run: ", paste(names(results), collapse = ", "))
+  message("═══════════════════════════════════════════════════════════════════\n")
+
+  invisible(list(results = results, pdfs = pdf_paths))
+}
+
+
+# =============================================================================
+# test_network_thresholds
+# =============================================================================
+# Test multiple threshold combinations and generate comparison report.
+# Helps identify optimal thresholds for network inference.
+#
+# Generates a PDF with:
+#   - Table of thresholds and edge counts per cluster
+#   - Recommendation based on cluster coverage
+#
+test_network_thresholds <- function(heatmap_results,
+                                     pseudobulk_dir,
+                                     output_dir,
+                                     method = "SYNERGY",
+                                     orgdb = org.At.tair.db,
+                                     keytype = "TAIR",
+                                     custom_tfs = NULL,
+                                     genie3_ntrees = 100,
+                                     n_cores = 4,
+                                     soft_power = 6,
+                                     network_type = "signed",
+                                     n_top_clusters = 3,
+                                     min_var_filter = 0.01) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Define 5 threshold combinations (increasing permissiveness)
+  thresholds <- list(
+    list(name = "Strict (top 5%)",     cor = 0.90, tom = 0.15),
+    list(name = "Moderate (top 10%)",  cor = 0.80, tom = 0.08),
+    list(name = "Exploratory (top 15%)", cor = 0.75, tom = 0.05),
+    list(name = "Permissive (top 20%)", cor = 0.70, tom = 0.03),
+    list(name = "Very Lax (top 25%)",  cor = 0.65, tom = 0.01)
+  )
+
+  results_summary <- list()
+
+  # Test each threshold
+  for (t in thresholds) {
+    message("\nTesting: ", t$name)
+
+    if (method == "SYNERGY") {
+      res <- run_synergistic_network(
+        cluster_assignments = heatmap_results,
+        pseudobulk_dir      = pseudobulk_dir,
+        output_dir          = file.path(output_dir, "temp"),
+        orgdb               = orgdb,
+        keytype             = keytype,
+        custom_tfs          = custom_tfs,
+        n_top_clusters      = n_top_clusters,
+        soft_power          = soft_power,
+        network_type        = network_type,
+        genie3_ntrees       = genie3_ntrees,
+        n_cores             = n_cores,
+        min_var_filter      = min_var_filter,
+        cor_min             = t$cor,
+        tom_min             = t$tom
+      )
+    } else if (method == "GENIE3") {
+      res <- run_genie3_per_cluster(
+        cluster_assignments = heatmap_results,
+        pseudobulk_dir      = pseudobulk_dir,
+        output_dir          = file.path(output_dir, "temp"),
+        orgdb               = orgdb,
+        keytype             = keytype,
+        custom_tfs          = custom_tfs,
+        n_top_clusters      = n_top_clusters,
+        cor_min             = t$cor,
+        genie3_ntrees       = genie3_ntrees,
+        n_cores             = n_cores,
+        min_var_filter      = min_var_filter
+      )
+    } else if (method == "WGCNA") {
+      res <- run_wgcna_per_cluster(
+        cluster_assignments = heatmap_results,
+        pseudobulk_dir      = pseudobulk_dir,
+        output_dir          = file.path(output_dir, "temp"),
+        n_top_clusters      = n_top_clusters,
+        soft_power          = soft_power,
+        network_type        = network_type,
+        tom_threshold       = t$tom,
+        min_var_filter      = min_var_filter
+      )
+    }
+
+    # Summarize results
+    if (is.null(res) || !length(res)) {
+      message("  No results for this threshold")
+      next
+    }
+
+    edge_counts <- sapply(res, function(x) {
+      if (is.null(x$filtered)) return(0)
+      nrow(x$filtered)
+    })
+    edge_counts <- as.numeric(edge_counts)  # Ensure numeric
+    clusters_with_edges <- sum(edge_counts > 0, na.rm = TRUE)
+
+    results_summary[[t$name]] <- list(
+      threshold = t,
+      n_clusters_with_edges = clusters_with_edges,
+      total_edges = sum(edge_counts, na.rm = TRUE),
+      edge_counts = edge_counts
+    )
+
+    message(sprintf("  Clusters with edges: %d/%d | Total edges: %d",
+                    clusters_with_edges, length(res), sum(edge_counts, na.rm = TRUE)))
+  }
+
+  # Generate comparison PDF
+  pdf_path <- file.path(output_dir, paste0(method, "_threshold_comparison.pdf"))
+  pdf(pdf_path, width = 14, height = 11)
+
+  # Title page
+  grid::grid.newpage()
+  grid::grid.text("Network Threshold Comparison",
+                  y = 0.92, gp = grid::gpar(fontsize = 22, fontface = "bold"))
+  grid::grid.text(paste0("Method: ", method, " | Testing 5 threshold combinations"),
+                  y = 0.86, gp = grid::gpar(fontsize = 12, fontface = "italic"))
+
+  # Summary table
+  grid::grid.newpage()
+  grid::grid.text("Threshold Summary Table",
+                  y = 0.95, gp = grid::gpar(fontsize = 16, fontface = "bold"))
+
+  # Summary table as text instead of grid.table (simpler, more reliable)
+  table_text <- sprintf(
+    "Threshold Summary:\n\n%s",
+    paste(sapply(names(results_summary), function(name) {
+      r <- results_summary[[name]]
+      sprintf(
+        "%-30s | Cor=%.2f TOM=%.2f | Clusters=%d | Edges=%d",
+        name, r$threshold$cor, r$threshold$tom,
+        r$n_clusters_with_edges, r$total_edges
+      )
+    }), collapse = "\n")
+  )
+
+  grid::grid.text(table_text, x = 0.1, y = 0.8, just = c("left", "top"),
+                  gp = grid::gpar(fontsize = 10, fontfamily = "mono"))
+
+  # Per-cluster detail pages
+  for (name in names(results_summary)) {
+    grid::grid.newpage()
+    r <- results_summary[[name]]
+
+    grid::grid.text(name, y = 0.95, gp = grid::gpar(fontsize = 14, fontface = "bold"))
+    grid::grid.text(sprintf("Pearson: %.2f | TOM: %.2f", r$threshold$cor, r$threshold$tom),
+                    y = 0.90, gp = grid::gpar(fontsize = 10, fontface = "italic"))
+
+    # Edge count per cluster
+    cluster_names <- names(r$edge_counts)
+    cluster_text <- sprintf("%s: %d edges\n", cluster_names, r$edge_counts)
+
+    detail_text <- sprintf(
+      "Total clusters tested: %d\nClusters with edges: %d\nTotal edges: %d\n\nPer-cluster breakdown:\n%s",
+      length(r$edge_counts),
+      r$n_clusters_with_edges,
+      r$total_edges,
+      paste(cluster_text, collapse = "")
+    )
+
+    grid::grid.text(detail_text, x = 0.1, y = 0.75, just = c("left", "top"),
+                    gp = grid::gpar(fontsize = 11, fontfamily = "mono"))
+  }
+
+  # Recommendation page
+  grid::grid.newpage()
+  grid::grid.text("Recommendation",
+                  y = 0.95, gp = grid::gpar(fontsize = 16, fontface = "bold"))
+
+  # Guard against empty results
+  if (!length(results_summary)) {
+    rec_text <- "No results found for any threshold combination.\nPlease check the parameters and data."
+  } else {
+    best_idx <- which.max(sapply(results_summary, function(x) x$n_clusters_with_edges))
+    best_name <- names(results_summary)[best_idx]
+    best <- results_summary[[best_name]]
+
+    rec_text <- sprintf(
+      "RECOMMENDED THRESHOLD: %s\n\nReason:\n• Covers %d clusters (most coverage)\n• Total edges: %d\n• Balance: not too strict, not too lax\n\nYou can adjust based on your needs:\n- Need fewer but high-confidence edges → use stricter\n- Need more exploratory edges → use more permissive",
+      best_name,
+      best$n_clusters_with_edges,
+      best$total_edges
+    )
+  }
+
+  grid::grid.text(rec_text, x = 0.1, y = 0.8, just = c("left", "top"),
+                  gp = grid::gpar(fontsize = 12, fontfamily = "mono"))
+
+  dev.off()
+
+  message("\n✓ Threshold comparison PDF saved: ", pdf_path)
+  if (length(results_summary)) {
+    message("✓ Recommendation: ", best_name)
+  } else {
+    message("⚠ No results found for threshold testing")
+    best_name <- NA
+  }
+
+  invisible(list(pdf = pdf_path, summary = results_summary, recommendation = best_name))
+}

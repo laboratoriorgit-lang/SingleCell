@@ -47,20 +47,32 @@ base_dir   <- file.path(DATA_DIR, "metodologia/resultados")
 # If TRUE  → set samples$file to the .h5 file path relative to DATA_DIR
 # If FALSE → set samples$file to the filtered_feature_bc_matrix/ directory
 #            path relative to DATA_DIR
-USE_CELLBENDER <- TRUE
+USE_CELLBENDER <- FALSE
 
 # ── Sample manifest ───────────────────────────────────────────────────────────
 # Add one entry per sample. Each entry needs:
 #   file      — path to the input file or directory (relative to DATA_DIR)
 #   label     — unique name for this sample (appears in all plots)
 #   condition — experimental group this sample belongs to
+
+# ── OPTION 1: CellBender-filtered HDF5 files (USE_CELLBENDER = TRUE) ─────────
+# samples <- list(
+#   list(file = "cellbender/Sample_0N_cellbender_filtered.h5",      label = "0N",      condition = "0N"),
+#   list(file = "cellbender/Sample_05N_R1_cellbender_filtered.h5",  label = "0.5N_R1", condition = "0.5N"),
+#   list(file = "cellbender/Sample_05N_2_cellbender_filtered.h5",   label = "0.5N_R2", condition = "0.5N"),
+#   list(file = "cellbender/Sample_5N_R1_cellbender_filtered.h5",   label = "5N_R1",   condition = "5N"),
+#   list(file = "cellbender/Sample_5N_2_cellbender_filtered.h5",    label = "5N_R2",   condition = "5N")
+# )
+
+# ── OPTION 2: CellRanger filtered_feature_bc_matrix (USE_CELLBENDER = FALSE) ─
 samples <- list(
-  list(file = "cellbender/Sample_0N_cellbender_filtered.h5",      label = "0N",      condition = "0N"),
-  list(file = "cellbender/Sample_05N_R1_cellbender_filtered.h5",  label = "0.5N_R1", condition = "0.5N"),
-  list(file = "cellbender/Sample_05N_2_cellbender_filtered.h5",   label = "0.5N_R2", condition = "0.5N"),
-  list(file = "cellbender/Sample_5N_R1_cellbender_filtered.h5",   label = "5N_R1",   condition = "5N"),
-  list(file = "cellbender/Sample_5N_2_cellbender_filtered.h5",    label = "5N_R2",   condition = "5N")
+  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",      label = "0N",      condition = "0N"),
+  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",     label = "0.5N_R1", condition = "0.5N"),
+  list(file = "cellranger/Sample_05N_2/outs/filtered_feature_bc_matrix",   label = "0.5N_R2", condition = "0.5N"),
+  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",      label = "5N_R1",   condition = "5N"),
+  list(file = "cellranger/Sample_5N_2/outs/filtered_feature_bc_matrix",    label = "5N_R2",   condition = "5N")
 )
+
 
 # ── Plot colors (one color per sample label) ───────────────────────────────────
 colors <- c(
@@ -68,6 +80,7 @@ colors <- c(
   "0.5N_R1" = "#fc8d62", "0.5N_R2" = "#fc8d62",
   "5N_R1"   = "#8da0cb", "5N_R2"   = "#8da0cb"
 )
+
 
 
 # =============================================================================
@@ -81,11 +94,11 @@ source(file.path(PIPELINE_DIR, "custom_seurat.R"))           # plot_integrated_c
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
 
 set.seed(1807)
-options(Seurat.allow.s4 = FALSE)
+options(Seurat.allow.s4 = FALSE)  # required for Seurat 5 compatibility
 setwd(DATA_DIR)
 
 # ── Create per-step output directories ────────────────────────────────────────
-list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)  # creates output folders and loads their paths as variables
 
 # output_dir is the global variable used by save_pdf / save_qc / save_vln helpers.
 # It is reassigned at the start of each section to the appropriate step directory.
@@ -95,10 +108,10 @@ output_dir <- base_dir
 # =============================================================================
 # SECTION 0 — PIPELINE WORKFLOW FIGURE
 # =============================================================================
-# Generates a visual overview of the full pipeline saved to 00_workflow/.
+# Generates a visual overview of the full pipeline saved to 01_qc/.
 # Run this section once immediately after initialization.
 
-plot_pipeline_workflow(file.path(dir_00, "pipeline_workflow.pdf"))
+plot_pipeline_workflow(file.path(dir_01, "pipeline_workflow.pdf"))
 
 
 # =============================================================================
@@ -120,29 +133,18 @@ plot_pipeline_workflow(file.path(dir_00, "pipeline_workflow.pdf"))
 # └─────────────────────────────────────────────────────────────────────────────
 output_dir <- dir_01
 
-if (USE_CELLBENDER) {
-  # Load CellBender-filtered HDF5 files (recommended)
-  seurat_list_raw <- lapply(samples, load_sample,
-                            mt_pattern = "^ATMG",
-                            cp_pattern = "^ATCG")
-} else {
-  # Load directly from CellRanger filtered_feature_bc_matrix/ directories.
-  # Use this path if you skipped the CellBender step.
-  seurat_list_raw <- lapply(samples, function(s) {
-    mat <- Read10X(data.dir = file.path(DATA_DIR, s$file))
-    obj <- CreateSeuratObject(counts = mat, project = s$label,
-                              min.cells = 3, min.features = 200)
-    obj$condition             <- s$condition
-    obj[["percent.mt"]]       <- PercentageFeatureSet(obj, pattern = mt_pattern)
-    if (!is.null(cp_pattern))
-      obj[["percent.cp"]]     <- PercentageFeatureSet(obj, pattern = cp_pattern)
-    obj
-  })
-}
-names(seurat_list_raw) <- sapply(samples, `[[`, "label")
+mt_pattern <- "^ATMG"  # Arabidopsis mitochondrial genes
+cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
 
-plots_pre <- imap(seurat_list_raw, ~ plot_qc_violin_grid(.x, .y, colors[[.y]]))
-save_qc(plots_pre, "qc_prefilter.pdf")
+
+# Load all samples using the helper function
+seurat_list_raw <- load_seurat_samples(samples = samples,
+                                       DATA_DIR = DATA_DIR,
+                                       USE_CELLBENDER = USE_CELLBENDER,
+                                       mt_pattern = mt_pattern,
+                                       cp_pattern = cp_pattern)
+
+plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
 
 # =============================================================================
@@ -156,18 +158,14 @@ save_qc(plots_pre, "qc_prefilter.pdf")
 #   min_features : minimum number of detected genes per cell (default 200)
 #   max_mt       : maximum mitochondrial read percentage  (default 5 %)
 # └─────────────────────────────────────────────────────────────────────────────
-output_dir <- dir_02
+output_dir <- dir_01   # both pre- and post-filter QC plots go to 01_qc/
 
-seurat_list <- lapply(seurat_list_raw, filter_sample,
-                      min_features= 200, max_mt = 5)
+seurat_list <- filter_seurat_samples(seurat_list_raw, min_features = 200, max_mt = 5)
 
-names(seurat_list) <- sapply(samples, `[[`, "label")
+plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
-plots_post <- imap(seurat_list, ~ plot_qc_violin_grid(.x, .y, colors[[.y]]))
-save_qc(plots_post, "qc_postfilter.pdf")
-
-# Checkpoint — restore with: seurat_list <- readRDS(file.path(dir_02, "seurat_list_postfilter.rds"))
-#readRDS(file.path(dir_02, "seurat_list_postfilter.rds"))
+# Checkpoint — restore with: seurat_list <- readRDS(file.path(dir_objects, "seurat_list_postfilter.rds"))
+saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
 
 # =============================================================================
@@ -177,25 +175,20 @@ save_qc(plots_post, "qc_postfilter.pdf")
 # feature selection (VST, 2,000 features), scaling, PCA (30 PCs), and UMAP.
 # The resulting UMAP shows batch effects before integration.
 
-output_dir <- dir_03
+output_dir <- dir_01
 
-pbmc_harmony <- reduce(seurat_list, merge) %>%
+pbmc_harmony <- reduce(seurat_list, merge) %>%  # merge all samples into one object
   NormalizeData(verbose = FALSE) %>%
   FindVariableFeatures(selection.method = "vst", nfeatures = 2000, verbose = FALSE) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(npcs = 30, verbose = FALSE) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 
-pbmc_harmony$orig.ident_uni <- pbmc_harmony$condition
-
-message("Cell counts per condition (pre-integration):")
-print(table(pbmc_harmony$condition))
-
 save_pdf(DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
          "umap_preharmony.pdf")
 
-# Checkpoint — restore with: pbmc_harmony <- pbmc_harmony.bkp
-pbmc_harmony.bkp <- pbmc_harmony
+# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
+saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
 
 
 # =============================================================================
@@ -204,44 +197,43 @@ pbmc_harmony.bkp <- pbmc_harmony
 # Harmony adjusts cell embeddings to remove sample-level batch effects while
 # preserving biological variation. All downstream steps use the "harmony"
 # reduction instead of "pca".
-#
-# ┌─ DIMENSIONALITY PARAMETERS ─────────────────────────────────────────────────
-#   dims_use : how many Harmony dimensions to use downstream (default 1:30)
-#   k_param  : number of nearest neighbors for the cell graph (default 30)
-# └─────────────────────────────────────────────────────────────────────────────
-dims_use <- 1:30
-k_param  <- 30
+
+output_dir <- dir_01
 
 pbmc_harmony <- pbmc_harmony %>%
-  RunHarmony("orig.ident", plot_convergence = FALSE)
+  RunHarmony("orig.ident", plot_convergence = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
-# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_04, "pbmc_harmony_postharmony.rds"))
-saveRDS(pbmc_harmony, file.path(dir_04, "pbmc_harmony_postharmony.rds"))
-readRDS(file.path(dir_04, "pbmc_harmony_postharmony.rds"))
+save_pdf(DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+         "umap_postharmony.pdf")
+
+# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
+saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
 
 
 # =============================================================================
 # SECTION 5 — RESOLUTION OPTIMIZATION
 # =============================================================================
 # Two diagnostics guide the choice of clustering resolution:
-#   (a) Elbow plot — k-means within-cluster sum of squares across k = 2-40.
+#   (a) Elbow plot — k-means within-cluster sum of squares across k values.
 #       The inflection point suggests the number of major cell types.
 #   (b) Clustree  — tracks cluster stability across Leiden resolutions.
 #       Choose the lowest resolution where clusters stop merging.
 #
-# ┌─ RESOLUTIONS TO TEST ───────────────────────────────────────────────────────
-#   Inspect 04_clustering/clustree.pdf and elbow_plot.pdf before choosing
-#   cluster_resolution in Section 6.
+# ┌─ PARAMETERS ────────────────────────────────────────────────────────────────
+#   k_range          : k values tested in the elbow plot
+#   resolutions_test : Leiden resolutions swept by clustree
+#   → Inspect elbow_plot.pdf and clustree.pdf before setting cluster_resolution
+#     in Section 6.
 # └─────────────────────────────────────────────────────────────────────────────
+k_range          <- 1:31
 resolutions_test <- c(0.15, 0.30, 0.50, 0.8, 1.0)
-output_dir <- dir_04
+
+output_dir <- dir_02
 
 # ── 5a. Elbow plot ────────────────────────────────────────────────────────────
-k_range  <- 2:40
-pca_data <- Embeddings(pbmc_harmony, "pca")[, dims_use]
-wss      <- sapply(k_range, function(k) {
-  kmeans(pca_data, centers = k, nstart = 10)$tot.withinss
-})
+pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
+wss      <- sapply(k_range, function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss)
 
 elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
   geom_line() + geom_point() +
@@ -252,9 +244,9 @@ save_pdf(elbow_plot, "elbow_plot.pdf", w = 8, h = 6)
 
 # ── 5b. Clustree ──────────────────────────────────────────────────────────────
 clu <- pbmc_harmony %>%
-  RunUMAP(reduction = "harmony", dims = dims_use, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = dims_use,
-                k.param = k_param, verbose = FALSE)
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  FindNeighbors(reduction = "harmony", dims = 1:30,
+                k.param = 30, verbose = FALSE)
 
 for (res in resolutions_test)
   clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
@@ -266,47 +258,25 @@ save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree.pdf", w = 14, h = 14)
 # SECTION 6 — FINAL CLUSTERING
 # =============================================================================
 # Apply the selected resolution for the final cluster assignment.
-# After clustering, a UMAP coloured by sample identity (umap_postharmony.pdf)
-# and a simple bar chart of cells per sample are saved.
+# After clustering, a UMAP coloured by Seurat cluster and a bar chart of
+# cells per sample are saved to 02_clustering/.
 #
 # ┌─ SET RESOLUTION AFTER INSPECTING elbow_plot.pdf AND clustree.pdf ──────────
 #   cluster_resolution : Leiden resolution for final clustering (default 0.3)
 # └─────────────────────────────────────────────────────────────────────────────
 cluster_resolution <- 0.3
-output_dir <- dir_04
+output_dir <- dir_02
 
+# clu (Section 5) was temporary — re-run on pbmc_harmony to embed the final clusters
 pbmc_harmony <- pbmc_harmony %>%
-  RunUMAP(reduction = "harmony", dims = dims_use, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = dims_use,
-                k.param = k_param, verbose = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  FindNeighbors(reduction = "harmony", dims = 1:30,
+                k.param = 30, verbose = FALSE) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
-message("Cells per cluster:")
-print(table(Idents(pbmc_harmony)))
-
-save_pdf(DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
-         "umap_postharmony.pdf")
-
-colors_clusters <- sample(colors(distinct = TRUE),
-                          length(unique(pbmc_harmony$seurat_clusters)))
 Idents(pbmc_harmony) <- "seurat_clusters"
-save_pdf(DimPlot(pbmc_harmony, group.by = "seurat_clusters", cols = colors_clusters),
+save_pdf(DimPlot(pbmc_harmony, group.by = "seurat_clusters", label = TRUE),
          "umap_seuratclusters.pdf")
-
-# ── Cell count per sample ─────────────────────────────────────────────────────
-cell_count_plot <- ggplot(pbmc_harmony@meta.data,
-                          aes(x = orig.ident, fill = orig.ident)) +
-  geom_bar() +
-  geom_text(stat = "count", aes(label = after_stat(count)),
-            vjust = -0.4, size = 4) +
-  scale_fill_manual(values = colors) +
-  theme_bw(base_size = 14) +
-  labs(title = "Total cells per sample after filtering and integration",
-       x = "Sample", y = "Cell count") +
-  theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, hjust = 1))
-
-save_pdf(cell_count_plot, "cell_count_per_sample.pdf", w = 8, h = 6)
 
 
 # =============================================================================
@@ -318,16 +288,16 @@ save_pdf(cell_count_plot, "cell_count_per_sample.pdf", w = 8, h = 6)
 # Clusters that strongly express a known marker (e.g., AT5G26000 for Guard
 # Cell) should be labelled as that cell type in Section 8.
 # Dot size = fraction of expressing cells; color = mean expression level.
-output_dir <- dir_05
+output_dir <- dir_03
 
-marcadores <- read.table(file.path(base_dir, "../biblio_marks.txt"),
-                         header = TRUE, sep = "\t", quote = "")
+biblio_marks_file <- file.path(DATA_DIR, "metodologia/biblio_marks.txt")
+marker_table      <- read.table(biblio_marks_file, header = TRUE, sep = "\t", quote = "")
 
-hacer_dotplot_marcadores(
+plot_marker_dotplot(
   pbmc_harmony,
-  marcadores,
+  marker_table,
   annot_col = "seurat_clusters",
-  outfile   = file.path(output_dir, "dotplot_marcadores_preannotation.pdf"),
+  outfile   = file.path(output_dir, "dotplot_marker_table_preannotation.pdf"),
   width = 20, height = 10
 )
 
@@ -345,35 +315,35 @@ hacer_dotplot_marcadores(
 #       object (Arabidopsis leaf atlas, GSE273033) using FindTransferAnchors
 #       and TransferData. Result stored in pbmc_harmony$celltype_reference.
 
-output_dir <- dir_05
+output_dir <- dir_03
 
 # ── 8a. Bibliography-based annotation ─────────────────────────────────────────
 markers <- find_markers(pbmc_harmony,
                         output_file = file.path(output_dir, "FindAllMarkers.tsv"))
 
 pbmc_harmony <- annotate_by_markers(pbmc_harmony, markers,
-                                    reference_file = file.path(base_dir, "../biblio_marks.txt"))
+                                    reference_file = biblio_marks_file)
 # Annotation stored in: pbmc_harmony$celltype
 
-hacer_dotplot_marcadores(
+plot_marker_dotplot(
   pbmc_harmony,
-  marcadores,
-  annot_col = "celltype", # Usamos la nueva columna de referencia
-  outfile   = file.path(output_dir, "dotplot_marcadores_anotacion_biblio.pdf"),
+  marker_table,
+  annot_col = "celltype", # uses the newly assigned annotation column
+  outfile   = file.path(output_dir, "dotplot_marker_table_annotation_biblio.pdf"),
   width = 20, height = 10
 )
 
 # ── 8b. Reference-based annotation ────────────────────────────────────────────
-esp          <- readRDS(file.path(base_dir, "../GSE273033_seuratObj_for_publication.rds"))
+reference_obj <- readRDS(file.path(DATA_DIR, "metodologia/GSE273033_seuratObj_for_publication.rds"))
 pbmc_harmony <- annotate_by_reference(pbmc_harmony,
-                                      reference_obj = esp,
+                                      reference_obj = reference_obj,
                                       reference_col = "annotation")
 
-hacer_dotplot_marcadores(
+plot_marker_dotplot(
   pbmc_harmony,
-  marcadores,
-  annot_col = "celltype_reference", # Usamos la nueva columna de referencia
-  outfile   = file.path(output_dir, "dotplot_marcadores_anotacion_referencia.pdf"),
+  marker_table,
+  annot_col = "celltype_reference", # uses the newly assigned annotation column
+  outfile   = file.path(output_dir, "dotplot_marker_table_annotation_reference.pdf"),
   width = 20, height = 10
 )
 # Annotation stored in: pbmc_harmony$celltype_reference
@@ -385,14 +355,15 @@ hacer_dotplot_marcadores(
 # Re-runs the resolution sweep with cell-type labels overlaid on each node.
 # Confirms that the chosen resolution cleanly separates known cell types.
 
-output_dir <- dir_05
+output_dir <- dir_03
 
+# Mode: returns the most frequent value in a vector
 Mode <- function(x) { ux <- unique(x); ux[which.max(tabulate(match(x, ux)))] }
 
 clu <- pbmc_harmony %>%
-  RunUMAP(reduction = "harmony", dims = dims_use, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = dims_use,
-                k.param = k_param, verbose = FALSE)
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  FindNeighbors(reduction = "harmony", dims = 1:30,
+                k.param = 30, verbose = FALSE)
 
 for (res in resolutions_test)
   clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
@@ -420,33 +391,35 @@ gene              <- "AT5G26000"
 genes_of_interest <- c("AT5G26000", "AT5G54250")
 celltype          <- "Guard Cell"
 
-output_dir <- dir_06
+output_dir <- dir_04
 
-pbmc_harmony     <- JoinLayers(pbmc_harmony)
+# JoinLayers is required in Seurat 5 before subsetting after merge
+pbmc_harmony <- JoinLayers(pbmc_harmony)
 Idents(pbmc_harmony) <- "celltype_reference"
 
+n_genes <- length(genes_of_interest)
+
+# ── 10a. All cell types ───────────────────────────────────────────────────────
+save_vln(VlnPlot(pbmc_harmony, features = gene),                  "vln_gene_all.pdf")
+save_pdf(FeaturePlot(pbmc_harmony, features = gene),              "feature_gene_all.pdf")
+save_vln(VlnPlot(pbmc_harmony, features = genes_of_interest),     "vln_geneset_all.pdf",     n = n_genes)
+save_pdf(FeaturePlot(pbmc_harmony, features = genes_of_interest), "feature_geneset_all.pdf", h = 8 * n_genes)
+
+# ── 10b. Cell type of interest ────────────────────────────────────────────────
 sub_obj <- subset(pbmc_harmony, idents = celltype)
 
-save_vln(VlnPlot(pbmc_harmony, features = gene),                    "vln_gene_all.pdf")
-save_pdf(FeaturePlot(pbmc_harmony, features = gene),                "feature_gene_all.pdf")
-save_vln(VlnPlot(pbmc_harmony, features = genes_of_interest),       "vln_geneset_all.pdf",
-         n = length(genes_of_interest))
-save_pdf(FeaturePlot(pbmc_harmony, features = genes_of_interest),   "feature_geneset_all.pdf",
-         h = 8 * length(genes_of_interest))
-
-save_vln(VlnPlot(sub_obj, features = gene),                         "vln_gene_celltype.pdf")
-save_pdf(FeaturePlot(sub_obj, features = gene),                     "feature_gene_celltype.pdf")
-save_vln(VlnPlot(sub_obj, features = genes_of_interest),            "vln_geneset_celltype.pdf",
-         n = length(genes_of_interest))
-save_pdf(FeaturePlot(sub_obj, features = genes_of_interest),        "feature_geneset_celltype.pdf",
-         h = 8 * length(genes_of_interest))
+save_vln(VlnPlot(sub_obj, features = gene),                  "vln_gene_celltype.pdf")
+save_pdf(FeaturePlot(sub_obj, features = gene),              "feature_gene_celltype.pdf")
+save_vln(VlnPlot(sub_obj, features = genes_of_interest),     "vln_geneset_celltype.pdf",     n = n_genes)
+save_pdf(FeaturePlot(sub_obj, features = genes_of_interest), "feature_geneset_celltype.pdf", h = 8 * n_genes)
 
 
 # =============================================================================
-# SECTION 11 — CELL-TYPE GROUPING
+# SECTION 11 — CELL-TYPE GROUPING  [OPTIONAL]
 # =============================================================================
 # Fine-grained labels are collapsed into broader categories for downstream
 # analyses. Cell types NOT listed in 'grouping' keep their original label.
+# Skip this section if you do not need to merge cell types.
 #
 # ┌─ EDIT THIS MAP TO MATCH YOUR CELL TYPES ───────────────────────────────────
 #   Left side  : original label (must match exactly)
@@ -461,127 +434,104 @@ grouping <- c(
   "Meristemoid"       = "Stomatal Line"
 )
 
-output_dir <- dir_07
+output_dir <- dir_05
 
-pbmc_harmony$annotation_agrupada <- recode(pbmc_harmony$celltype_reference, !!!grouping)
+# !!! unpacks the grouping vector as named arguments to recode()
+pbmc_harmony$celltype_grouped <- recode(pbmc_harmony$celltype_reference, !!!grouping)
 
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "annotation_agrupada",
+  DimPlot(pbmc_harmony, group.by = "celltype_grouped",  # grouped broad cell types
           label = TRUE, repel = TRUE, raster = FALSE),
-  "umap_annotated.pdf"
+  "umap_grouped.pdf"
 )
 
 
 # =============================================================================
-# SECTION 12 — INTERACTIVE CELL-TYPE CURATION
+# SECTION 12 — INTERACTIVE CELL-TYPE CURATION  [OPTIONAL]
 # =============================================================================
 # !!! WARNING: Run this section interactively, step by step.
 # !!! Do NOT source the entire script with this section active.
+# Skip this section if you are satisfied with the annotation from Section 8.
 #
 # Purpose: subcluster populations that appear heterogeneous in the UMAP,
 # inspect them, and reassign cells to the correct cell type manually.
 #
 # Step 1 → subcluster the heterogeneous types
-# Step 2 → generate a composite inspection figure and save it to disk
-# Step 3 → fill in the reassignment table (reassign) below
+# Step 2 → save inspection figures; open them and decide on reassignments
+# Step 3 → fill in the reassignment table below
 # Step 4 → apply corrections to the global object
 
-output_dir <- dir_07
-Idents(pbmc_harmony) <- "annotation_agrupada"
+output_dir   <- dir_05
+curation_col <- "celltype_grouped"   # starting annotation column for curation
+Idents(pbmc_harmony) <- curation_col
+table(pbmc_harmony[[curation_col]])
 
-# ── Step 1. Subcluster ────────────────────────────────────────────────────────
-meristemoid_umap   <- subclustar_tipo(pbmc_harmony, "Stomatal Line")
-pavement_cell_umap <- subclustar_tipo(pbmc_harmony, "Pavement Cell")
+# ── Step 1. Subcluster ────────────────────────────────────────────
+mesophyll_umap     <- subcluster_cell_type(pbmc_harmony, "Mesophyll",     annot_col = curation_col)
+pavement_cell_umap <- subcluster_cell_type(pbmc_harmony, "Pavement Cell", annot_col = curation_col)
 
-# ── Step 2. Composite inspection figure (view, then fill in Step 3) ───────────
-# All visual outputs for this step are assembled into one large PDF.
-# Open 07_curation/subclustering_inspection.pdf, decide on the reassignments,
-# then continue to Step 3.
+# Check how many subclusters each type produced:
+# table(mesophyll_umap$cluster_subtipo)
+# table(pavement_cell_umap$cluster_subtipo)
 
-p_meris_dim <- DimPlot(meristemoid_umap, group.by = "cluster_subtipo",
-                       label = TRUE, raster = FALSE) +
-  ggtitle("Stomatal Line \u2014 subclusters")
+# ── Step 2. Inspection figures ────────────────────────────────────
+# Each call creates the DimPlot, saves it as PDF, and returns it for the composite
+p_meso_dim <- plot_subcluster_umap(mesophyll_umap,     "Mesophyll",     output_dir)
+p_pave_dim <- plot_subcluster_umap(pavement_cell_umap, "Pavement Cell", output_dir)
 
-p_pave_dim  <- DimPlot(pavement_cell_umap, group.by = "cluster_subtipo",
-                       label = TRUE, raster = FALSE) +
-  ggtitle("Pavement Cell \u2014 subclusters")
-
-marker_plots <- lapply(seq_len(nrow(marcadores)), function(i) {
-  FeaturePlot(pavement_cell_umap, features = marcadores$gene[i]) +
-    ggtitle(paste0(marcadores$cell.types[i], "\n", marcadores$gene[i])) +
-    theme(plot.title = element_text(size = 8))
-})
-
-n_markers    <- length(marker_plots)
-ncol_markers <- min(5L, n_markers)
-nrow_markers <- ceiling(n_markers / ncol_markers)
-
-composite_inspect <- (p_meris_dim | p_pave_dim) /
-  wrap_plots(marker_plots, ncol = ncol_markers)
-
-ggsave(
-  file.path(output_dir, "subclustering_inspection.pdf"),
-  composite_inspect,
-  width     = max(20, ncol_markers * 4),
-  height    = 10 + nrow_markers * 4,
-  limitsize = FALSE
+# Composite: each row = [ UMAP | marker genes ] for one cell type
+save_subcluster_composite(
+  subcluster_list = list(
+    list(umap_plot = p_meso_dim, obj = mesophyll_umap),
+    list(umap_plot = p_pave_dim, obj = pavement_cell_umap)
+  ),
+  marker_table = marker_table,
+  output_dir   = output_dir
 )
-message("Subclustering inspection figure saved to 07_curation/subclustering_inspection.pdf")
-message("Open it, decide on subcluster reassignments, fill in Step 3, then continue.")
 
-# ── Step 3. Reassignment table ────────────────────────────────────────────────
-# For each subclustered object: map subcluster IDs to final cell-type labels.
-# Subcluster IDs come from $cluster_subtipo (values: "0", "1", "2", ...).
+# ── Step 3. Reassignment table ────────────────────────────────────
+# Map subcluster IDs \u2192 final cell-type labels.
+# "others" is a catch-all for any subcluster ID not listed.
+# Names must match the variable names used in Step 1 exactly.
 reassign <- list(
-  meristemoid_umap = c(
-    "0" = "Stomatal Line",
-    "1" = "Stomatal Line",
-    "2" = "Pavement Cell",
-    "3" = "Stomatal Line",
-    "4" = "Stomatal Line",
-    "others" = "Cheese"
+  mesophyll_umap = c(
+    "0"      = "Mesophyll",
+    "1"      = "Mesophyll",
+    "2"      = "Mesophyll",
+    "others" = "Mesophyll"
   ),
   pavement_cell_umap = c(
     "0"      = "Pavement Cell",
     "1"      = "Pavement Cell",
     "2"      = "Pavement Cell",
-    "3"      = "Mesophyll",
+    "3"      = "Pavement Cell",
     "4"      = "Pavement Cell",
-    "others" = "Testing"
+    "others" = "Pavement Cell"
   )
 )
 
-# ── Step 4. Apply corrections (CORREGIDO) ─────────────────────────────────────
-pbmc_harmony$celltype_reference_curated <- pbmc_harmony$annotation_agrupada
-
-for (obj_name in names(reassign)) {
-  obj <- get(obj_name)
-  
-  # 1. Aseguramos que los clústeres se lean como texto
-  clústeres_actuales <- as.character(obj$cluster_subtipo)
-  
-  # 2. Hacemos el mapeo (los que no existan en tu lista reassign darán NA temporalmente)
-  nuevas_etiquetas <- reassign[[obj_name]][clústeres_actuales]
-  
-  # 3. Si definiste un "others" en tu lista, reemplazamos los NA por ese valor
-  if ("others" %in% names(reassign[[obj_name]])) {
-    valor_por_defecto <- reassign[[obj_name]]["others"]
-    nuevas_etiquetas[is.na(nuevas_etiquetas)] <- valor_por_defecto
-  }
-  
-  # 4. Asignamos al objeto principal
-  pbmc_harmony$celltype_reference_curated[colnames(obj)] <- nuevas_etiquetas
-}
-
-save_pdf(
-  DimPlot(pbmc_harmony, group.by = "celltype_reference_curated",
-          label = TRUE, repel = TRUE, raster = FALSE),
-  "umap_curada.pdf"
+# ── Step 4. Apply corrections ───────────────────────────────────────────────
+subcluster_list <- list(
+  mesophyll_umap     = mesophyll_umap,
+  pavement_cell_umap = pavement_cell_umap
 )
 
-# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_07, "pbmc_harmony_curated.rds"))
-saveRDS(pbmc_harmony, file.path(dir_07, "pbmc_harmony_curated.rds"))
+pbmc_harmony <- apply_subcluster_reassignment(
+  obj             = pbmc_harmony,
+  subcluster_list = subcluster_list,
+  reassign        = reassign,
+  source_col      = curation_col,
+  dest_col        = "celltype_curated"
+)
 
+save_pdf(
+  DimPlot(pbmc_harmony, group.by = "celltype_curated",
+          label = TRUE, repel = TRUE, raster = FALSE),
+  "umap_curated.pdf"
+)
+
+# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
+saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_curated.rds"))
 
 # =============================================================================
 # SECTION 13 — EXPORT TO H5AD (Scanpy / Python)
@@ -590,15 +540,13 @@ saveRDS(pbmc_harmony, file.path(dir_07, "pbmc_harmony_curated.rds"))
 # trajectory and velocity analyses (Scanpy, scFates, Palantir — all
 # pre-installed in the Docker image).
 
-output_dir <- dir_08
-
-exportar_para_scanpy(pbmc_harmony,
-                     file.path(output_dir, "pbmc_harmony_curated.h5ad"))
+export_to_scanpy(pbmc_harmony,
+                 file.path(dir_objects, "pbmc_harmony_curated.h5ad"))
 
 # To export a specific cell type:
-# exportar_para_scanpy(
-#   subset(pbmc_harmony, subset = celltype_reference_curated == "Guard Cell"),
-#   file.path(output_dir, "GuardCell.h5ad")
+# export_to_scanpy(
+#   subset(pbmc_harmony, subset = celltype_curated == "Guard Cell"),
+#   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
 
@@ -617,23 +565,10 @@ exportar_para_scanpy(pbmc_harmony,
 # ┌─ SET THE ANNOTATION COLUMN TO USE FOR PART 2 ───────────────────────────────
 #   pseudobulk_annot_col : metadata column containing the final cell-type labels
 # └─────────────────────────────────────────────────────────────────────────────
-pseudobulk_annot_col <- "celltype_reference_curated"
+pseudobulk_annot_col <- "celltype_curated"
 
-output_dir <- dir_09
-
-cell_types <- sort(unique(na.omit(pbmc_harmony@meta.data[[pseudobulk_annot_col]])))
-
-celular_subsets <- setNames(
-  lapply(cell_types, function(tipo) {
-    subset(pbmc_harmony,
-           cells = colnames(pbmc_harmony)[pbmc_harmony@meta.data[[pseudobulk_annot_col]] == tipo])
-  }),
-  gsub("[^[:alnum:]_]", "_", cell_types)
-)
-
-message("Cell-type subsets created:")
-print(setNames(vapply(celular_subsets, function(x) as.integer(ncol(x)), integer(1)),
-               names(celular_subsets)))
+# Create cell-type subsets for pseudobulk analysis
+cell_type_subsets <- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobulk_annot_col)
 
 
 # =============================================================================
@@ -644,31 +579,31 @@ print(setNames(vapply(celular_subsets, function(x) as.integer(ncol(x)), integer(
 #
 # ┌─ PSEUDOBULK PARAMETERS ──────────────────────────────────────────────────────
 #   pseudobulk_conditions : optional condition subset to retain (NULL = all)
-#   n_pseudoreps          : number of pseudo-replicates per condition
+#                           Examples:
+#                             NULL              → use all conditions (0N, 0.5N, 5N)
+#                             c("0N", "0.5N")   → use only 0N and 0.5N
+#                             "5N"              → use only 5N
+#   n_pseudoreps          : number of pseudo-replicates per condition (per cell type)
 # └─────────────────────────────────────────────────────────────────────────────
-pseudobulk_conditions <- NULL
-n_pseudoreps          <- 3
 
-output_dir <- dir_09
+# Use all conditions
+#pseudobulk_conditions <- NULL
+# Uncomment below to use only specific conditions:
+# pseudobulk_conditions <- c("0N", "0.5N")      # Compare control vs low nitrogen
+#pseudobulk_conditions <- c("0.5N", "5N")      # Compare nitrogen treatments
+# pseudobulk_conditions <- "5N"                  # Single condition (rarely useful)
 
-celular_subsets_replicados <- Filter(
-  Negate(is.null),
-  lapply(celular_subsets,
-         asignar_pseudoreplicados,
-         condiciones = pseudobulk_conditions,
-         n_reps      = n_pseudoreps,
-         seed        = 1807)
-)
+n_pseudoreps <- 3
 
-message("Cell types retained for pseudobulk:")
-print(names(celular_subsets_replicados))
+# Assign pseudo-replicates (uses global random seed set in INITIALIZATION)
+cell_type_subsets_replicates <- assign_pseudoreplicates_batch(cell_type_subsets,
+                                                             pseudobulk_conditions = pseudobulk_conditions,
+                                                             n_pseudoreps = n_pseudoreps)
 
-message("Cells per curated cell type:")
-print(table(pbmc_harmony@meta.data[[pseudobulk_annot_col]]))
 
 # Example QC checks for one subset:
-# table(celular_subsets_replicados[[1]]$replicate)
-# table(celular_subsets_replicados[[1]]$orig.ident)
+table(cell_type_subsets_replicates$Pavement_Cell$replicate)
+table(cell_type_subsets_replicates$Pavement_Cell$orig.ident)
 
 
 # =============================================================================
@@ -687,29 +622,22 @@ comparaciones <- list(
   list(conds = c("0N",   "5N"), tag = "0N_vs_5N")
 )
 
-output_dir <- dir_10
+output_dir <- dir_06
 
-pseudobulk_tables_dir <- file.path(dir_09, "pseudobulk_replicas")
-dir.create(pseudobulk_tables_dir, recursive = TRUE, showWarnings = FALSE)
+# ┌─ SELECT WHICH CELL TYPES TO ANALYZE ────────────────────────────────────────
+#   NULL = analyze all cell types
+#   c("Epidermis", "Cortex") = analyze only these
+# └─────────────────────────────────────────────────────────────────────────────
+cell_types_to_analyze <- NULL  # Change to c("Epidermis", "Cortex") to filter
 
-pseudobulk_list <- guardar_tablas_pseudobulk(
-  celular_subsets_replicados,
-  output_dir = pseudobulk_tables_dir
+# Run pseudobulk aggregation and DESeq2 analysis
+deseq2_results <- run_pseudobulk_deseq2_analysis(
+  cell_type_subsets_replicates = cell_type_subsets_replicates,
+  comparisons = comparaciones,
+  output_dir = output_dir,
+  cell_types = cell_types_to_analyze,
+  pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicas")
 )
-
-for (tag in sapply(comparaciones, `[[`, "tag")) {
-  dir.create(file.path(dir_10, tag), recursive = TRUE, showWarnings = FALSE)
-}
-
-for (tipo in names(pseudobulk_list)) {
-  message("Running DESeq2 for cell type: ", tipo)
-  correr_deseq2(
-    counts_mat    = as.matrix(pseudobulk_list[[tipo]]),
-    comparaciones = comparaciones,
-    output_dir    = dir_10,
-    tipo          = tipo
-  )
-}
 
 
 # =============================================================================
@@ -727,11 +655,9 @@ volcano_tag <- "0.5N_vs_5N"
 padj_cut    <- 0.05
 lfc_cut     <- 1
 
-output_dir <- dir_11
-
 render_volcano_plots(
-  results_dir = file.path(dir_10, volcano_tag),
-  output_dir  = file.path(dir_11, volcano_tag),
+  results_dir = file.path(dir_06, volcano_tag),
+  output_dir  = file.path(dir_06, volcano_tag, "volcano"),
   pdf_name    = paste0("VolcanoPlots_", volcano_tag, ".pdf"),
   padj_cut    = padj_cut,
   lfc_cut     = lfc_cut
@@ -751,11 +677,9 @@ render_volcano_plots(
 diff_tag    <- volcano_tag
 diff_prefix <- paste0("tabla_diferenciales_", diff_tag)
 
-output_dir <- dir_12
-
 diff_tables <- build_differential_tables(
-  results_dir = file.path(dir_10, diff_tag),
-  output_dir  = file.path(dir_12, diff_tag),
+  results_dir = file.path(dir_06, diff_tag),
+  output_dir  = file.path(dir_06, diff_tag),
   padj_cut    = padj_cut,
   lfc_cut     = lfc_cut,
   prefix      = diff_prefix
@@ -763,137 +687,314 @@ diff_tables <- build_differential_tables(
 
 
 # =============================================================================
-# SECTION 19 — GO ENRICHMENT AND BALLOON PLOTS
+# SECTION 19 — GO ENRICHMENT (SIMPLE)
 # =============================================================================
-# Runs GO enrichment from the combined differential-expression table, derives
-# the gene universe automatically from OrgDb, and exports full/simplified plus
-# GO-level-pruned balloon plots.
-#
-# ┌─ GO PARAMETERS ──────────────────────────────────────────────────────────────
-#   go_tag            : contrast tag to analyse
-#   go_orgdb          : OrgDb object matching your organism
-#   go_keytype        : key type matching the gene IDs in the differential table
-#   go_space          : ontology namespace ("BP", "MF", or "CC")
-#   go_qvalue_cutoff  : q-value threshold for enrichGO
-#   go_pvalue_cutoff  : p-value threshold for enrichGO
-#   go_simplify_cutoff: similarity threshold for simplify()
-#   go_level          : GO level used for pruning
-# └─────────────────────────────────────────────────────────────────────────────
-go_tag             <- diff_tag
-go_orgdb           <- org.At.tair.db
-go_keytype         <- "TAIR"
-go_space           <- "BP"
-go_qvalue_cutoff   <- 0.05
-go_pvalue_cutoff   <- 0.05
-go_simplify_cutoff <- 0.7
-go_level           <- 6
+# Gene Ontology enrichment per cell type for the selected contrast.
 
-output_dir <- dir_13
+go_space    <- "BP"          # Change to "MF" or "CC" if desired
+padj_cutoff <- 0.05
 
-go_results <- run_go_enrichment_suite(
-  diff_table      = file.path(dir_12, go_tag,
-                              paste0(diff_prefix, "_fc", lfc_cut, "_padj_",
-                                     gsub("\\.", "", as.character(padj_cut)), ".tsv")),
-  output_dir      = file.path(dir_13, go_tag),
-  orgdb           = go_orgdb,
-  keytype         = go_keytype,
-  espacio         = go_space,
-  qvalue_cutoff   = go_qvalue_cutoff,
-  pvalue_cutoff   = go_pvalue_cutoff,
-  simplify_cutoff = go_simplify_cutoff,
-  go_level        = go_level,
-  pdf_name        = paste0("GO_", go_tag, ".pdf")
-)
+deseq2_files <- list.files(file.path(dir_06, diff_tag),
+                           pattern = "^DESeq2_.*\\.csv$",
+                           full.names = TRUE)
 
+for (deseq2_file in deseq2_files) {
+  cell_type <- gsub("^DESeq2_|\\.csv$", "", basename(deseq2_file))
 
-# =============================================================================
-# SECTION 20 — HEATMAP + CLUSTERS
-# =============================================================================
-# Builds a log2FC heatmap for one selected contrast and derives dynamic gene
-# clusters from the heatmap row dendrogram.
-#
-# ┌─ HEATMAP PARAMETERS ─────────────────────────────────────────────────────────
-#   coexp_tag            : contrast tag used to select log2FC columns
-#   coexp_selected_cols  : optional explicit column vector (NULL = auto-select)
-#   coexp_min_genes      : minimum genes per cluster/module
-#   coexp_deepSplit      : dynamic tree cut deepSplit
-#   coexp_breaks         : color range for the heatmap
-# └─────────────────────────────────────────────────────────────────────────────
-coexp_tag           <- diff_tag
-coexp_selected_cols <- NULL
-coexp_min_genes     <- 1
-coexp_deepSplit     <- 0
-coexp_breaks        <- c(-5, 5)
+  deseq2_results <- read.csv(deseq2_file, row.names = 1)
+  sig_genes <- rownames(deseq2_results)[deseq2_results$padj < padj_cutoff]
 
-output_dir <- file.path(dir_12, coexp_tag, "coexpression")
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-
-if (is.null(coexp_selected_cols)) {
-  coexp_selected_cols <- grep(paste0("_", coexp_tag, "$"),
-                              colnames(diff_tables$logfc),
-                              value = TRUE)
+  if (length(sig_genes) > 0) {
+    run_simple_go_enrichment(
+      diff_table = data.frame(gene_id = sig_genes),
+      output_dir = file.path(dir_07, diff_tag),
+      orgdb = org.At.tair.db,
+      keytype = "TAIR",
+      go_space = go_space,
+      padj_cutoff = padj_cutoff,
+      cell_type = cell_type,
+      contrast_tag = diff_tag
+    )
+  }
 }
 
-coexp_matrix <- prepare_coexpression_matrix(
-  diff_table    = diff_tables$logfc,
-  selected_cols = coexp_selected_cols
-)
-
-heatmap_cluster_results <- build_heatmap_clusters(
-  Mz            = coexp_matrix,
-  output_dir    = output_dir,
-  min_genes     = coexp_min_genes,
-  deepSplit_val = coexp_deepSplit,
-  breaks        = coexp_breaks,
-  heatmap_pdf   = paste0("heatmap_", coexp_tag, ".pdf")
-)
-
-
 # =============================================================================
-# SECTION 21 — COEXPRESSION OF DIFFERENTIAL GENES
+# SECTION 20 — LOG2FC HEATMAP + CLUSTERING
 # =============================================================================
-# Computes a rank-based gene coexpression network from the selected log2FC
-# matrix, derives TOM modules, and exports the TOM heatmap.
+# Heatmap of log2FC values across all cell types for the selected contrast.
 #
-# ┌─ COEXPRESSION PARAMETERS ────────────────────────────────────────────────────
-#   coexp_network_power  : soft-threshold power for adjacency
-#   coexp_network_type   : "signed" or "unsigned"
-#   coexp_cor_method     : correlation method ("spearman" recommended here)
+# ┌─ PARAMETERS ─────────────────────────────────────────────────────────────────
+#   CLUSTER_METHOD : "hclust" — hierarchical (euclidean + complete + cutreeDynamic)
+#                    "wgcna"  — coexpression network (TOM + mergeCloseModules)
+#   heatmap_limits : color scale range
+#   wgcna_merge_cut: merge WGCNA modules with correlation > (1 - wgcna_merge_cut)
 # └─────────────────────────────────────────────────────────────────────────────
-coexp_network_power <- 6
-coexp_network_type  <- "signed"
-coexp_cor_method    <- "spearman"
+CLUSTER_METHOD  <- "wgcna"   # "hclust" or "wgcna"
+heatmap_limits  <- c(-5, 5)
+wgcna_merge_cut <- 0.25
 
-coexpression_results <- build_coexpression_modules(
-  Mz            = coexp_matrix,
-  output_dir    = output_dir,
-  min_genes     = coexp_min_genes,
-  deepSplit_val = coexp_deepSplit,
-  network_power = coexp_network_power,
-  network_type  = coexp_network_type,
-  cor_method    = coexp_cor_method,
-  tom_pdf       = paste0("TOM_", coexp_tag, ".pdf")
+heatmap_results <- build_logfc_heatmap(
+  logfc_table  = diff_tables$logfc,
+  contrast_tag = diff_tag,
+  output_dir   = file.path(dir_06, diff_tag),
+  method       = CLUSTER_METHOD,
+  limits       = heatmap_limits,
+  merge_cut    = wgcna_merge_cut
 )
 
 
 # =============================================================================
-# SECTION 22 — GO TERMS OF CLUSTERS
+# SECTION 21 — GO ENRICHMENT PER CLUSTER
 # =============================================================================
-# Runs GO enrichment for the TOM-based gene clusters/modules detected in
-# Section 21.
-go_cluster_results <- run_go_for_gene_clusters(
-  assignments     = coexpression_results$module_assignments,
-  cluster_col     = "tom_module",
-  output_dir      = file.path(output_dir, "GO_clusters"),
-  orgdb           = go_orgdb,
-  keytype         = go_keytype,
-  espacio         = go_space,
-  qvalue_cutoff   = go_qvalue_cutoff,
-  pvalue_cutoff   = go_pvalue_cutoff,
-  simplify_cutoff = go_simplify_cutoff,
-  go_level        = go_level,
-  pdf_name        = paste0("GO_clusters_", coexp_tag, ".pdf")
+# Runs GO enrichment for each cluster identified in Section 20.
+# Uses the cluster assignments from heatmap_results.
+
+go_clusters_padj <- 0.05
+
+for (clust_id in unique(heatmap_results$cluster)) {
+  genes <- heatmap_results$gene_id[heatmap_results$cluster == clust_id]
+
+  run_simple_go_enrichment(
+    diff_table   = data.frame(gene_id = genes),
+    output_dir   = file.path(dir_06, diff_tag, paste0("GO_clusters_", CLUSTER_METHOD)),
+    orgdb        = org.At.tair.db,
+    keytype      = "TAIR",
+    go_space     = "BP",
+    padj_cutoff  = go_clusters_padj,
+    cell_type    = as.character(clust_id),
+    contrast_tag = diff_tag
+  )
+}
+
+
+# =============================================================================
+# SECTION 22 — NETWORK INFERENCE PER CLUSTER (3-METHOD MIX STRATEGY)
+# =============================================================================
+# THREE COMPLEMENTARY network inference analyses per cluster from Section 20:
+# (Analogous to Sección 20's dual-clustering strategy: hclust vs WGCNA)
+#
+# ┌─ THE MIX STRATEGY ────────────────────────────────────────────────────────────
+#   We do NOT choose between GENIE3, WGCNA, and SYNERGY. Instead, we run all 3
+#   because they answer different questions:
+#
+#   • GENIE3 (directed, like hclust geometry):
+#       Finds TF → target edges with predictive power.
+#       Filter: Pearson |r| ≥ 0.90 (avoids noise via correlation).
+#       ✓ Strength: directionality, interpretable as causality.
+#       ⚠ Weakness: only TFs regulate; less robust to outliers.
+#
+#   • WGCNA (undirected, like WGCNA coexpression):
+#       Finds coexpressed gene pairs via TOM (Topological Overlap).
+#       Filter: TOM ≥ 0.15 (genes that share ≥15% of neighbors).
+#       ✓ Strength: coexpression robustness; ANY gene can regulate ANY gene.
+#       ⚠ Weakness: no directionality; local structure matters, not global.
+#
+#   • SYNERGY (mix, high-confidence):
+#       Combines GENIE3 directionality + WGCNA coexpression validation.
+#       Filter: Pearson ≥0.90 AND TOM ≥0.15 (both layers must pass).
+#       Score: geometric mean of rank-normalized GENIE3 × TOM.
+#       ✓ Strength: high-confidence TF→target edges backed by coexpression.
+#       ⚠ Weakness: very restrictive; fewer edges (top tier only).
+#
+# ┌─ WHAT IS TOM? (Topological Overlap Matrix) ──────────────────────────────────
+#   TOM measures "robustness" of a gene pair's connection by counting shared
+#   neighbors: if gene A and gene B both correlate with genes {C, D, E, ...},
+#   they are truly connected, not by chance.
+#
+#   Formula:   TOM(A,B) = (# shared neighbors) / min(neighbors(A), neighbors(B))
+#   Range:     0 to 1 (0 = no shared neighbors, 1 = identical neighborhoods)
+#   Severity:  TOM ≥ 0.25 is "strict", 0.15 is "moderate", 0.08 is "loose"
+#   Your threshold (0.15) = top 5% of edge confidences = MODERATE
+#
+# Both functions read pseudobulk replicate counts from Section 16, normalize
+# (CPM + log2) and run independently. Outputs are saved in dir_08/<contrast>/.
+#
+# ┌─ COMMON PARAMETERS ──────────────────────────────────────────────────────────
+#   n_top_clusters : how many largest clusters to analyze
+#   min_var_filter : drop genes with variance below this across samples
+# ├─ GENIE3 PARAMETERS ──────────────────────────────────────────────────────────
+#   net_orgdb      : Bioconductor OrgDb (e.g. org.At.tair.db, org.Hs.eg.db)
+#   net_keytype    : key type matching gene IDs (e.g. "TAIR", "ENSEMBL")
+#   custom_tfs     : optional vector of TF IDs to override GO-based detection
+#   cor_min        : Pearson |r| correlation threshold (≥0.90 = MODERATE)
+#   genie3_ntrees  : Random Forest trees (more = stabler, slower)
+#   n_cores        : parallel cores for GENIE3
+# ├─ WGCNA PARAMETERS ───────────────────────────────────────────────────────────
+#   soft_power     : power for adjacency (default 6; higher = fewer edges)
+#   network_type   : "signed" (correlation direction matters) or "unsigned"
+#   tom_threshold  : TOM threshold (≥0.15 = MODERATE, equivalent to Pearson 0.90)
+# └─────────────────────────────────────────────────────────────────────────────
+# ┌─ CHOOSE WHICH METHODS TO RUN ────────────────────────────────────────────────
+#   Edit the line below to run only desired methods. Options:
+#   c("GENIE3", "WGCNA", "SYNERGY")  — run all 3
+#   c("GENIE3", "SYNERGY")            — skip WGCNA
+#   c("SYNERGY")                      — only high-confidence
+#   c("GENIE3", "WGCNA")             — skip SYNERGY
+# └─────────────────────────────────────────────────────────────────────────────
+network_methods <- c("GENIE3", "WGCNA", "SYNERGY")  # CHANGE AS NEEDED
+
+# ── Common parameters ────────────────────────────────────────────────────────
+n_top_clusters <- 3
+min_var_filter <- 0.01
+
+# GENIE3 parameters
+net_orgdb     <- org.At.tair.db
+net_keytype   <- "TAIR"
+custom_tfs    <- NULL
+cor_min       <- 0.75        # EXPLORATORY — top 15% (Pearson |r| >= 0.75)
+genie3_ntrees <- 100
+n_cores       <- 4
+
+# WGCNA parameters
+soft_power    <- 6
+network_type  <- "signed"
+tom_threshold <- 0.05        # EXPLORATORY — top 15% (TOM >= 0.05)
+
+# ── Run all selected methods in one call ─────────────────────────────────────
+net_pipeline <- run_network_inference_pipeline(
+  heatmap_results      = heatmap_results,
+  pseudobulk_dir       = file.path(dir_objects, "pseudobulk_replicas"),
+  output_base_dir      = file.path(dir_08, diff_tag),
+  methods              = network_methods,
+  orgdb                = net_orgdb,
+  keytype              = net_keytype,
+  custom_tfs           = custom_tfs,
+  cor_min              = cor_min,
+  genie3_ntrees        = genie3_ntrees,
+  n_cores              = n_cores,
+  soft_power           = soft_power,
+  network_type         = network_type,
+  tom_threshold        = tom_threshold,
+  n_top_clusters       = n_top_clusters,
+  min_var_filter       = min_var_filter
 )
 
+# ── Extract results for downstream sections ─────────────────────────────────
+genie3_results  <- net_pipeline$results$GENIE3
+wgcna_results   <- net_pipeline$results$WGCNA
+synergy_results <- net_pipeline$results$SYNERGY
+
+
+# =============================================================================
+# SECTION 22B — THRESHOLD TESTING (OPTIONAL)
+# =============================================================================
+# Test 5 different threshold combinations to find optimal settings.
+# Generates PDF comparing edge counts and cluster coverage.
+#
+# ┌─ UNCOMMENT TO RUN ────────────────────────────────────────────────────────
+#   Set RUN_THRESHOLD_TEST <- TRUE below to execute
+# └─────────────────────────────────────────────────────────────────────────────
+
+RUN_THRESHOLD_TEST <- FALSE  # Set to TRUE to run threshold exploration
+
+if (RUN_THRESHOLD_TEST) {
+  message("\n🔬 TESTING NETWORK THRESHOLDS (5 combinations)...")
+
+  threshold_test <- test_network_thresholds(
+    heatmap_results = heatmap_results,
+    pseudobulk_dir  = file.path(dir_objects, "pseudobulk_replicas"),
+    output_dir      = file.path(dir_08, diff_tag, "THRESHOLD_TEST"),
+    method          = "SYNERGY",  # Change to "GENIE3" or "WGCNA" if desired
+    orgdb           = net_orgdb,
+    keytype         = net_keytype,
+    custom_tfs      = custom_tfs,
+    genie3_ntrees   = genie3_ntrees,
+    n_cores         = n_cores,
+    soft_power      = soft_power,
+    network_type    = network_type,
+    n_top_clusters  = n_top_clusters,
+    min_var_filter  = min_var_filter
+  )
+
+  message("\n✓ Threshold test complete.")
+  message("  PDF: ", threshold_test$pdf)
+  message("  Recommendation: ", threshold_test$recommendation)
+}
+
+
+# =============================================================================
+# SECTION 23 — NETWORK VISUALIZATION (FORCE-DIRECTED LAYOUT)
+# =============================================================================
+# Clean network visualization using force-directed (Fruchterman-Reingold) layout.
+# Choose ONE method below; visualizes all filtered edges with igraph.
+#
+# ┌─ CHOOSE METHOD ─────────────────────────────────────────────────────────────
+#   Selected method will be visualized in detail (force-directed, node sizes by
+#   degree, edge widths by weight). This complements SEC 22's PDF summaries.
+#
+#   Recommendations:
+#   • GENIE3  → see TF directionality visually
+#   • WGCNA   → see coexpression structure and modules
+#   • SYNERGY → highest confidence edges (TF→target validated by coexpression)
+# └─────────────────────────────────────────────────────────────────────────────
+
+viz_method <- "SYNERGY"   # "GENIE3", "WGCNA", or "SYNERGY"
+
+viz_results <- switch(viz_method,
+  "GENIE3"  = genie3_results,
+  "WGCNA"   = wgcna_results,
+  "SYNERGY" = synergy_results,
+  synergy_results  # default to SYNERGY
+)
+
+viz_weight_col <- switch(viz_method,
+  "GENIE3"  = "weight",
+  "WGCNA"   = "TOM",
+  "SYNERGY" = "score_synergy",
+  "score_synergy"
+)
+
+viz_directed <- switch(viz_method,
+  "GENIE3"  = TRUE,
+  "WGCNA"   = FALSE,
+  "SYNERGY" = TRUE,
+  TRUE
+)
+
+viz_edge_color <- switch(viz_method,
+  "GENIE3"  = "#2ca02c",   # green
+  "WGCNA"   = "#1f77b4",   # blue
+  "SYNERGY" = "#d62728",   # red
+  "#1f77b4"
+)
+
+visualize_network_per_cluster(
+  network_results     = viz_results,
+  cluster_assignments = heatmap_results,
+  output_dir          = file.path(dir_08, diff_tag, "VISUALIZATION"),
+  method_name         = viz_method,
+  weight_col          = viz_weight_col,
+  directed            = viz_directed,
+  edge_color          = viz_edge_color
+)
+
+message("\n✓ SECTION 23 COMPLETE: Network visualization saved")
+
+
+# =============================================================================
+# SECTION 24 — CLUSTER PROFILE REPORTS
+# =============================================================================
+# Per-cluster profiles: heatmaps, expression statistics, functional annotation.
+#
+# For each cluster from SEC 20:
+#   • Expression heatmap (pseudobulk × genes, with row clustering)
+#   • Expression statistics (mean, SD, range)
+#   • Gene count and composition
+#
+# Links to GO enrichment results from SEC 21 for functional context.
+
+exprMatr_pseudobulk <- load_pseudobulk_matrix(
+  file.path(dir_objects, "pseudobulk_replicas"),
+  normalize = TRUE
+)
+
+generate_cluster_profile_report(
+  cluster_assignments = heatmap_results,
+  pseudobulk_matrix   = exprMatr_pseudobulk,
+  output_dir          = file.path(dir_06, diff_tag, "CLUSTER_PROFILES"),
+  method_name         = "WGCNA"  # clustering method used in SEC 20
+)
+
+message("\n✓ SECTION 24 COMPLETE: Cluster profiles saved")
 
 

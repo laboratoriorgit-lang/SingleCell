@@ -4,6 +4,82 @@ This repository contains the pipeline helper scripts used in the **Methods in Mo
 
 ---
 
+## Project Map
+
+The repository is organized around three workflow chapters. Chapter 1 creates the curated single-cell object, and Chapters 2 and 3 use that object for downstream biological analyses.
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Datos single-cell RNA-seq                    │
+│                                                                      │
+│             matrices crudas  ·  metadata  ·  condiciones             │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+                                ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                Capítulo 1 — Procesamiento single-cell                │
+│                                                                      │
+│   workflow/capitulo1_single_cell.R                                   │
+│                                                                      │
+│   QC → filtrado → normalización → integración → clustering           │
+│      → anotación celular → exportación de objeto curado              │
+│                                                                      │
+│   Helpers: ScRNA_Analysis_Functions.R                                │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                   │
+              ▼                                   ▼
+┌──────────────────────────────────┐   ┌────────────────────────────────────┐
+│ Capítulo 2 — Pseudobulk / DE     │   │ Capítulo 3 — Pseudotime            │
+│                                  │   │                                    │
+│ workflow/capitulo2_pseudobulk_de.R│  │ workflow/capitulo3_pseudotime.ipynb│
+│                                  │   │                                    │
+│ pseudobulk                       │   │ selección celular                  │
+│   → DESeq2                       │   │   → trayectoria                    │
+│   → volcano / heatmap            │   │   → pseudotime                     │
+│   → GO enrichment                │   │   → branches / milestones          │
+│                                  │   │   → genes dinámicos por branch     │
+│ Helpers:                         │   │                                    │
+│ ScRNA_Analysis_Functions.R       │   │ Helpers:                           │
+│                                  │   │ ScRNA_Pseudotime_Functions.py      │
+└──────────────────────────────────┘   └────────────────────────────────────┘
+```
+
+---
+
+## Quick Start with Docker
+
+A pre-built Docker image with all dependencies (R 4.5, Python 3.12, Seurat, scanpy, CellRanger 9.0.1, and all required packages) is available on Docker Hub.
+
+### Pull the image
+
+```bash
+docker pull matigara/scrnaseq:latest
+```
+
+### Run interactively (R console)
+
+```bash
+docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest R
+```
+
+### Run interactively (Python console)
+
+```bash
+docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest python3
+```
+
+### Run a bash shell
+
+```bash
+docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest /bin/bash
+```
+
+**Note:** Replace `/path/to/your/data` with your local data directory path. Inside the container, it will be available at `/workspace`.
+
+---
+
 ## Repository files
 
 | File | Purpose |
@@ -645,27 +721,41 @@ save_qc(list(p_wt, p_mut), "qc_violin_grid.pdf")
 
 ## Quick start
 
+### Option 1: Use Docker Hub (recommended)
+
+```bash
+# 1. Pull the pre-built image
+docker pull matigara/scrnaseq:latest
+
+# 2. Launch an interactive R session with your data directory mounted
+docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest R
+
+# 3. Inside R: load all dependencies and source the function library
+source("load_libraries.R")
+source("ScRNA_Analysis_Functions.R")
+
+# 4. Optionally source custom extensions and run the full pipeline
+source("custom_seurat.R")
+source("scrnaseq_pipeline.R")
+```
+
+### Option 2: Build locally
+
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-org/ScRNASeq-Docker.git
+git clone https://github.com/cliford2001/ScRNASeq-Docker.git
 cd ScRNASeq-Docker
 
-# 2. Build the Docker image (R + all dependencies pre-installed)
-docker build -t scrnaseq-docker .
+# 2. Build the Docker image (requires cellranger-9.0.1 in directory)
+docker build -t scrnaseq:local .
 
 # 3. Launch an interactive R session with the project directory mounted
 docker run --rm -it \
   -v "$(pwd)":/workspace \
   -w /workspace \
-  scrnaseq-docker R
+  scrnaseq:local R
 
-# 4. Inside R: load all dependencies then source the function library
-source("load_libraries.R")
-source("ScRNA_Analysis_Functions.R")
-
-# 5. Optionally source the custom Seurat extensions and run the full pipeline
-source("custom_seurat.R")
-source("scrnaseq_pipeline.R")
+# 4-5. Inside R: source libraries and run pipeline (same as Option 1)
 ```
 
 ---
