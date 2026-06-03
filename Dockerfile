@@ -8,9 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdal-dev libgeos-dev libproj-dev libsqlite3-dev libudunits2-dev \
     libhdf5-dev \
     libv8-dev \
-    libgit2-dev libssh2-1-dev cmake make git wget curl \
+    libgit2-dev libssh2-1-dev cmake make git wget curl patch \
     python3 python3-pip python3-venv \
     libglpk-dev libfftw3-dev libgsl-dev \
+    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
+    libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python virtual environment + packages ─────────────────────────────────────
@@ -58,7 +60,8 @@ RUN R -e "install.packages(c( \
     'reticulate', \
     'rmarkdown', 'xfun', 'htmltools', \
     'jsonlite', 'httr', 'xml2', \
-    'devtools', 'KernSmooth', 'fields', 'ROCR', 'R.utils' \
+    'devtools', 'KernSmooth', 'fields', 'ROCR', 'R.utils', \
+    'ggpubr', 'pheatmap', 'reshape2', 'dynamicTreeCut', 'WGCNA' \
 ))"
 
 # ── Bioconductor packages ──────────────────────────────────────────────────────
@@ -75,7 +78,10 @@ RUN R -e "BiocManager::install(c( \
     'zellkonverter', \
     'basilisk', \
     'GenomeInfoDb', 'Rsamtools', \
-    'BiocManager' \
+    'BiocManager', \
+    'clusterProfiler', \
+    'org.At.tair.db', \
+    'GENIE3' \
 ), ask = FALSE, update = FALSE)"
 
 # ── Seurat ecosystem ───────────────────────────────────────────────────────────
@@ -96,11 +102,18 @@ RUN R -e "install.packages(c('Signac'))" && \
 RUN R -e "install.packages('https://cran.r-project.org/src/contrib/Archive/grr/grr_0.9.5.tar.gz', repos=NULL, type='source')"
 RUN R -e "remotes::install_github('cole-trapnell-lab/monocle3')"
 
-# ── CellRanger 10.0.0 ─────────────────────────────────────────────────────────
-COPY cellranger-9.0.1.tar.gz /opt/
-RUN tar -xzf /opt/cellranger-9.0.1.tar.gz -C /opt/ && \
-    rm /opt/cellranger-9.0.1.tar.gz
-ENV PATH="/opt/cellranger-9.0.1:$PATH"
+
+# ── Bioconductor: WGCNA dependencies ─────────────────────────────────────────
+RUN R -e "BiocManager::install(c('impute', 'preprocessCore'), ask = FALSE, update = FALSE)"
+
+# ── WGCNA (requires impute + preprocessCore above) ────────────────────────────
+RUN R -e "install.packages('WGCNA')"
+
+# ── leidenbase (required for FindClusters algorithm=4) ────────────────────────
+RUN R -e "install.packages('leidenbase')"
+
+# ── anndataR: native R h5ad export (no Python/basilisk needed) ───────────────
+RUN R -e "BiocManager::install('anndataR', ask = FALSE, update = FALSE)"
 
 WORKDIR /workspace
 

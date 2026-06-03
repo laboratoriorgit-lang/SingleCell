@@ -40,46 +40,25 @@
 
 # Directory containing the pipeline helper scripts.
 # Inside the Docker container this is typically /workspace/ScRNASeq-Docker
-PIPELINE_DIR <- "~/projects2/eleo/ScRNA/metodologia/ScRNASeq-Docker/"
+PIPELINE_DIR <- "/workspace/ScRNASeq-Docker/workflow"
 
 # Root directory for your project data and results.
-# All result files will be written to DATA_DIR/results/<step>/
-DATA_DIR   <- "~/projects2/eleo/ScRNA/"
-base_dir   <- file.path(DATA_DIR, "metodologia/resultados")
+# All result files will be written to DATA_DIR/resultados/<step>/
+DATA_DIR   <- "/workspace/."
+base_dir   <- file.path(DATA_DIR, "resultados")
 
-# ── Input format ──────────────────────────────────────────────────────────────
-# USE_CELLBENDER = TRUE  → load CellBender-filtered HDF5 files (recommended)
-# USE_CELLBENDER = FALSE → load CellRanger filtered_feature_bc_matrix/ directly
-#                          (use this if you skipped the CellBender step)
-#
-# If TRUE  → set samples$file to the .h5 file path relative to DATA_DIR
-# If FALSE → set samples$file to the filtered_feature_bc_matrix/ directory
-#            path relative to DATA_DIR
-USE_CELLBENDER <- TRUE
-
-# ── Sample manifest ───────────────────────────────────────────────────────────
+# ── Sample manifest (CellRanger filtered_feature_bc_matrix) ──────────────────
 # Add one entry per sample. Each entry needs:
-#   file      — path to the input file or directory (relative to DATA_DIR)
+#   file      — path to the filtered_feature_bc_matrix/ directory (relative to DATA_DIR)
 #   label     — unique name for this sample (appears in all plots)
 #   condition — experimental group this sample belongs to
-
-# ── OPTION 1: CellBender-filtered HDF5 files (USE_CELLBENDER = TRUE) ─────────
 samples <- list(
-  list(file = "cellbender/Sample_0N_cellbender_filtered.h5",      label = "0N",      condition = "0N"),
-  list(file = "cellbender/Sample_05N_R1_cellbender_filtered.h5",  label = "0.5N_R1", condition = "0.5N"),
-  #list(file = "cellbender/Sample_05N_2_cellbender_filtered.h5",   label = "0.5N_R2", condition = "0.5N"),
-  list(file = "cellbender/Sample_5N_R1_cellbender_filtered.h5",   label = "5N_R1",   condition = "5N")#,
-  #list(file = "cellbender/Sample_5N_2_cellbender_filtered.h5",    label = "5N_R2",   condition = "5N")
+  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",      label = "0N",      condition = "0N"),
+  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",     label = "0.5N_R1", condition = "0.5N"),
+  list(file = "cellranger/Sample_05N_2/outs/filtered_feature_bc_matrix",   label = "0.5N_R2", condition = "0.5N"),
+  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",      label = "5N_R1",   condition = "5N")#,
+  #list(file = "cellranger/Sample_5N_2/outs/filtered_feature_bc_matrix",    label = "5N_R2",   condition = "5N")
 )
-
-# ── OPTION 2: CellRanger filtered_feature_bc_matrix (USE_CELLBENDER = FALSE) ─
-# samples <- list(
-#   list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",      label = "0N",      condition = "0N"),
-#   list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",     label = "0.5N_R1", condition = "0.5N"),
-#   list(file = "cellranger/Sample_05N_2/outs/filtered_feature_bc_matrix",   label = "0.5N_R2", condition = "0.5N"),
-#   list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",      label = "5N_R1",   condition = "5N")#,
-#   list(file = "cellranger/Sample_5N_2/outs/filtered_feature_bc_matrix",    label = "5N_R2",   condition = "5N")
-# )
 
 
 # ── Plot colors (one color per sample label) ───────────────────────────────────
@@ -150,7 +129,7 @@ cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
 # Load all samples using the helper function
 seurat_list_raw <- load_seurat_samples(samples = samples,
                                        DATA_DIR = DATA_DIR,
-                                       USE_CELLBENDER = USE_CELLBENDER,
+                                       USE_CELLBENDER = FALSE,
                                        mt_pattern = mt_pattern,
                                        cp_pattern = cp_pattern)
 
@@ -176,7 +155,7 @@ seurat_list <- filter_seurat_samples(seurat_list_raw, min_features = 200, max_mt
 
 plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
-# Checkpoint — restore with: seurat_list <- readRDS(file.path(dir_objects, "seurat_list_postfilter.rds"))
+# Checkpoint — restore with: seurat_list <- readRDS("resultados/objects/seurat_list_postfilter.rds")
 saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
 
@@ -201,7 +180,7 @@ pbmc_harmony <- reduce(seurat_list, merge) %>%  # merge all samples into one obj
 save_pdf(DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
          "umap_preharmony.pdf")
 
-# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
+# Checkpoint — restore with: pbmc_harmony <- readRDS("resultados/objects/pbmc_harmony_preharmony.rds")
 saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
 
 
@@ -223,7 +202,7 @@ pbmc_harmony <- pbmc_harmony %>%
 save_pdf(DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
          "umap_postharmony.pdf")
 
-# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
+# Checkpoint — restore with: pbmc_harmony <- readRDS("resultados/objects/pbmc_harmony_postharmony.rds")
 saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
 
 
@@ -312,7 +291,7 @@ message("\n✓ SECTION 6 COMPLETE: Final clustering complete")
 # Dot size = fraction of expressing cells; color = mean expression level.
 output_dir <- dir_03
 
-biblio_marks_file <- file.path(DATA_DIR, "metodologia/biblio_marks.txt")
+biblio_marks_file <- file.path(DATA_DIR, "biblio_marks.txt")
 marker_table      <- read.table(biblio_marks_file, header = TRUE, sep = "\t", quote = "")
 
 plot_marker_dotplot(
@@ -357,8 +336,12 @@ plot_marker_dotplot(
   width = 20, height = 10
 )
 
+save_pdf(DimPlot(pbmc_harmony, group.by = "celltype",
+                 label = TRUE, repel = TRUE, raster = FALSE),
+         "umap_annotation_biblio.pdf")
+
 # ── 8b. Reference-based annotation ────────────────────────────────────────────
-reference_obj <- readRDS(file.path(DATA_DIR, "metodologia/GSE273033_seuratObj_for_publication.rds"))
+reference_obj <- readRDS(file.path(DATA_DIR, "GSE273033_seuratObj_for_publication.rds"))
 pbmc_harmony <- annotate_by_reference(pbmc_harmony,
                                       reference_obj = reference_obj,
                                       reference_col = "annotation")
@@ -370,6 +353,11 @@ plot_marker_dotplot(
   outfile   = file.path(output_dir, "dotplot_marker_table_annotation_reference.pdf"),
   width = 20, height = 10
 )
+
+save_pdf(DimPlot(pbmc_harmony, group.by = "celltype_reference",
+                 label = TRUE, repel = TRUE, raster = FALSE),
+         "umap_annotation_reference.pdf")
+
 # Annotation stored in: pbmc_harmony$celltype_reference
 
 
@@ -562,7 +550,7 @@ save_pdf(
   "umap_curated.pdf"
 )
 
-# Checkpoint — restore with: pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
+# Checkpoint — restore with: pbmc_harmony <- readRDS("resultados/objects/pbmc_harmony_curated.rds")
 saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_curated.rds"))
 
 # =============================================================================

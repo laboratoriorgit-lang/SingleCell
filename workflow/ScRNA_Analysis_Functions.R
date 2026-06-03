@@ -770,12 +770,17 @@ export_to_scanpy <- function(seurat_obj,
   if (file.exists(outfile) && overwrite) file.remove(outfile)
 
   ok <- FALSE
-  if (requireNamespace("zellkonverter", quietly = TRUE)) {
+  if (requireNamespace("anndataR", quietly = TRUE)) {
+    message("Writing h5ad with anndataR (native R)...")
+    adata <- anndataR::as_AnnData(sce)
+    anndataR::write_h5ad(adata, path = outfile)
+    ok <- TRUE
+  } else if (requireNamespace("zellkonverter", quietly = TRUE)) {
     message("Writing h5ad with zellkonverter...")
     zellkonverter::writeH5AD(sce, file = outfile, X_name = X_name)
     ok <- TRUE
   } else if (requireNamespace("SeuratDisk", quietly = TRUE)) {
-    message("Using SeuratDisk (zellkonverter not available)...")
+    message("Using SeuratDisk fallback...")
     tmp_h5seu <- file.path(tempdir(), paste0(basename(outfile), ".h5seurat"))
     if (file.exists(tmp_h5seu)) file.remove(tmp_h5seu)
     SeuratDisk::SaveH5Seurat(seurat_obj, filename = tmp_h5seu, overwrite = TRUE)
@@ -785,7 +790,7 @@ export_to_scanpy <- function(seurat_obj,
     file.rename(gen_h5ad, outfile)
     ok <- TRUE
   } else {
-    stop("Install 'zellkonverter' or 'SeuratDisk' to export h5ad.")
+    stop("Install 'anndataR' to export h5ad: BiocManager::install('anndataR')")
   }
 
   if (!ok || !file.exists(outfile)) stop("Export failed: ", outfile)
@@ -964,16 +969,28 @@ annotate_by_reference <- function(seurat_obj,
 
   cat("Using column:", reference_col, "\n")
 
+  reference_obj <- UpdateSeuratObject(reference_obj)
+  reference_obj <- DietSeurat(reference_obj, layers = c("counts", "data"), dimreducs = NULL)
+  reference_obj <- NormalizeData(reference_obj, verbose = FALSE)
+  reference_obj <- FindVariableFeatures(reference_obj, verbose = FALSE)
+  shared_var_features <- intersect(VariableFeatures(reference_obj), rownames(seurat_obj))
+  cat("Shared variable features for transfer:", length(shared_var_features), "\n")
+  VariableFeatures(reference_obj) <- shared_var_features
+  reference_obj <- ScaleData(reference_obj, features = shared_var_features, verbose = FALSE)
+
   anchors <- FindTransferAnchors(
     reference = reference_obj,
     query     = seurat_obj,
-    dims      = dims
+    dims      = dims,
+    reduction = "cca",
+    features  = shared_var_features
   )
 
   predictions <- TransferData(
-    anchorset = anchors,
-    refdata   = reference_obj@meta.data[[reference_col]],
-    dims      = dims
+    anchorset        = anchors,
+    refdata          = reference_obj@meta.data[[reference_col]],
+    dims             = dims,
+    weight.reduction = "cca"
   )
 
   seurat_obj$celltype_reference <- predictions$predicted.id
