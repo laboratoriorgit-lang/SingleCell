@@ -7,9 +7,9 @@
 # =============================================================================
 
 # ── Configuration (must match capitulo1_single_cell.R) ───────────────────────────────
-PIPELINE_DIR <- "~/projects2/eleo/ScRNA/metodologia/ScRNASeq-Docker/workflow/"
-DATA_DIR     <- "~/projects2/eleo/ScRNA/"
-base_dir     <- file.path(DATA_DIR, "metodologia/resultados")
+PIPELINE_DIR <- "/workspace/workflow_nuevo"
+DATA_DIR     <- "/workspace/."
+base_dir     <- file.path(DATA_DIR, "resultados")
 
 source(file.path(PIPELINE_DIR, "load_libraries.R"))
 source(file.path(PIPELINE_DIR, "custom_seurat.R"))
@@ -41,9 +41,7 @@ pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
 # analysis. Object names are sanitised so they can be used safely as list names
 # and output filenames.
 #
-# ┌─ SET THE ANNOTATION COLUMN TO USE FOR PART 2 ───────────────────────────────
-#   pseudobulk_annot_col : metadata column containing the final cell-type labels
-# └─────────────────────────────────────────────────────────────────────────────
+# Edit here: metadata column with final cell-type names.
 pseudobulk_annot_col <- "celltype_curated"
 
 # Create cell-type subsets for pseudobulk analysis
@@ -58,12 +56,10 @@ message("\n✓ SECTION 14 COMPLETE: Cell-type subsets created")
 # Assigns random pseudo-replicates within each condition for every cell type.
 # Only subsets containing at least two conditions are kept for Part 2.
 #
-# ┌─ PARAMETERS ────────────────────────────────────────────────────────────────
-#   pseudobulk_conditions : NULL = use all conditions
-#                           c("0N", "0.5N") = use only those two
-#   n_pseudoreps          : pseudo-replicates per condition per cell type
-# └─────────────────────────────────────────────────────────────────────────────
-pseudobulk_conditions <- NULL   # change to e.g. c("0.5N", "5N") to subset
+# Edit here:
+#   NULL = use all conditions
+#   n_pseudoreps = pseudo-replicates per condition
+pseudobulk_conditions <- NULL
 n_pseudoreps          <- 3
 
 cell_type_subsets_replicates <- assign_pseudoreplicates_batch(cell_type_subsets,
@@ -84,27 +80,17 @@ message("\n✓ SECTION 15 COMPLETE: Pseudo-replicates assigned")
 # Aggregates counts by pseudo-replicate for each cell type, saves the resulting
 # count tables, and runs DESeq2 for the user-defined pairwise contrasts.
 #
-# ┌─ DEFINE YOUR CONDITION CONTRASTS HERE ──────────────────────────────────────
-#   comparisons : each entry must contain
-#                   conds = c("reference", "treatment")
-#                   tag   = output folder / file label
-#
-#   log2FC interpretation:
-#     positive → gene is upregulated in treatment vs reference
-#     negative → gene is upregulated in reference vs treatment
-#
-#   Example: conds = c("0.5N", "5N")  →  log2FC = log2(5N / 0.5N)
-# └─────────────────────────────────────────────────────────────────────────────
+# Edit here:
+#   conds = c("reference", "treatment")
+#   log2FC > 0 means higher expression in treatment
 comparisons <- list(
-  list(conds = c("0.5N", "5N"), tag = "0.5N_vs_5N"),
-  list(conds = c("0N",   "5N"), tag = "0N_vs_5N")
+  list(conds = c("condicion1", "condicion2"), tag = "condicion1_vs_condicion2")
 )
 
-# ┌─ SELECT WHICH CELL TYPES TO ANALYZE ────────────────────────────────────────
+# Edit here:
 #   NULL = analyze all cell types
-#   c("Epidermis", "Cortex") = analyze only these
-# └─────────────────────────────────────────────────────────────────────────────
-cell_types_to_analyze <- NULL  # Change to c("Epidermis", "Cortex") to filter
+#   c("Guard Cell", "Mesophyll") = analyze only those cell types
+cell_types_to_analyze <- NULL
 
 output_dir <- dir_06
 
@@ -131,7 +117,7 @@ message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
 #   padj_cut    : adjusted p-value threshold
 #   lfc_cut     : absolute log2 fold-change threshold
 # └─────────────────────────────────────────────────────────────────────────────
-volcano_tag <- "0.5N_vs_5N"
+volcano_tag <- "condicion1_vs_condicion2"
 padj_cut    <- 0.05
 lfc_cut     <- 1
 
@@ -173,12 +159,10 @@ message("\n✓ SECTION 18 COMPLETE: Differential gene tables saved")
 # =============================================================================
 # Gene Ontology enrichment per cell type for the selected contrast.
 
-# ┌─ CHANGE FOR YOUR ORGANISM ────────────────────────────────────────────────
-#   Arabidopsis: go_orgdb = org.At.tair.db  |  go_keytype = "TAIR"
-#   Human:       go_orgdb = org.Hs.eg.db    |  go_keytype = "ENSEMBL"
-#   Mouse:       go_orgdb = org.Mm.eg.db    |  go_keytype = "ENSEMBL"
-# └─────────────────────────────────────────────────────────────────────────
-go_space    <- "BP"   # "MF" (function) or "CC" (component)
+# Edit here:
+#   go_space = "BP", "MF", or "CC"
+#   Arabidopsis: go_orgdb = org.At.tair.db | go_keytype = "TAIR"
+go_space    <- "BP"
 go_orgdb    <- org.At.tair.db
 go_keytype  <- "TAIR"
 padj_cutoff <- 0.05
@@ -215,9 +199,7 @@ message("\n✓ SECTION 19 COMPLETE: GO enrichment complete")
 # Heatmap of log2FC values across all cell types for the selected contrast.
 # Genes are ordered by the internal hierarchical dendrogram (cluster_rows = TRUE).
 #
-# ┌─ PARAMETERS ─────────────────────────────────────────────────────────────────
-#   heatmap_limits : color scale range for log2FC values
-# └─────────────────────────────────────────────────────────────────────────────
+# Edit here: color scale range for log2FC values.
 heatmap_limits <- c(-5, 5)
 
 build_logfc_heatmap(
@@ -231,96 +213,158 @@ build_logfc_heatmap(
 # =============================================================================
 
 message("\n✓ SECTION 20 COMPLETE: Log2FC heatmap saved")
-# SECTION 22 — NETWORK INFERENCE PER CLUSTER
+# SECTION 21 - COEXPRESSION NETWORK (hdWGCNA) - UNIFICADO
 # =============================================================================
-# Identifies which transcription factors (TFs) regulate the genes in each
-# cluster from Section 20. Results are a ranked hypothesis list.
+# Filtra la matriz a los DEGs de la tabla resumen y corre hdWGCNA UNA SOLA VEZ
+# sobre todas las celulas. Metacells se construyen por celltype x sample para
+# preservar la estructura biologica, pero WGCNA actua sobre el pool completo
+# de genes diferenciales generando un unico set de modulos.
 #
-# ┌─ PARAMETERS ────────────────────────────────────────────────────────────────
-#   NETWORK_METHOD : "GENIE3" — recommended for small datasets (n < 15 samples)
-#                    "WGCNA"  — for comparison only; unreliable with n < 15
-#   n_top_clusters :  3    — top 3 largest clusters (default, faster)
-#                    NULL — all clusters
-#   n_cores        : parallel cores (adjust to your machine)
+# Edit here:
+#   n_metacells = metacells per celltype x sample
+#   soft_power  = NULL for automatic detection, or use a number
+wgcna_name  <- "unified"
+n_metacells <- 25
+soft_power  <- NULL
+
+# -- 1. Leer DEGs desde tabla resumen -----------------------------------------
+de_table_path <- file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv")
+de_table <- read.table(de_table_path, header = TRUE, sep = "\t",
+                       row.names = 1, check.names = FALSE)
+de_genes <- rownames(de_table)[apply(!is.na(de_table), 1, any)]
+de_genes <- intersect(de_genes, rownames(pbmc_harmony))
+cat(sprintf("  DEGs para hdWGCNA: %d / %d genes totales\n",
+            length(de_genes), nrow(pbmc_harmony)))
+
+# -- 2. Filtrar objeto a DEGs -------------------------------------------------
+pbmc_de <- pbmc_harmony[de_genes, ]
+pbmc_de$all_group <- "all"
+
+# -- 3. Setup hdWGCNA ---------------------------------------------------------
+message("  Configurando hdWGCNA unificado...")
+obj <- hdWGCNA::SetupForWGCNA(pbmc_de, gene_select = "all", wgcna_name = wgcna_name)
+
+# Metacells por celltype x sample — preserva estructura biologica
+# ident.group = "all_group" para usar todos los metacells juntos en SetDatExpr
+obj <- hdWGCNA::MetacellsByGroups(
+  seurat_obj  = obj,
+  group.by    = c(pseudobulk_annot_col, "orig.ident", "all_group"),
+  reduction   = "harmony",
+  k           = n_metacells,
+  max_shared  = 10,
+  ident.group = "all_group",
+  wgcna_name  = wgcna_name
+)
+obj <- hdWGCNA::NormalizeMetacells(obj, wgcna_name = wgcna_name)
+
+# SetDatExpr sobre TODOS los metacells juntos
+obj <- hdWGCNA::SetDatExpr(obj, group_name = "all", group.by = "all_group",
+                            assay = "RNA", layer = "data", wgcna_name = wgcna_name)
+
+# -- 4. Soft power ------------------------------------------------------------
+message("  Detectando soft power...")
+obj <- hdWGCNA::TestSoftPowers(obj, networkType = "signed hybrid", wgcna_name = wgcna_name)
+sp <- if (!is.null(soft_power)) soft_power else {
+  pwr_tbl <- hdWGCNA::GetPowerTable(obj, wgcna_name = wgcna_name)
+  best    <- pwr_tbl$Power[which(pwr_tbl$SFT.R.sq >= 0.8)[1]]
+  if (is.na(best)) 6L else as.integer(best)
+}
+cat("  Soft power:", sp, "\n")
+
+# -- 5. Construir red y detectar modulos --------------------------------------
+message("  Construyendo red TOM...")
+obj <- hdWGCNA::ConstructNetwork(
+  obj,
+  soft_power    = sp,
+  networkType   = "signed hybrid",
+  tom_outdir    = sub("^/workspace/", "", dir_08),
+  maxBlockSize  = max(length(de_genes) + 1L, 30000L),
+  useDiskCache  = FALSE,
+  overwrite_tom = TRUE,
+  wgcna_name    = wgcna_name
+)
+obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = wgcna_name)
+obj <- hdWGCNA::ModuleConnectivity(obj, group.by = "all_group",
+                                    group_name = "all", wgcna_name = wgcna_name)
+
+modules   <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)
+hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = wgcna_name)
+
+# -- 6. Guardar ---------------------------------------------------------------
+write.table(modules,   file.path(dir_08, "modules_unified.tsv"),  sep="\t", quote=FALSE, row.names=FALSE)
+write.table(hub_genes, file.path(dir_08, "hubgenes_unified.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
+saveRDS(obj, file.path(dir_08, "hdwgcna_unified.rds"))
+n_mods <- length(unique(modules$module[modules$module != "grey"]))
+cat(sprintf("  Modulos detectados: %d\n", n_mods))
+
+# -- 7. Plots: UMAP modulos, heatmap eigengenes, dendrograma ------------------
+plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features="hMEs", order=TRUE, wgcna_name=wgcna_name)
+plot_list <- plot_list[!grepl("grey", names(plot_list), ignore.case=TRUE)]
+plot_list <- lapply(plot_list, function(p) p + ggplot2::theme(
+  axis.text=ggplot2::element_blank(), axis.ticks=ggplot2::element_blank()))
+pdf(file.path(dir_08, "umap_modules_unified.pdf"), width=16, height=12)
+print(patchwork::wrap_plots(plot_list, ncol=4) +
+      patchwork::plot_annotation(
+        title    = "UMAP Modulos WGCNA unificado",
+        subtitle = sprintf("%d DEGs | %d modulos", length(de_genes), n_mods)))
+dev.off()
+
+MEs <- hdWGCNA::GetMEs(obj, harmonized=FALSE, wgcna_name=wgcna_name)
+if (!is.null(MEs) && ncol(MEs) > 0) {
+  me_cols <- colnames(MEs)[!grepl("grey|^0$", colnames(MEs), ignore.case=TRUE)]
+  if (length(me_cols) > 0) {
+    me_mat  <- t(as.matrix(MEs[, me_cols, drop=FALSE]))
+    mod_col <- sub("^(ME|hME)", "", rownames(me_mat))
+    pdf(file.path(dir_08, "eigengene_heatmap_unified.pdf"),
+        width=12, height=max(4, nrow(me_mat)*0.5+2))
+    ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_mat, name="ME",
+      col=viridis::viridis(100), cluster_rows=TRUE, cluster_columns=TRUE,
+      show_row_names=TRUE, row_labels=mod_col, show_column_names=FALSE,
+      column_title=sprintf("Module eigengenes unificado (%d DEGs)", length(de_genes))))
+    dev.off()
+  }
+}
+pdf(file.path(dir_08, "dendrogram_unified.pdf"), width=14, height=6)
+hdWGCNA::PlotDendrogram(obj,
+  main=sprintf("Dendrograma unificado | %d DEGs | %d modulos", length(de_genes), n_mods),
+  wgcna_name=wgcna_name)
+dev.off()
+
+message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
+
+
+# =============================================================================
+# SECTION 22 — NETWORK EXPORT & VISUALIZATION
+# =============================================================================
+# Reads the hdWGCNA objects saved by Section 21 and for each cell type:
+#   • Exports edges (source, target, weight) and nodes (gene, module, kME)
+#   • Plots a co-expression network PDF coloured by module, sized by kME
 #
-#   cor_min  ★ ADJUST THIS to control how many TF→gene edges are reported:
-#     Only TF→gene pairs where expression is correlated with Pearson |r| ≥ cor_min
-#     are kept. Lower values = more edges (exploratory); higher = fewer but more
-#     reliable. Start at 0.70 and raise if the resulting network looks too dense.
-# └─────────────────────────────────────────────────────────────────────────────
-NETWORK_METHOD <- "GENIE3"  # "GENIE3" or "WGCNA"
-n_top_clusters <- NULL       # NULL = all clusters, or e.g. 3 for the 3 largest
-n_cores        <- 4          # adjust to your machine
-cor_min        <- 0.70       # ★ see table above — start here, raise if too noisy
+# Edit here:
+#   tom_threshold = lower gives more edges; higher gives simpler networks
+#   cell_types_network = NULL for all
+#   n_hub_label = number of hub genes labelled in the plot
+tom_threshold      <- 0.1
+cell_types_network <- NULL
+n_hub_label        <- 5
 
-if (NETWORK_METHOD == "WGCNA")
-  message("\n⚠ WGCNA: unreliable with n < 15 samples — results are comparative only.")
-
-net_pipeline <- run_network_inference_pipeline(
-  heatmap_results  = heatmap_results,          # clusters from Section 20
-  pseudobulk_dir   = file.path(dir_objects, "pseudobulk_replicas"),
-  output_base_dir  = file.path(dir_08, volcano_tag),
-  methods          = c(NETWORK_METHOD),         # "GENIE3" or "WGCNA"
-  orgdb            = go_orgdb,                  # organism DB (set in Section 19)
-  keytype          = go_keytype,                # gene ID type (set in Section 19)
-  custom_tfs       = NULL,                      # NULL = auto-detect TFs from orgdb
-  cor_min          = cor_min,                    # threshold set above
-  genie3_ntrees    = 500,                       # Random Forest trees per gene
-  n_cores          = n_cores,                   # parallel cores
-  soft_power       = 18,                        # WGCNA only
-  network_type     = "signed",                  # WGCNA only
-  tom_threshold    = 0.05,                      # WGCNA only
-  n_top_clusters   = n_top_clusters,            # largest clusters to analyze
-  min_var_filter   = 0.01                       # drop near-constant genes
+plot_hdwgcna_network(
+  hdwgcna_dir   = dir_08,
+  output_dir    = dir_08,
+  tom_threshold = tom_threshold,
+  cell_types    = cell_types_network,
+  n_hub_label   = n_hub_label
 )
 
-network_results <- net_pipeline$results[[NETWORK_METHOD]]
-message("\n✓ SECTION 22 COMPLETE: Network inference complete")
+message("\n✓ SECTION 22 COMPLETE: Network files and plots saved")
 
 
 # =============================================================================
-# SECTION 23 — NETWORK VISUALIZATION (FORCE-DIRECTED LAYOUT)
+# SECTION 23 — OMITTED
 # =============================================================================
-# Draws TF → target edges as a force-directed graph for each cluster.
-# Node size = number of connections; edge width = importance score.
-# Uses the method and results from Section 22 automatically.
-
-visualize_network_per_cluster(
-  network_results     = network_results,
-  cluster_assignments = heatmap_results,
-  output_dir          = file.path(dir_08, volcano_tag, "VISUALIZATION"),
-  method_name         = NETWORK_METHOD
-)
-
-message("\n✓ SECTION 23 COMPLETE: Network visualization saved")
-
-
-# =============================================================================
-# SECTION 24 — CLUSTER PROFILE REPORTS
-# =============================================================================
-# Per-cluster profiles: heatmaps, expression statistics, functional annotation.
+# The network in Sections 21-22 is unified, not one network per cell type.
+# The old DE-filtered network helper expects cell-type-specific hdWGCNA RDS
+# files, so it does not apply to this unified-network design.
 #
-# For each cluster from SEC 20:
-#   • Expression heatmap (pseudobulk × genes, with row clustering)
-#   • Expression statistics (mean, SD, range)
-#   • Gene count and composition
-#
-# Links to GO enrichment results from SEC 21 for functional context.
-
-exprMatr_pseudobulk <- load_pseudobulk_matrix(
-  file.path(dir_objects, "pseudobulk_replicas"),
-  normalize = TRUE
-)
-
-generate_cluster_profile_report(
-  cluster_assignments = heatmap_results,
-  pseudobulk_matrix   = exprMatr_pseudobulk,
-  output_dir          = file.path(dir_06, volcano_tag, "CLUSTER_PROFILES"),
-  method_name         = CLUSTER_METHOD
-)
-
-message("\n✓ SECTION 24 COMPLETE: Cluster profiles saved")
-
-
-
-
+# Capitulo 2 ends at Section 22:
+#   DESeq2 + volcano + GO + log2FC heatmap + unified hdWGCNA network.

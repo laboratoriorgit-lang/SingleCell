@@ -3,7 +3,7 @@
 # =============================================================================
 # Covers QC, integration, clustering, annotation, and export to h5ad.
 # Output: pbmc_harmony_curated.rds  (used by capitulo2_pseudobulk_de.R)
-#         pbmc_harmony_curated.h5ad (used by capitulo3_pseudotime.py)
+#         pbmc_harmony_curated.h5ad (used by capitulo3_pseudotime.ipynb)
 # =============================================================================
 
 # =============================================================================
@@ -40,7 +40,7 @@
 
 # Directory containing the pipeline helper scripts.
 # Inside the Docker container this is typically /workspace/ScRNASeq-Docker
-PIPELINE_DIR <- "/workspace/ScRNASeq-Docker/workflow"
+PIPELINE_DIR <- "/workspace/workflow_nuevo"
 
 # Root directory for your project data and results.
 # All result files will be written to DATA_DIR/resultados/<step>/
@@ -53,19 +53,19 @@ base_dir   <- file.path(DATA_DIR, "resultados")
 #   label     — unique name for this sample (appears in all plots)
 #   condition — experimental group this sample belongs to
 samples <- list(
-  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",      label = "0N",      condition = "0N"),
-  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",     label = "0.5N_R1", condition = "0.5N"),
-  list(file = "cellranger/Sample_05N_2/outs/filtered_feature_bc_matrix",   label = "0.5N_R2", condition = "0.5N"),
-  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",      label = "5N_R1",   condition = "5N")#,
-  #list(file = "cellranger/Sample_5N_2/outs/filtered_feature_bc_matrix",    label = "5N_R2",   condition = "5N")
+  list(file = "cellranger_v2/scDS1a/outs/filtered_feature_bc_matrix", label = "scDS1a", condition = "condicion1"),
+  list(file = "cellranger_v2/scDS1b/outs/filtered_feature_bc_matrix", label = "scDS1b", condition = "condicion1"),
+  list(file = "cellranger_v2/scDS2a/outs/filtered_feature_bc_matrix", label = "scDS2a", condition = "condicion2"),
+  list(file = "cellranger_v2/scDS2b/outs/filtered_feature_bc_matrix", label = "scDS2b", condition = "condicion2")
 )
 
 
 # ── Plot colors (one color per sample label) ───────────────────────────────────
 colors <- c(
-  "0N"      = "#66c2a5",
-  "0.5N_R1" = "#fc8d62",# "0.5N_R2" = "#fc8d62",
-  "5N_R1"   = "#8da0cb"#, "5N_R2"   = "#8da0cb"
+  "scDS1a" = "#66c2a5",
+  "scDS1b" = "#41ae76",
+  "scDS2a" = "#fc8d62",
+  "scDS2b" = "#e34a33"
 )
 
 

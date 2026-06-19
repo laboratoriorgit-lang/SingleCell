@@ -1069,6 +1069,9 @@ subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
 #' @return List of ggplot objects
 #' @export
 plot_markers_for_subset <- function(subset_obj, marker_table) {
+  available_genes <- rownames(subset_obj)
+  marker_table <- marker_table[marker_table$gene %in% available_genes, , drop = FALSE]
+  if (nrow(marker_table) == 0) return(list())
   lapply(seq_len(nrow(marker_table)), function(i) {
     FeaturePlot(subset_obj, features = marker_table$gene[i]) +
       ggtitle(paste0(marker_table$cell.types[i], "\n", marker_table$gene[i])) +
@@ -1292,14 +1295,7 @@ guardar_tablas_pseudobulk <- function(obj_list,
       next
     }
 
-    counts_reps_df <- tryCatch(
-      run_pseudobulk(obj),
-      error = function(e) {
-        warning("Skipping ", tipo, " due to pseudobulk error: ", e$message)
-        NULL
-      }
-    )
-    if (is.null(counts_reps_df)) next
+    counts_reps_df <- run_pseudobulk(obj)
 
     pseudobulk_list[[tipo]] <- counts_reps_df
 
@@ -1797,18 +1793,15 @@ correr_enriquecimiento_go <- function(tabla,
       next
     }
 
-    enri <- tryCatch(
-      enrichGO(gene          = gene,
-               universe      = universo,
-               OrgDb         = orgdb,
-               keyType       = keytype,
-               ont           = espacio,
-               pAdjustMethod = "BH",
-               pvalueCutoff  = pvalueCutoff,
-               qvalueCutoff  = qvalueCutoff,
-               readable      = FALSE),
-      error = function(e) NULL
-    )
+    enri <- enrichGO(gene          = gene,
+                     universe      = universo,
+                     OrgDb         = orgdb,
+                     keyType       = keytype,
+                     ont           = espacio,
+                     pAdjustMethod = "BH",
+                     pvalueCutoff  = pvalueCutoff,
+                     qvalueCutoff  = qvalueCutoff,
+                     readable      = FALSE)
 
     if (is.null(enri) || nrow(enri@result) == 0) {
       message("Sin GO: ", colnames(tabla)[n])
@@ -1870,7 +1863,7 @@ podar_go <- function(resuGO,
 
     if (is.null(resuGO[[k]])) next
 
-    res <- tryCatch(gofilter(resuGO[[k]], nivel), error = function(e) NULL)
+    res <- gofilter(resuGO[[k]], nivel)
     if (is.null(res) || nrow(res@result) == 0) next
 
     salida[[k]] <- res
@@ -2043,8 +2036,7 @@ run_go_enrichment_suite <- function(diff_table,
   on.exit(dev.off(), add = TRUE)
 
   for (obj in list(go_total, go_simple, go_total_podado, go_simple_podado)) {
-    tryCatch(print(graficar_go_balones(obj)),
-             error = function(e) message("Skipping GO balloon plot: ", e$message))
+    print(graficar_go_balones(obj))
   }
 
   invisible(list(
@@ -2770,7 +2762,7 @@ run_pseudobulk_pipeline <- function(obj,
     matriz[is.na(matriz)] <- 0
     if (nrow(matriz) > 1) {
       pdf(file.path(diff_dir, paste0("heatmap_", tag, ".pdf")), width = 14, height = 18)
-      tryCatch(plot_heatmap(matriz), error = function(e) message("Heatmap error: ", e$message))
+      plot_heatmap(matriz)
       dev.off()
     }
   }
@@ -2803,12 +2795,10 @@ run_pseudobulk_pipeline <- function(obj,
                                  simplificar = TRUE,  output_dir = enr_dir)
 
     pdf(file.path(enr_dir, paste0("GO_enrichment_", tag, ".pdf")), width = 18, height = 18)
-    tryCatch({
-      print(graficar_go_balones(go_total))
-      print(graficar_go_balones(go_simple))
-      print(graficar_go_balones(go_total_podado))
-      print(graficar_go_balones(go_simple_podado))
-    }, error = function(e) message("GO plot error: ", e$message))
+    print(graficar_go_balones(go_total))
+    print(graficar_go_balones(go_simple))
+    print(graficar_go_balones(go_total_podado))
+    print(graficar_go_balones(go_simple_podado))
     dev.off()
   }
 
@@ -3221,12 +3211,10 @@ run_simple_go_enrichment <- function(diff_table,
   # Generate plots with title
   plot_title <- if (!is.null(cell_type)) paste0("GO Enrichment - ", cell_type) else "GO Enrichment"
 
-  tryCatch({
-    pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 12, height = 8)
-    p <- dotplot(go_result, showCategory = 20) + ggtitle(plot_title)
-    print(p)
-    dev.off()
-  }, error = function(e) message("Could not generate bubble plot: ", e$message))
+  pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 12, height = 8)
+  p <- dotplot(go_result, showCategory = 20) + ggtitle(plot_title)
+  print(p)
+  dev.off()
 
   return(go_result)
 }
@@ -3260,7 +3248,7 @@ build_logfc_heatmap <- function(logfc_table,
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
-    column_names_gp   = grid::gpar(fontsize = 14, fontface = "bold"),
+    column_names_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
     column_names_rot  = 45,
 
     column_title    = sprintf("log2FC — %s  (%d genes)", contrast_tag, nrow(mat)),
@@ -3282,6 +3270,523 @@ build_logfc_heatmap <- function(logfc_table,
 }
 
 
+# =============================================================================
+# run_hdwgcna
+# =============================================================================
+# Runs the full hdWGCNA co-expression network pipeline per cell type.
+# Uses metacell aggregation to handle single-cell sparsity before network
+# construction. Saves modules, hub genes and eigengene plots per cell type.
+#
+# Parameters:
+#   seurat_obj  — curated Seurat object (output of capitulo1)
+#   annot_col   — metadata column with cell-type labels
+#   output_dir  — base directory for results
+#   cell_types  — NULL = all; or character vector of specific cell types
+#   n_metacells — metacells per group (default 25)
+#   soft_power  — NULL = auto-detect; or integer to set manually
+run_hdwgcna <- function(seurat_obj,
+                        annot_col       = "celltype_reference",
+                        output_dir,
+                        cell_types      = NULL,
+                        n_metacells     = 25,
+                        soft_power      = NULL,
+                        max_modules     = 8,
+                        gene_select     = "fraction",
+                        fraction        = 0.05,
+                        de_genes_per_ct = NULL) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  all_types <- unique(seurat_obj@meta.data[[annot_col]])
+  if (!is.null(cell_types)) all_types <- intersect(cell_types, all_types)
+
+  results <- list()
+
+  for (ct in all_types) {
+    ct_tag   <- gsub("[^A-Za-z0-9_]", "_", ct)
+    ct_dir      <- normalizePath(file.path(output_dir, ct_tag), mustWork = FALSE)
+    ct_dir_rel  <- file.path(sub("^/workspace/", "", output_dir), ct_tag)  # relative to /workspace
+    rds_file    <- file.path(ct_dir, paste0("hdwgcna_", ct_tag, ".rds"))
+    tom_files   <- list.files(ct_dir, pattern = "_block\\..*\\.rda$", full.names = TRUE)
+    tom_file    <- if (length(tom_files) > 0) tom_files[1] else file.path(ct_dir, paste0(ct_tag, "_TOM.rda"))
+
+    if (file.exists(rds_file)) {
+      cat("\n── hdWGCNA:", ct, "— already done, skipping\n")
+      obj     <- readRDS(rds_file)
+      modules <- hdWGCNA::GetModules(obj, wgcna_name = ct_tag)
+      results[[ct]] <- list(modules = modules)
+      next
+    }
+
+    cat("\n── hdWGCNA:", ct, "──\n")
+
+    {
+      dir.create(ct_dir, showWarnings = FALSE)
+
+      # ── Subset genes to DE genes specific to this cell type (if provided) ──
+      n_genes_for_title <- nrow(seurat_obj)
+      seurat_ct <- if (!is.null(de_genes_per_ct) && !is.null(de_genes_per_ct[[ct]])) {
+        genes_use <- intersect(de_genes_per_ct[[ct]], rownames(seurat_obj))
+        n_genes_for_title <- length(genes_use)
+        cat("  DE genes (this cell type):", n_genes_for_title, "\n")
+        subset(seurat_obj, features = genes_use)  # Seurat 5 compatible
+      } else {
+        seurat_obj
+      }
+
+      obj <- hdWGCNA::SetupForWGCNA(seurat_ct, gene_select = gene_select,
+                                    fraction = fraction, wgcna_name = ct_tag)
+
+      obj <- hdWGCNA::MetacellsByGroups(seurat_obj = obj,
+                                        group.by    = c(annot_col, "orig.ident"),
+                                        reduction   = "harmony",
+                                        k           = n_metacells,
+                                        max_shared  = 10,
+                                        ident.group = annot_col,
+                                        wgcna_name  = ct_tag)
+      obj <- hdWGCNA::NormalizeMetacells(obj, wgcna_name = ct_tag)
+
+      obj <- hdWGCNA::SetDatExpr(obj, group_name = ct, group.by = annot_col,
+                                  assay = "RNA", layer = "data", wgcna_name = ct_tag)
+
+      obj <- hdWGCNA::TestSoftPowers(obj, networkType = "signed hybrid", wgcna_name = ct_tag)
+      sp  <- if (!is.null(soft_power)) soft_power else {
+        pwr_tbl <- hdWGCNA::GetPowerTable(obj, wgcna_name = ct_tag)
+        best    <- pwr_tbl$Power[which(pwr_tbl$SFT.R.sq >= 0.8)[1]]
+        if (is.na(best)) 6L else as.integer(best)
+      }
+      cat("  Soft power:", sp, "\n")
+
+      ct_dir  <- file.path(output_dir, ct_tag)
+      dir.create(ct_dir, showWarnings = FALSE)
+      tom_files <- list.files(ct_dir, pattern = "_block\\..*\\.rda$", full.names = TRUE)
+      tom_file  <- if (length(tom_files) > 0) tom_files[1] else file.path(ct_dir, paste0(ct_tag, "_TOM.rda"))
+
+      obj <- hdWGCNA::ConstructNetwork(obj, soft_power    = sp,
+                                       networkType   = "signed hybrid",
+                                       tom_outdir    = ct_dir_rel,
+                                       maxBlockSize  = max(nrow(seurat_ct) + 1L, 30000L),
+                                       useDiskCache  = FALSE,
+                                       overwrite_tom = TRUE,
+                                       wgcna_name    = ct_tag)
+      obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = ct_tag)
+      obj <- hdWGCNA::ModuleConnectivity(obj, group.by = annot_col,
+                                          group_name = ct, wgcna_name = ct_tag)
+
+      modules   <- hdWGCNA::GetModules(obj, wgcna_name = ct_tag)
+
+      # ── Keep only top max_modules by size, relabel rest as grey ──────────
+      mod_sizes  <- sort(table(modules$module[modules$module != "grey"]), decreasing = TRUE)
+      n_mods_cur <- length(mod_sizes)
+      keep_mods  <- names(mod_sizes)[seq_len(min(max_modules, n_mods_cur))]
+      if (n_mods_cur > max_modules) {
+        cat("  Reducing", n_mods_cur, "modules to top", max_modules, "by size...\n")
+        modules$module[!modules$module %in% c(keep_mods, "grey")] <- "grey"
+      }
+      # Sync color column with module — PlotDendrogram reads $color not $module
+      modules$color <- modules$module
+
+      # Update object with trimmed module assignments (fixes dendrogram + plots)
+      obj <- hdWGCNA::SetModules(obj, modules, wgcna_name = ct_tag)
+
+      hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = ct_tag)
+
+      write.table(modules,   file.path(ct_dir, paste0("modules_",  ct_tag, ".tsv")), sep = "\t", quote = FALSE, row.names = FALSE)
+      write.table(hub_genes, file.path(ct_dir, paste0("hubgenes_", ct_tag, ".tsv")), sep = "\t", quote = FALSE, row.names = FALSE)
+
+      # ── UMAP per module eigengene — only cells of this cell type, only kept modules ──
+      ct_cells  <- colnames(seurat_obj)[seurat_obj@meta.data[[annot_col]] == ct]
+      plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features = "hMEs",
+                                              order = TRUE, wgcna_name = ct_tag)
+      # Keep only panels for the retained modules (strip ME prefix if present)
+      plot_list <- plot_list[names(plot_list) %in%
+                               c(keep_mods, paste0("ME", keep_mods), paste0("hME", keep_mods))]
+      plot_list <- lapply(plot_list, function(p) {
+        p$data <- p$data[rownames(p$data) %in% ct_cells, , drop = FALSE]
+        p + ggplot2::theme(axis.text  = ggplot2::element_blank(),
+                           axis.ticks = ggplot2::element_blank(),
+                           legend.position = "none")
+      })
+      pdf(file.path(ct_dir, paste0("eigengenes_", ct_tag, ".pdf")), width = 12, height = 8)
+      print(patchwork::wrap_plots(plot_list, ncol = 4))
+      dev.off()
+
+      # ── Eigengene heatmap (viridis, module colour bar) ────────────────────────
+      MEs <- hdWGCNA::GetMEs(obj, harmonized = FALSE, wgcna_name = ct_tag)
+      if (!is.null(MEs) && ncol(MEs) > 0) {
+        me_cols_use <- colnames(MEs)[
+          (colnames(MEs) %in% keep_mods |
+           sub("^(ME|hME)", "", colnames(MEs)) %in% keep_mods) &
+          !grepl("^(ME|hME)?grey$|^0$", colnames(MEs))]
+        me_mat     <- t(as.matrix(MEs[, me_cols_use, drop = FALSE]))
+        mod_col    <- sub("^(ME|hME)", "", rownames(me_mat))
+        left_ha    <- ComplexHeatmap::rowAnnotation(
+          Module = ComplexHeatmap::anno_simple(mod_col,
+            col = setNames(mod_col, mod_col), width = grid::unit(0.5, "cm")))
+        pdf(file.path(ct_dir, paste0("eigengene_heatmap_", ct_tag, ".pdf")), width = 10,
+            height = max(4, nrow(me_mat) * 0.5 + 2))
+        ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_mat, name = "ME",
+          col = viridis::viridis(100), cluster_rows = TRUE, cluster_columns = TRUE,
+          left_annotation = left_ha, show_row_names = TRUE, row_labels = mod_col,
+          row_names_gp = grid::gpar(fontsize = 9, col = "black"),
+          show_column_names = FALSE,
+          column_title = paste0("Module eigengenes — ", gsub("_", " ", ct_tag)),
+          column_title_gp = grid::gpar(fontsize = 12, fontface = "bold")))
+        dev.off()
+      }
+
+      # ── Dendrogram ────────────────────────────────────────────────────────────
+      {
+        n_cells_ct <- length(ct_cells)
+        n_genes_ct <- n_genes_for_title
+        dend_title <- sprintf("Dendrogram — %s\n%d cells | %d DE genes",
+                              gsub("_", " ", ct_tag), n_cells_ct, n_genes_ct)
+        pdf(file.path(ct_dir, paste0("dendrogram_", ct_tag, ".pdf")), width = 12, height = 6)
+        hdWGCNA::PlotDendrogram(obj, main = dend_title, wgcna_name = ct_tag)
+        dev.off()
+      }
+
+      n_mods <- length(unique(modules$module[modules$module != "grey"]))
+      cat("  Modules found:", n_mods, "\n")
+
+      saveRDS(obj, file.path(ct_dir, paste0("hdwgcna_", ct_tag, ".rds")))
+
+      results[[ct]] <- list(modules = modules, hub_genes = hub_genes)
+
+    }
+  }
+
+  invisible(results)
+}
+
+
+# =============================================================================
+# plot_hdwgcna_network
+# =============================================================================
+# Reads hdWGCNA RDS objects saved by run_hdwgcna(), extracts the TOM matrix,
+# and for each cell type saves:
+#   edges_{ct}.tsv  — source, target, weight (filtered by tom_threshold)
+#   nodes_{ct}.tsv  — gene, module, kME, is_hub
+#   network_{ct}.pdf — co-expression network coloured by module, sized by kME
+#
+# Parameters:
+#   hdwgcna_dir   — directory containing cell-type subfolders (= dir_08)
+#   output_dir    — where to save outputs (same as hdwgcna_dir by default)
+#   tom_threshold — minimum TOM weight to include an edge (default 0.1)
+#   cell_types    — NULL = all; or character vector of specific cell types
+#   n_hub_label   — top N hub genes to label in the plot (default 5)
+plot_hdwgcna_network <- function(hdwgcna_dir,
+                                  output_dir    = hdwgcna_dir,
+                                  tom_threshold = 0.1,
+                                  cell_types    = NULL,
+                                  n_hub_label   = 5,
+                                  max_modules   = NULL) {
+
+  rds_files <- list.files(hdwgcna_dir, pattern = "^hdwgcna_.*\\.rds$",
+                           full.names = TRUE, recursive = TRUE)
+
+  if (!is.null(cell_types)) {
+    ct_tags   <- gsub("[^A-Za-z0-9_]", "_", cell_types)
+    rds_files <- rds_files[grepl(paste(ct_tags, collapse = "|"), basename(rds_files))]
+  }
+
+  if (length(rds_files) == 0) { message("No hdWGCNA RDS files found."); return(invisible(NULL)) }
+
+  net_dir <- file.path(output_dir, "network_wgcna")
+  dir.create(net_dir, showWarnings = FALSE)
+
+  for (rds_path in rds_files) {
+    ct_tag <- sub("^hdwgcna_", "", tools::file_path_sans_ext(basename(rds_path)))
+    ct_dir <- dirname(rds_path)
+    cat("\n── Network:", ct_tag, "──\n")
+
+    {
+      obj     <- readRDS(rds_path)
+      wn      <- ct_tag
+      modules <- hdWGCNA::GetModules(obj, wgcna_name = wn)
+      # Reduce to top max_modules by size
+      if (!is.null(max_modules)) {
+        mod_sizes <- sort(table(modules$module[modules$module != "grey"]), decreasing=TRUE)
+        if (length(mod_sizes) > max_modules) {
+          keep_mods <- names(mod_sizes)[seq_len(max_modules)]
+          modules$module[!modules$module %in% c(keep_mods, "grey")] <- "grey"
+        }
+      }
+      hubs    <- hdWGCNA::GetHubGenes(obj, n_hubs = n_hub_label, wgcna_name = wn)
+
+      # Load TOM directly from disk (avoids GetTOM path issues)
+      tom_files <- list.files(ct_dir, pattern = "_block\\..*\\.rda$", full.names = TRUE)
+      tom_file  <- if (length(tom_files) > 0) tom_files[1] else file.path(ct_dir, paste0(ct_tag, "_TOM.rda"))
+      tom_env  <- new.env(); load(tom_file, envir = tom_env)
+      TOM      <- as.matrix(get(ls(tom_env)[1], envir = tom_env))
+      gene_names <- modules$gene_name
+      if (nrow(TOM) == length(gene_names)) {
+        rownames(TOM) <- colnames(TOM) <- gene_names
+      }
+
+      # ── Edge list ──────────────────────────────────────────────────────────
+      tom_mat           <- TOM
+      tom_mat[lower.tri(tom_mat, diag = TRUE)] <- NA
+      edges <- which(!is.na(tom_mat) & tom_mat >= tom_threshold, arr.ind = TRUE)
+      edge_df <- data.frame(
+        source = rownames(tom_mat)[edges[, 1]],
+        target = colnames(tom_mat)[edges[, 2]],
+        weight = tom_mat[edges]
+      )
+      write.table(edge_df, file.path(ct_dir, paste0("edges_", ct_tag, ".tsv")),
+                  sep = "\t", quote = FALSE, row.names = FALSE)
+      cat("  Edges:", nrow(edge_df), "\n")
+
+      # ── Node list ──────────────────────────────────────────────────────────
+      kme_col  <- grep("^kME", colnames(modules), value = TRUE)[1]
+      node_df  <- data.frame(
+        gene   = modules$gene_name,
+        module = modules$module,
+        kME    = if (!is.na(kme_col)) modules[[kme_col]] else NA,
+        is_hub = modules$gene_name %in% hubs$gene_name
+      )
+      # Keep only nodes that appear in edges
+      nodes_in_edges <- unique(c(edge_df$source, edge_df$target))
+      node_df <- node_df[node_df$gene %in% nodes_in_edges, ]
+      write.table(node_df, file.path(ct_dir, paste0("nodes_", ct_tag, ".tsv")),
+                  sep = "\t", quote = FALSE, row.names = FALSE)
+
+      # ── Plot (ggraph) ──────────────────────────────────────────────────────
+      if (nrow(edge_df) > 0) {
+        edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
+        g       <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df)
+        mods    <- sort(unique(node_df$module))
+        pal <- setNames(mods, mods)
+
+        vdata <- node_df[match(igraph::V(g)$name, node_df$gene), ]
+
+        p <- ggraph::ggraph(g, layout = "graphopt") +
+          ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
+                                  color = "grey70", show.legend = FALSE) +
+          ggraph::scale_edge_width(range = c(0.1, 1.2)) +
+          ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
+          ggraph::geom_node_point(ggplot2::aes(size = vdata$kME,
+                                               color = vdata$module)) +
+          ggplot2::scale_color_manual(values = pal, name = "Module") +
+          ggplot2::scale_size(range = c(1.5, 6), name = "kME") +
+          ggraph::geom_node_label(
+            ggplot2::aes(label = ifelse(vdata$is_hub, igraph::V(g)$name, NA)),
+            size = 2.5, repel = TRUE, max.overlaps = 20,
+            label.padding = ggplot2::unit(0.1, "lines"),
+            label.size = 0.2, fill = "white", alpha = 0.85) +
+          ggplot2::labs(title = paste("Co-expression network —", gsub("_", " ", ct_tag)),
+                        subtitle = paste(nrow(edge_df), "edges |", nrow(node_df), "genes")) +
+          ggplot2::theme_void() +
+          ggplot2::theme(
+            plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
+            plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
+            legend.position = "right")
+
+        pdf(file.path(net_dir, paste0("network_", ct_tag, ".pdf")), width = 14, height = 12)
+        print(p)
+        dev.off()
+        cat("  Network PDF saved\n")
+      } else {
+        cat("  Skipped plot (", nrow(edge_df), "edges — adjust tom_threshold)\n")
+      }
+
+    }
+  }
+
+  invisible(NULL)
+}
+
+
+# =============================================================================
+# filter_hdwgcna_by_de
+# =============================================================================
+# Filters the hdWGCNA co-expression network to only DE genes per cell type.
+# Reads hdWGCNA RDS objects (from run_hdwgcna) and DESeq2 CSVs (from S16).
+# For each cell type saves:
+#   edges_DE_{ct}.tsv  — edges between DE genes only, with TOM weight
+#   nodes_DE_{ct}.tsv  — DE genes with module, kME, log2FC, padj
+#   network_DE_{ct}.pdf — network coloured by module, sized by |log2FC|
+#
+# Parameters:
+#   hdwgcna_dir — directory with cell-type subfolders from run_hdwgcna (dir_08)
+#   de_dir      — directory with DESeq2 CSVs from S16 (dir_06/volcano_tag)
+#   output_dir  — where to save outputs (same as hdwgcna_dir by default)
+#   padj_cut    — adjusted p-value threshold
+#   lfc_cut     — absolute log2FC threshold
+#   n_hub_label — top N hub genes to label in plot
+filter_hdwgcna_by_de <- function(hdwgcna_dir,
+                                  de_dirs,
+                                  output_dir    = hdwgcna_dir,
+                                  padj_cut      = 0.05,
+                                  lfc_cut       = 1,
+                                  n_hub_label   = 10,
+                                  tom_threshold = 0.1,
+                                  max_modules   = NULL
+) {
+
+  rds_files <- list.files(hdwgcna_dir, pattern = "^hdwgcna_.*\\.rds$",
+                           full.names = TRUE, recursive = TRUE)
+
+  if (length(rds_files) == 0) { message("No hdWGCNA RDS files found."); return(invisible(NULL)) }
+
+  net_dir <- file.path(output_dir, "network_wgcna")
+  dir.create(net_dir, showWarnings = FALSE)
+
+  for (rds_path in rds_files) {
+    ct_tag <- sub("^hdwgcna_", "", tools::file_path_sans_ext(basename(rds_path)))
+    ct_dir <- dirname(rds_path)
+    cat("\n── DE-filtered network:", ct_tag, "──\n")
+
+    {
+      ct_label   <- gsub("_", " ", ct_tag)
+      de_pattern <- paste0("DESeq2_", gsub(" ", "_", ct_label))
+
+      # Collect DE genes for this cell type across ALL contrast directories
+      de_files <- unlist(lapply(de_dirs, function(d)
+        list.files(d, pattern = de_pattern, full.names = TRUE)
+      ))
+
+      if (length(de_files) == 0) {
+        cat("  No DESeq2 files found for this cell type — skipping\n"); next
+      }
+
+      # Union of significant DE genes across all contrasts for this cell type
+      de_list <- lapply(de_files, function(f) {
+        df <- read.csv(f, row.names = 1)
+        df[!is.na(df$padj) & df$padj < padj_cut & abs(df$log2FoldChange) >= lfc_cut, ]
+      })
+      de_sig   <- do.call(rbind, de_list)
+      # Keep the row with max |log2FC| per gene (in case gene appears in multiple contrasts)
+      de_sig   <- de_sig[order(abs(de_sig$log2FoldChange), decreasing = TRUE), ]
+      de_sig   <- de_sig[!duplicated(rownames(de_sig)), ]
+      de_genes <- rownames(de_sig)
+
+      cat("  DE genes (this cell type, all contrasts):", length(de_genes), "\n")
+
+      obj     <- readRDS(rds_path)
+      wn      <- ct_tag
+      modules <- hdWGCNA::GetModules(obj, wgcna_name = wn)
+      # Reduce to top max_modules by size
+      if (!is.null(max_modules)) {
+        mod_sizes <- sort(table(modules$module[modules$module != "grey"]), decreasing=TRUE)
+        if (length(mod_sizes) > max_modules) {
+          keep_mods <- names(mod_sizes)[seq_len(max_modules)]
+          modules$module[!modules$module %in% c(keep_mods, "grey")] <- "grey"
+        }
+      }
+      hubs    <- hdWGCNA::GetHubGenes(obj, n_hubs = n_hub_label, wgcna_name = wn)
+
+      # Load TOM directly from disk (avoids GetTOM path issues)
+      tom_files <- list.files(ct_dir, pattern = "_block\\..*\\.rda$", full.names = TRUE)
+      tom_file  <- if (length(tom_files) > 0) tom_files[1] else file.path(ct_dir, paste0(ct_tag, "_TOM.rda"))
+      tom_env  <- new.env(); load(tom_file, envir = tom_env)
+      TOM      <- as.matrix(get(ls(tom_env)[1], envir = tom_env))
+      gene_names <- modules$gene_name
+      if (nrow(TOM) == length(gene_names)) {
+        rownames(TOM) <- colnames(TOM) <- gene_names
+      }
+
+      kme_col <- grep("^kME", colnames(modules), value = TRUE)[1]
+      node_df <- data.frame(
+        gene   = modules$gene_name,
+        module = modules$module,
+        kME    = if (!is.na(kme_col)) modules[[kme_col]] else NA,
+        is_hub = modules$gene_name %in% hubs$gene_name
+      )
+      node_df$log2FC <- de_sig[node_df$gene, "log2FoldChange"]
+      node_df$padj   <- de_sig[node_df$gene, "padj"]
+      node_df        <- node_df[node_df$gene %in% de_genes & !is.na(node_df$log2FC), ]
+
+
+      de_in_tom <- intersect(node_df$gene, rownames(TOM))
+      tom_sub   <- as.matrix(TOM)[de_in_tom, de_in_tom]
+      tom_sub[lower.tri(tom_sub, diag = TRUE)] <- NA
+      edges     <- which(!is.na(tom_sub) & tom_sub >= tom_threshold, arr.ind = TRUE)
+      edge_df   <- data.frame(
+        source = rownames(tom_sub)[edges[, 1]],
+        target = colnames(tom_sub)[edges[, 2]],
+        weight = tom_sub[edges]
+      )
+
+      write.table(edge_df, file.path(ct_dir, paste0("edges_DE_", ct_tag, ".tsv")),
+                  sep = "\t", quote = FALSE, row.names = FALSE)
+      write.table(node_df, file.path(ct_dir, paste0("nodes_DE_", ct_tag, ".tsv")),
+                  sep = "\t", quote = FALSE, row.names = FALSE)
+      cat("  DE edges:", nrow(edge_df), "| DE nodes:", nrow(node_df), "\n")
+
+
+      edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
+      g     <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df)
+      mods  <- sort(unique(node_df$module))
+      pal <- setNames(mods, mods)
+      vdata <- node_df[match(igraph::V(g)$name, node_df$gene), ]
+      lfc_q <- quantile(abs(vdata$log2FC), 0.85, na.rm=TRUE)
+
+      p <- ggraph::ggraph(g, layout = "graphopt") +
+        ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
+                                color = "grey70", show.legend = FALSE) +
+        ggraph::scale_edge_width(range = c(0.1, 1.5)) +
+        ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
+        ggraph::geom_node_point(ggplot2::aes(size  = abs(vdata$log2FC),
+                                             color = vdata$module)) +
+        ggplot2::scale_color_manual(values = pal, name = "Module") +
+        ggplot2::scale_size(range = c(1.5, 7), name = "|log2FC|") +
+        ggraph::geom_node_label(
+          ggplot2::aes(label = ifelse(vdata$is_hub | abs(vdata$log2FC) >= lfc_q,
+                                      igraph::V(g)$name, NA)),
+          size = 2.5, repel = TRUE, max.overlaps = 20,
+          label.padding = ggplot2::unit(0.1,"lines"),
+          label.size = 0.2, fill = "white", alpha = 0.85) +
+        ggplot2::labs(
+          title    = paste("DE co-expression network —", gsub("_"," ",ct_tag)),
+          subtitle = paste0(nrow(edge_df), " edges | ", nrow(node_df),
+                            " DE genes | padj<", padj_cut, " | |log2FC|>=", lfc_cut)) +
+        ggplot2::theme_void() +
+        ggplot2::theme(
+          plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
+          plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
+          legend.position = "right")
+
+      pdf(file.path(net_dir, paste0("network_DE_", ct_tag, ".pdf")), width=14, height=12)
+      print(p)
+      dev.off()
+      cat("  DE network PDF saved\n")
+
+      # ── Eigengene heatmap — solo módulos con genes DE ────────────────────────
+      {
+        MEs <- hdWGCNA::GetMEs(obj, harmonized = FALSE, wgcna_name = ct_tag)
+        if (!is.null(MEs) && ncol(MEs) > 0) {
+          me_mat <- t(as.matrix(MEs[, !grepl("^ME(grey|0)$", colnames(MEs))]))
+          de_per_mod <- sapply(gsub("^ME","",rownames(me_mat)), function(mod)
+            sum(modules$gene_name[modules$module == mod] %in% de_genes))
+          keep <- de_per_mod >= 3
+          if (sum(keep) >= 1) {
+            me_de     <- me_mat[keep,, drop=FALSE]
+            mod_col   <- gsub("^ME","", rownames(me_de))
+            left_ha   <- ComplexHeatmap::rowAnnotation(
+              Module = ComplexHeatmap::anno_simple(mod_col,
+                col = setNames(mod_col, mod_col), width = grid::unit(0.5,"cm")))
+            pdf(file.path(ct_dir, paste0("eigengene_heatmap_DE_", ct_tag, ".pdf")),
+                width=10, height=max(4, sum(keep)*0.5+2))
+            ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_de, name="ME",
+              col = viridis::viridis(100), cluster_rows=TRUE, cluster_columns=TRUE,
+              left_annotation=left_ha, show_row_names=TRUE, row_labels=mod_col,
+              row_names_gp=grid::gpar(fontsize=9, col="black"), show_column_names=FALSE,
+              column_title=paste0("Module eigengenes (DE) — ", gsub("_"," ",ct_tag)),
+              column_title_gp=grid::gpar(fontsize=12, fontface="bold")))
+            dev.off()
+            cat("  Eigengene DE heatmap saved\n")
+          }
+        }
+      }
+
+    }
+  }
+
+  invisible(NULL)
+}
+
+
 
 # =============================================================================
 # get_tfs_from_orgdb
@@ -3290,16 +3795,11 @@ build_logfc_heatmap <- function(logfc_table,
 # using GO:0003700 (DNA-binding transcription factor activity).
 # Works for any organism with GO annotation (Arabidopsis, human, mouse, etc.).
 get_tfs_from_orgdb <- function(orgdb, keytype = "TAIR") {
-  tryCatch({
-    tfs <- AnnotationDbi::select(orgdb,
-                                  keys    = "GO:0003700",
-                                  columns = keytype,
-                                  keytype = "GO")[[keytype]]
-    unique(stats::na.omit(tfs))
-  }, error = function(e) {
-    message("Could not retrieve TFs via GO:0003700 (", e$message, ")")
-    character(0)
-  })
+  tfs <- AnnotationDbi::select(orgdb,
+                               keys    = "GO:0003700",
+                               columns = keytype,
+                               keytype = "GO")[[keytype]]
+  unique(stats::na.omit(tfs))
 }
 
 
