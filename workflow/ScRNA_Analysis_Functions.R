@@ -3220,6 +3220,50 @@ run_simple_go_enrichment <- function(diff_table,
 }
 
 
+#' Run GO enrichment for one DESeq2 contrast
+#'
+#' Finds all DESeq2 CSV files for a contrast, keeps genes passing the adjusted
+#' p-value cutoff, and runs GO enrichment per cell type.
+#'
+#' @export
+run_go_enrichment_for_contrast <- function(results_dir,
+                                           output_dir,
+                                           orgdb,
+                                           keytype = "TAIR",
+                                           go_space = "BP",
+                                           padj_cutoff = 0.05,
+                                           contrast_tag) {
+
+  deseq2_files <- list.files(results_dir,
+                             pattern = "^DESeq2_.*\\.csv$",
+                             full.names = TRUE)
+
+  go_results <- list()
+
+  for (deseq2_file in deseq2_files) {
+    cell_type <- gsub("^DESeq2_|\\.csv$", "", basename(deseq2_file))
+
+    deseq2_results <- read.csv(deseq2_file, row.names = 1)
+    sig_genes <- rownames(deseq2_results)[deseq2_results$padj < padj_cutoff]
+
+    if (length(sig_genes) > 0) {
+      go_results[[cell_type]] <- run_simple_go_enrichment(
+        diff_table   = data.frame(gene_id = sig_genes),
+        output_dir   = output_dir,
+        orgdb        = orgdb,
+        keytype      = keytype,
+        go_space     = go_space,
+        padj_cutoff  = padj_cutoff,
+        cell_type    = cell_type,
+        contrast_tag = contrast_tag
+      )
+    }
+  }
+
+  invisible(go_results)
+}
+
+
 # =============================================================================
 # build_logfc_heatmap
 # =============================================================================

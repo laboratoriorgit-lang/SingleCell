@@ -189,29 +189,15 @@ go_orgdb    <- org.At.tair.db
 go_keytype  <- "TAIR"
 padj_cutoff <- 0.05
 
-deseq2_files <- list.files(file.path(dir_06, volcano_tag),
-                           pattern = "^DESeq2_.*\\.csv$",
-                           full.names = TRUE)
-
-for (deseq2_file in deseq2_files) {
-  cell_type <- gsub("^DESeq2_|\\.csv$", "", basename(deseq2_file))
-
-  deseq2_results <- read.csv(deseq2_file, row.names = 1)
-  sig_genes <- rownames(deseq2_results)[deseq2_results$padj < padj_cutoff]
-
-  if (length(sig_genes) > 0) {
-    run_simple_go_enrichment(
-      diff_table = data.frame(gene_id = sig_genes),
-      output_dir = file.path(dir_07, volcano_tag),
-      orgdb        = go_orgdb,
-      keytype      = go_keytype,
-      go_space = go_space,
-      padj_cutoff = padj_cutoff,
-      cell_type = cell_type,
-      contrast_tag = volcano_tag
-    )
-  }
-}
+go_results <- run_go_enrichment_for_contrast(
+  results_dir  = file.path(dir_06, volcano_tag),
+  output_dir   = file.path(dir_07, volcano_tag),
+  orgdb        = go_orgdb,
+  keytype      = go_keytype,
+  go_space     = go_space,
+  padj_cutoff  = padj_cutoff,
+  contrast_tag = volcano_tag
+)
 
 # =============================================================================
 
