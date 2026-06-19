@@ -223,10 +223,8 @@ build_logfc_heatmap(
 message("\n✓ SECTION 20 COMPLETE: Log2FC heatmap saved")
 # SECTION 21 - COEXPRESSION NETWORK (hdWGCNA) - UNIFICADO
 # =============================================================================
-# Filtra la matriz a los DEGs de la tabla resumen y corre hdWGCNA UNA SOLA VEZ
-# sobre todas las celulas. Metacells se construyen por celltype x sample para
-# preservar la estructura biologica, pero WGCNA actua sobre el pool completo
-# de genes diferenciales generando un unico set de modulos.
+# Builds one hdWGCNA network using the genes from the log2FC heatmap table.
+# Metacells are built by cell type and sample, but the final network is unified.
 #
 # Edit here:
 #   n_metacells = metacells per celltype x sample
@@ -235,108 +233,16 @@ wgcna_name  <- "unified"
 n_metacells <- 25
 soft_power  <- NULL
 
-# -- 1. Leer DEGs desde tabla resumen -----------------------------------------
-de_table_path <- file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv")
-de_table <- read.table(de_table_path, header = TRUE, sep = "\t",
-                       row.names = 1, check.names = FALSE)
-de_genes <- rownames(de_table)[apply(!is.na(de_table), 1, any)]
-de_genes <- intersect(de_genes, rownames(pbmc_harmony))
-cat(sprintf("  DEGs para hdWGCNA: %d / %d genes totales\n",
-            length(de_genes), nrow(pbmc_harmony)))
-
-# -- 2. Filtrar objeto a DEGs -------------------------------------------------
-pbmc_de <- pbmc_harmony[de_genes, ]
-pbmc_de$all_group <- "all"
-
-# -- 3. Setup hdWGCNA ---------------------------------------------------------
-message("  Configurando hdWGCNA unificado...")
-obj <- hdWGCNA::SetupForWGCNA(pbmc_de, gene_select = "all", wgcna_name = wgcna_name)
-
-# Metacells por celltype x sample — preserva estructura biologica
-# ident.group = "all_group" para usar todos los metacells juntos en SetDatExpr
-obj <- hdWGCNA::MetacellsByGroups(
-  seurat_obj  = obj,
-  group.by    = c(pseudobulk_annot_col, "orig.ident", "all_group"),
-  reduction   = "harmony",
-  k           = n_metacells,
-  max_shared  = 10,
-  ident.group = "all_group",
-  wgcna_name  = wgcna_name
+run_unified_hdwgcna(
+  seurat_obj    = pbmc_harmony,
+  de_table_path = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
+  output_dir    = dir_08,
+  annot_col     = pseudobulk_annot_col,
+  sample_col    = "orig.ident",
+  wgcna_name    = wgcna_name,
+  n_metacells   = n_metacells,
+  soft_power    = soft_power
 )
-obj <- hdWGCNA::NormalizeMetacells(obj, wgcna_name = wgcna_name)
-
-# SetDatExpr sobre TODOS los metacells juntos
-obj <- hdWGCNA::SetDatExpr(obj, group_name = "all", group.by = "all_group",
-                            assay = "RNA", layer = "data", wgcna_name = wgcna_name)
-
-# -- 4. Soft power ------------------------------------------------------------
-message("  Detectando soft power...")
-obj <- hdWGCNA::TestSoftPowers(obj, networkType = "signed hybrid", wgcna_name = wgcna_name)
-sp <- if (!is.null(soft_power)) soft_power else {
-  pwr_tbl <- hdWGCNA::GetPowerTable(obj, wgcna_name = wgcna_name)
-  best    <- pwr_tbl$Power[which(pwr_tbl$SFT.R.sq >= 0.8)[1]]
-  if (is.na(best)) 6L else as.integer(best)
-}
-cat("  Soft power:", sp, "\n")
-
-# -- 5. Construir red y detectar modulos --------------------------------------
-message("  Construyendo red TOM...")
-obj <- hdWGCNA::ConstructNetwork(
-  obj,
-  soft_power    = sp,
-  networkType   = "signed hybrid",
-  tom_outdir    = sub("^/workspace/", "", dir_08),
-  maxBlockSize  = max(length(de_genes) + 1L, 30000L),
-  useDiskCache  = FALSE,
-  overwrite_tom = TRUE,
-  wgcna_name    = wgcna_name
-)
-obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = wgcna_name)
-obj <- hdWGCNA::ModuleConnectivity(obj, group.by = "all_group",
-                                    group_name = "all", wgcna_name = wgcna_name)
-
-modules   <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)
-hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = wgcna_name)
-
-# -- 6. Guardar ---------------------------------------------------------------
-write.table(modules,   file.path(dir_08, "modules_unified.tsv"),  sep="\t", quote=FALSE, row.names=FALSE)
-write.table(hub_genes, file.path(dir_08, "hubgenes_unified.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
-saveRDS(obj, file.path(dir_08, "hdwgcna_unified.rds"))
-n_mods <- length(unique(modules$module[modules$module != "grey"]))
-cat(sprintf("  Modulos detectados: %d\n", n_mods))
-
-# -- 7. Plots: UMAP modulos, heatmap eigengenes, dendrograma ------------------
-plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features="hMEs", order=TRUE, wgcna_name=wgcna_name)
-plot_list <- plot_list[!grepl("grey", names(plot_list), ignore.case=TRUE)]
-plot_list <- lapply(plot_list, function(p) p + ggplot2::theme(
-  axis.text=ggplot2::element_blank(), axis.ticks=ggplot2::element_blank()))
-pdf(file.path(dir_08, "umap_modules_unified.pdf"), width=16, height=12)
-print(patchwork::wrap_plots(plot_list, ncol=4) +
-      patchwork::plot_annotation(
-        title    = "UMAP Modulos WGCNA unificado",
-        subtitle = sprintf("%d DEGs | %d modulos", length(de_genes), n_mods)))
-dev.off()
-
-MEs <- hdWGCNA::GetMEs(obj, harmonized=FALSE, wgcna_name=wgcna_name)
-if (!is.null(MEs) && ncol(MEs) > 0) {
-  me_cols <- colnames(MEs)[!grepl("grey|^0$", colnames(MEs), ignore.case=TRUE)]
-  if (length(me_cols) > 0) {
-    me_mat  <- t(as.matrix(MEs[, me_cols, drop=FALSE]))
-    mod_col <- sub("^(ME|hME)", "", rownames(me_mat))
-    pdf(file.path(dir_08, "eigengene_heatmap_unified.pdf"),
-        width=12, height=max(4, nrow(me_mat)*0.5+2))
-    ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_mat, name="ME",
-      col=viridis::viridis(100), cluster_rows=TRUE, cluster_columns=TRUE,
-      show_row_names=TRUE, row_labels=mod_col, show_column_names=FALSE,
-      column_title=sprintf("Module eigengenes unificado (%d DEGs)", length(de_genes))))
-    dev.off()
-  }
-}
-pdf(file.path(dir_08, "dendrogram_unified.pdf"), width=14, height=6)
-hdWGCNA::PlotDendrogram(obj,
-  main=sprintf("Dendrograma unificado | %d DEGs | %d modulos", length(de_genes), n_mods),
-  wgcna_name=wgcna_name)
-dev.off()
 
 message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
 
@@ -344,35 +250,20 @@ message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
 # =============================================================================
 # SECTION 22 — NETWORK EXPORT & VISUALIZATION
 # =============================================================================
-# Reads the hdWGCNA objects saved by Section 21 and for each cell type:
-#   • Exports edges (source, target, weight) and nodes (gene, module, kME)
-#   • Plots a co-expression network PDF coloured by module, sized by kME
+# Reads the unified hdWGCNA object from Section 21 and saves:
+#   edges, nodes and a co-expression network PDF.
 #
 # Edit here:
 #   tom_threshold = lower gives more edges; higher gives simpler networks
-#   cell_types_network = NULL for all
 #   n_hub_label = number of hub genes labelled in the plot
-tom_threshold      <- 0.1
-cell_types_network <- NULL
-n_hub_label        <- 5
+tom_threshold <- 0.1
+n_hub_label   <- 5
 
 plot_hdwgcna_network(
   hdwgcna_dir   = dir_08,
   output_dir    = dir_08,
   tom_threshold = tom_threshold,
-  cell_types    = cell_types_network,
   n_hub_label   = n_hub_label
 )
 
 message("\n✓ SECTION 22 COMPLETE: Network files and plots saved")
-
-
-# =============================================================================
-# SECTION 23 — OMITTED
-# =============================================================================
-# The network in Sections 21-22 is unified, not one network per cell type.
-# The old DE-filtered network helper expects cell-type-specific hdWGCNA RDS
-# files, so it does not apply to this unified-network design.
-#
-# Capitulo 2 ends at Section 22:
-#   DESeq2 + volcano + GO + log2FC heatmap + unified hdWGCNA network.

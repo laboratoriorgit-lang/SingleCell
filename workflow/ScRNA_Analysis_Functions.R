@@ -1497,7 +1497,7 @@ render_volcano_plots <- function(results_dir,
     return(invisible(list()))
   }
 
-  pdf(file.path(output_dir, pdf_name), width = 12, height = 6)
+  pdf(file.path(output_dir, pdf_name), width = 18, height = 18)
   on.exit(dev.off(), add = TRUE)
 
   plots <- list()
@@ -1510,8 +1510,8 @@ render_volcano_plots <- function(results_dir,
     ggsave(
       filename = file.path(output_dir, paste0(tools::file_path_sans_ext(basename(file)), ".png")),
       plot     = p,
-      width    = 8,
-      height   = 6,
+      width    = 18,
+      height   = 18,
       dpi      = 300
     )
 
@@ -1669,8 +1669,8 @@ plot_marker_dotplot <- function(seurat_obj,
                                      clusters_remove = NULL,
                                      rename_map      = NULL,
                                      outfile         = NULL,
-                                     width           = 20,
-                                     height          = 10,
+                                     width           = 18,
+                                     height          = 18,
                                      dot_scale       = 12,
                                      base_size       = 18) {
 
@@ -2161,7 +2161,7 @@ run_coexpression_cluster_suite <- function(diff_table,
   breaks_seq  <- seq(breaks[1], breaks[2], length.out = 80)
   color_scale <- colorRampPalette(c("blue", "black", "yellow"))(length(breaks_seq) - 1)
 
-  pdf(file.path(output_dir, heatmap_pdf), width = 10, height = 20)
+  pdf(file.path(output_dir, heatmap_pdf), width = 18, height = 18)
   heatmap_obj <- pheatmap(
     Mz,
     cluster_rows      = hc_rows,
@@ -2218,7 +2218,7 @@ run_coexpression_cluster_suite <- function(diff_table,
   tom_order <- gene_tree$order
   tom_plot_mat <- TOM[tom_order, tom_order, drop = FALSE]
   tom_plot_ann <- tom_annotation[tom_order, , drop = FALSE]
-  pdf(file.path(output_dir, tom_pdf), width = 10, height = 10)
+  pdf(file.path(output_dir, tom_pdf), width = 18, height = 18)
   pheatmap(
     tom_plot_mat,
     cluster_rows      = FALSE,
@@ -2375,7 +2375,7 @@ build_heatmap_clusters <- function(Mz,
   breaks_seq  <- seq(breaks[1], breaks[2], length.out = 80)
   color_scale <- colorRampPalette(c("blue", "black", "yellow"))(length(breaks_seq) - 1)
 
-  pdf(file.path(output_dir, heatmap_pdf), width = 10, height = 20)
+  pdf(file.path(output_dir, heatmap_pdf), width = 18, height = 18)
   pheatmap(
     Mz,
     cluster_rows      = hc_rows,
@@ -2478,7 +2478,7 @@ build_coexpression_modules <- function(Mz,
   tom_order <- gene_tree$order
   tom_plot_mat <- TOM[tom_order, tom_order, drop = FALSE]
   tom_plot_ann <- tom_annotation[tom_order, , drop = FALSE]
-  pdf(file.path(output_dir, tom_pdf), width = 10, height = 10)
+  pdf(file.path(output_dir, tom_pdf), width = 18, height = 18)
   pheatmap(
     tom_plot_mat,
     cluster_rows      = FALSE,
@@ -2685,7 +2685,7 @@ run_pseudobulk_pipeline <- function(obj,
   pseudobulk <- generate_pseudobulk(obj, group_by = "orig.ident")
   ggsave(file.path(dir_pseudobulk, "pseudobulk_correlation.pdf"),
          plot_replicate_correlation(pseudobulk$by_sample),
-         width = 8, height = 8, dpi = 300)
+         width = 18, height = 18, dpi = 300)
 
   # ── [2/6] Per-cell-type subsets + pseudo-replicates ──────────────────────────
   message("[2/6] Building cell-type subsets and pseudo-replicates...")
@@ -2724,7 +2724,7 @@ run_pseudobulk_pipeline <- function(obj,
     if (!length(csv_files)) { message("  No CSV for: ", tag); next }
 
     pdf(file.path(dir_volcano, paste0("VolcanoPlots_", tag, ".pdf")),
-        width = 12, height = 6)
+        width = 18, height = 18)
     plots <- list()
     for (f in csv_files) {
       plots <- c(plots, list(plot_volcano(f, padj_cut = padj_cut, lfc_cut = lfc_cut)))
@@ -2761,7 +2761,7 @@ run_pseudobulk_pipeline <- function(obj,
     matriz <- as.matrix(column_to_rownames(tabla_logfc, "gene_id"))
     matriz[is.na(matriz)] <- 0
     if (nrow(matriz) > 1) {
-      pdf(file.path(diff_dir, paste0("heatmap_", tag, ".pdf")), width = 14, height = 18)
+      pdf(file.path(diff_dir, paste0("heatmap_", tag, ".pdf")), width = 18, height = 18)
       plot_heatmap(matriz)
       dev.off()
     }
@@ -2929,7 +2929,7 @@ plot_pipeline_workflow <- function(outfile) {
     xlim(0, 10) + ylim(-6.3, 10.2)
 
   dir.create(dirname(outfile), recursive = TRUE, showWarnings = FALSE)
-  ggsave(outfile, p, width = 12, height = 20, dpi = 300)
+  ggsave(outfile, p, width = 18, height = 18, dpi = 300)
   message("Workflow figure saved: ", outfile)
   invisible(p)
 }
@@ -3211,7 +3211,7 @@ run_simple_go_enrichment <- function(diff_table,
   # Generate plots with title
   plot_title <- if (!is.null(cell_type)) paste0("GO Enrichment - ", cell_type) else "GO Enrichment"
 
-  pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 12, height = 8)
+  pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 18, height = 18)
   p <- dotplot(go_result, showCategory = 20) + ggtitle(plot_title)
   print(p)
   dev.off()
@@ -3306,11 +3306,150 @@ build_logfc_heatmap <- function(logfc_table,
   )
 
   pdf(file.path(output_dir, paste0("heatmap_", contrast_tag, ".pdf")),
-      width = 12, height = 16)
+      width = 18, height = 18)
   ComplexHeatmap::draw(ht, merge_legend = TRUE, padding = grid::unit(c(2, 2, 2, 10), "mm"))
   dev.off()
 
   invisible(NULL)
+}
+
+
+# =============================================================================
+# run_unified_hdwgcna
+# =============================================================================
+# Builds one hdWGCNA network from the genes in the log2FC heatmap table.
+# Saves modules, hub genes, the hdWGCNA object and three 18 x 18 plots.
+run_unified_hdwgcna <- function(seurat_obj,
+                                de_table_path,
+                                output_dir,
+                                annot_col,
+                                sample_col = "orig.ident",
+                                wgcna_name = "unified",
+                                n_metacells = 25,
+                                soft_power = NULL) {
+
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  de_table <- read.table(de_table_path, header = TRUE, sep = "\t",
+                         row.names = 1, check.names = FALSE)
+  de_genes <- rownames(de_table)[apply(!is.na(de_table), 1, any)]
+  de_genes <- intersect(de_genes, rownames(seurat_obj))
+
+  seurat_de <- seurat_obj[de_genes, ]
+  seurat_de$all_group <- "all"
+
+  obj <- hdWGCNA::SetupForWGCNA(seurat_de, gene_select = "all",
+                                wgcna_name = wgcna_name)
+  obj <- hdWGCNA::MetacellsByGroups(
+    seurat_obj  = obj,
+    group.by    = c(annot_col, sample_col, "all_group"),
+    reduction   = "harmony",
+    k           = n_metacells,
+    max_shared  = 10,
+    ident.group = "all_group",
+    wgcna_name  = wgcna_name
+  )
+  obj <- hdWGCNA::NormalizeMetacells(obj, wgcna_name = wgcna_name)
+  obj <- hdWGCNA::SetDatExpr(obj, group_name = "all", group.by = "all_group",
+                             assay = "RNA", layer = "data",
+                             wgcna_name = wgcna_name)
+
+  obj <- hdWGCNA::TestSoftPowers(obj, networkType = "signed hybrid",
+                                 wgcna_name = wgcna_name)
+  selected_power <- soft_power
+  if (is.null(selected_power)) {
+    power_table <- hdWGCNA::GetPowerTable(obj, wgcna_name = wgcna_name)
+    selected_power <- power_table$Power[which(power_table$SFT.R.sq >= 0.8)[1]]
+    if (is.na(selected_power)) selected_power <- 6L
+  }
+  selected_power <- as.integer(selected_power)
+
+  obj <- hdWGCNA::ConstructNetwork(
+    obj,
+    soft_power    = selected_power,
+    networkType   = "signed hybrid",
+    tom_outdir    = sub("^/workspace/", "", output_dir),
+    maxBlockSize  = max(length(de_genes) + 1L, 30000L),
+    useDiskCache  = FALSE,
+    overwrite_tom = TRUE,
+    wgcna_name    = wgcna_name
+  )
+  obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = wgcna_name)
+  obj <- hdWGCNA::ModuleConnectivity(obj, group.by = "all_group",
+                                     group_name = "all",
+                                     wgcna_name = wgcna_name)
+
+  modules   <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)
+  hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = wgcna_name)
+  n_modules <- length(unique(modules$module[modules$module != "grey"]))
+
+  write.table(modules, file.path(output_dir, "modules_unified.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(hub_genes, file.path(output_dir, "hubgenes_unified.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(data.frame(
+    de_genes = length(de_genes),
+    soft_power = selected_power,
+    modules = n_modules
+  ), file.path(output_dir, "hdwgcna_summary.tsv"),
+  sep = "\t", quote = FALSE, row.names = FALSE)
+  saveRDS(obj, file.path(output_dir, "hdwgcna_unified.rds"))
+
+  plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features = "hMEs",
+                                          order = TRUE,
+                                          wgcna_name = wgcna_name)
+  plot_list <- plot_list[!grepl("grey", names(plot_list), ignore.case = TRUE)]
+  plot_list <- lapply(plot_list, function(p) {
+    p + ggplot2::theme(axis.text = ggplot2::element_blank(),
+                       axis.ticks = ggplot2::element_blank())
+  })
+
+  pdf(file.path(output_dir, "umap_modules_unified.pdf"), width = 18, height = 18)
+  print(patchwork::wrap_plots(plot_list, ncol = 4) +
+          patchwork::plot_annotation(
+            title = "UMAP modules - unified WGCNA",
+            subtitle = sprintf("%d DEGs | %d modules", length(de_genes), n_modules)
+          ))
+  dev.off()
+
+  module_eigengenes <- hdWGCNA::GetMEs(obj, harmonized = FALSE,
+                                       wgcna_name = wgcna_name)
+  if (!is.null(module_eigengenes) && ncol(module_eigengenes) > 0) {
+    me_cols <- colnames(module_eigengenes)[
+      !grepl("grey|^0$", colnames(module_eigengenes), ignore.case = TRUE)
+    ]
+    if (length(me_cols) > 0) {
+      me_mat <- t(as.matrix(module_eigengenes[, me_cols, drop = FALSE]))
+      mod_col <- sub("^(ME|hME)", "", rownames(me_mat))
+
+      pdf(file.path(output_dir, "eigengene_heatmap_unified.pdf"),
+          width = 18, height = 18)
+      ComplexHeatmap::draw(ComplexHeatmap::Heatmap(
+        me_mat,
+        name = "ME",
+        col = viridis::viridis(100),
+        cluster_rows = TRUE,
+        cluster_columns = TRUE,
+        show_row_names = TRUE,
+        row_labels = mod_col,
+        show_column_names = FALSE,
+        column_title = sprintf("Unified module eigengenes (%d DEGs)",
+                               length(de_genes))
+      ))
+      dev.off()
+    }
+  }
+
+  pdf(file.path(output_dir, "dendrogram_unified.pdf"), width = 18, height = 18)
+  hdWGCNA::PlotDendrogram(
+    obj,
+    main = sprintf("Unified dendrogram | %d DEGs | %d modules",
+                   length(de_genes), n_modules),
+    wgcna_name = wgcna_name
+  )
+  dev.off()
+
+  invisible(list(modules = modules, hub_genes = hub_genes))
 }
 
 
@@ -3451,7 +3590,7 @@ run_hdwgcna <- function(seurat_obj,
                            axis.ticks = ggplot2::element_blank(),
                            legend.position = "none")
       })
-      pdf(file.path(ct_dir, paste0("eigengenes_", ct_tag, ".pdf")), width = 12, height = 8)
+      pdf(file.path(ct_dir, paste0("eigengenes_", ct_tag, ".pdf")), width = 18, height = 18)
       print(patchwork::wrap_plots(plot_list, ncol = 4))
       dev.off()
 
@@ -3467,8 +3606,8 @@ run_hdwgcna <- function(seurat_obj,
         left_ha    <- ComplexHeatmap::rowAnnotation(
           Module = ComplexHeatmap::anno_simple(mod_col,
             col = setNames(mod_col, mod_col), width = grid::unit(0.5, "cm")))
-        pdf(file.path(ct_dir, paste0("eigengene_heatmap_", ct_tag, ".pdf")), width = 10,
-            height = max(4, nrow(me_mat) * 0.5 + 2))
+        pdf(file.path(ct_dir, paste0("eigengene_heatmap_", ct_tag, ".pdf")), width = 18,
+            height = 18)
         ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_mat, name = "ME",
           col = viridis::viridis(100), cluster_rows = TRUE, cluster_columns = TRUE,
           left_annotation = left_ha, show_row_names = TRUE, row_labels = mod_col,
@@ -3485,7 +3624,7 @@ run_hdwgcna <- function(seurat_obj,
         n_genes_ct <- n_genes_for_title
         dend_title <- sprintf("Dendrogram — %s\n%d cells | %d DE genes",
                               gsub("_", " ", ct_tag), n_cells_ct, n_genes_ct)
-        pdf(file.path(ct_dir, paste0("dendrogram_", ct_tag, ".pdf")), width = 12, height = 6)
+        pdf(file.path(ct_dir, paste0("dendrogram_", ct_tag, ".pdf")), width = 18, height = 18)
         hdWGCNA::PlotDendrogram(obj, main = dend_title, wgcna_name = ct_tag)
         dev.off()
       }
@@ -3626,7 +3765,7 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
             plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
             legend.position = "right")
 
-        pdf(file.path(net_dir, paste0("network_", ct_tag, ".pdf")), width = 14, height = 12)
+        pdf(file.path(net_dir, paste0("network_", ct_tag, ".pdf")), width = 18, height = 18)
         print(p)
         dev.off()
         cat("  Network PDF saved\n")
@@ -3791,7 +3930,7 @@ filter_hdwgcna_by_de <- function(hdwgcna_dir,
           plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
           legend.position = "right")
 
-      pdf(file.path(net_dir, paste0("network_DE_", ct_tag, ".pdf")), width=14, height=12)
+      pdf(file.path(net_dir, paste0("network_DE_", ct_tag, ".pdf")), width=18, height=18)
       print(p)
       dev.off()
       cat("  DE network PDF saved\n")
@@ -3811,7 +3950,7 @@ filter_hdwgcna_by_de <- function(hdwgcna_dir,
               Module = ComplexHeatmap::anno_simple(mod_col,
                 col = setNames(mod_col, mod_col), width = grid::unit(0.5,"cm")))
             pdf(file.path(ct_dir, paste0("eigengene_heatmap_DE_", ct_tag, ".pdf")),
-                width=10, height=max(4, sum(keep)*0.5+2))
+                width=18, height=18)
             ComplexHeatmap::draw(ComplexHeatmap::Heatmap(me_de, name="ME",
               col = viridis::viridis(100), cluster_rows=TRUE, cluster_columns=TRUE,
               left_annotation=left_ha, show_row_names=TRUE, row_labels=mod_col,
@@ -4205,7 +4344,7 @@ generate_network_pdf <- function(results,
   if (!length(results)) { message("No results to plot for ", method_name); return(invisible(NULL)) }
 
   pdf_path <- file.path(output_dir, paste0(method_name, "_network_report.pdf"))
-  pdf(pdf_path, width = 12, height = 10)
+  pdf(pdf_path, width = 18, height = 18)
 
   # ── Cover page with description ─────────────────────────────────────────────
   grid::grid.newpage()
@@ -4383,7 +4522,7 @@ visualize_network_per_cluster <- function(network_results,
   }
 
   pdf_path <- file.path(output_dir, paste0(method_name, "_network_visualization.pdf"))
-  pdf(pdf_path, width = 14, height = 11)
+  pdf(pdf_path, width = 18, height = 18)
 
   grid::grid.newpage()
   grid::grid.text(paste0(method_name, " - Network Visualization"),
@@ -4479,7 +4618,7 @@ generate_cluster_profile_report <- function(cluster_assignments,
   clusters_to_plot <- unique(cluster_assignments$cluster[cluster_assignments$cluster != "grey"])
   pdf_path <- file.path(output_dir, paste0(method_name, "_cluster_profiles.pdf"))
 
-  pdf(pdf_path, width = 14, height = 11)
+  pdf(pdf_path, width = 18, height = 18)
 
   grid::grid.newpage()
   grid::grid.text("Gene Cluster Profiles",
@@ -4800,7 +4939,7 @@ test_network_thresholds <- function(heatmap_results,
 
   # Generate comparison PDF
   pdf_path <- file.path(output_dir, paste0(method, "_threshold_comparison.pdf"))
-  pdf(pdf_path, width = 14, height = 11)
+  pdf(pdf_path, width = 18, height = 18)
 
   # Title page
   grid::grid.newpage()
