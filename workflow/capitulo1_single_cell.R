@@ -237,7 +237,7 @@ elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
   labs(x = "Number of clusters (k)", y = "Within-cluster sum of squares") +
   theme_minimal()
 
-save_pdf(elbow_plot, "elbow_plot.pdf", w = 8, h = 6)
+save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
 
 # ── 5b. Clustree ──────────────────────────────────────────────────────────────
 clu <- pbmc_harmony %>%
@@ -248,7 +248,7 @@ clu <- pbmc_harmony %>%
 for (res in resolutions_test)
   clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
 
-save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree.pdf", w = 14, h = 14)
+save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree.pdf", w = 18, h = 18)
 
 
 # =============================================================================
@@ -299,7 +299,7 @@ plot_marker_dotplot(
   marker_table,
   annot_col = "seurat_clusters",
   outfile   = file.path(output_dir, "dotplot_marker_table_preannotation.pdf"),
-  width = 20, height = 10
+  width = 18, height = 18
 )
 
 
@@ -333,7 +333,7 @@ plot_marker_dotplot(
   marker_table,
   annot_col = "celltype", # uses the newly assigned annotation column
   outfile   = file.path(output_dir, "dotplot_marker_table_annotation_biblio.pdf"),
-  width = 20, height = 10
+  width = 18, height = 18
 )
 
 save_pdf(DimPlot(pbmc_harmony, group.by = "celltype",
@@ -351,7 +351,7 @@ plot_marker_dotplot(
   marker_table,
   annot_col = "celltype_reference", # uses the newly assigned annotation column
   outfile   = file.path(output_dir, "dotplot_marker_table_annotation_reference.pdf"),
-  width = 20, height = 10
+  width = 18, height = 18
 )
 
 save_pdf(DimPlot(pbmc_harmony, group.by = "celltype_reference",
@@ -385,7 +385,7 @@ for (res in resolutions_test)
 save_pdf(
   clustree(clu, prefix = "RNA_snn_res.",
            node_label = "celltype_reference", node_label_aggr = "Mode"),
-  "clustree_annotated.pdf", w = 14, h = 14
+  "clustree_annotated.pdf", w = 18, h = 18
 )
 
 
@@ -419,7 +419,7 @@ n_genes <- length(genes_of_interest)
 save_vln(VlnPlot(pbmc_harmony, features = gene),                  "vln_gene_all.pdf")
 save_pdf(FeaturePlot(pbmc_harmony, features = gene),              "feature_gene_all.pdf")
 save_vln(VlnPlot(pbmc_harmony, features = genes_of_interest),     "vln_geneset_all.pdf",     n = n_genes)
-save_pdf(FeaturePlot(pbmc_harmony, features = genes_of_interest), "feature_geneset_all.pdf", h = 8 * n_genes)
+save_pdf(FeaturePlot(pbmc_harmony, features = genes_of_interest), "feature_geneset_all.pdf", w = 18, h = 18)
 
 # ── 10b. Cell type of interest ────────────────────────────────────────────────
 sub_obj <- subset(pbmc_harmony, idents = celltype)
@@ -427,7 +427,7 @@ sub_obj <- subset(pbmc_harmony, idents = celltype)
 save_vln(VlnPlot(sub_obj, features = gene),                  "vln_gene_celltype.pdf")
 save_pdf(FeaturePlot(sub_obj, features = gene),              "feature_gene_celltype.pdf")
 save_vln(VlnPlot(sub_obj, features = genes_of_interest),     "vln_geneset_celltype.pdf",     n = n_genes)
-save_pdf(FeaturePlot(sub_obj, features = genes_of_interest), "feature_geneset_celltype.pdf", h = 8 * n_genes)
+save_pdf(FeaturePlot(sub_obj, features = genes_of_interest), "feature_geneset_celltype.pdf", w = 18, h = 18)
 
 
 # =============================================================================

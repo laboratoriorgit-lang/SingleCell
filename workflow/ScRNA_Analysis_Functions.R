@@ -1030,7 +1030,7 @@ plot_subcluster_umap <- function(obj, label, output_dir) {
   p <- DimPlot(obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
     ggtitle(paste0(label, " — subclusters"))
   filename <- paste0("subcluster_", tolower(gsub(" ", "_", label)), ".pdf")
-  ggsave(file.path(output_dir, filename), p, width = 10, height = 8, dpi = 300)
+  ggsave(file.path(output_dir, filename), p, width = 18, height = 18, dpi = 300)
   invisible(p)
 }
 
@@ -1100,7 +1100,7 @@ save_subcluster_composite <- function(subcluster_list, marker_table, output_dir,
   n_marker_rows <- ceiling(nrow(marker_table) / n_marker_cols)
   path <- file.path(output_dir, filename)
 
-  pdf(path, width = max(20, n_marker_cols * 4), height = 10 + n_marker_rows * 4)
+  pdf(path, width = 18, height = 18)
 
   # For each cell type: UMAP page → markers page
   for (x in subcluster_list) {
@@ -2575,21 +2575,21 @@ run_go_for_gene_clusters <- function(assignments,
 }
 
 # ── Plot-saving helpers ────────────────────────────────────────────────────────
-# save_pdf(plot, "name.pdf")             — UMAP / FeaturePlot  (10 × 8)
-# save_vln(plot, "name.pdf")             — VlnPlot single gene  (14 × 6)
-# save_vln(plot, "name.pdf", n = k)      — VlnPlot k genes      (14 × 6k)
+# save_pdf(plot, "name.pdf")             — standard plot (18 × 18)
+# save_vln(plot, "name.pdf")             — violin plot (18 × 18)
+# save_vln(plot, "name.pdf", n = k)      — violin plot (18 × 18)
 # save_qc(plot_list, "name.pdf")         — stacked QC grid
 
-save_pdf <- function(plot, file, w = 10, h = 8)
+save_pdf <- function(plot, file, w = 18, h = 18)
   ggsave(file.path(output_dir, file), plot, width = w, height = h,
          dpi = 300, limitsize = FALSE)
 
 save_vln <- function(plot, file, n = 1)
-  save_pdf(plot, file, w = 14, h = 6 * n)
+  save_pdf(plot, file, w = 18, h = 18)
 
 save_qc <- function(plot_list, file)
   ggsave(file.path(output_dir, file), wrap_plots(plot_list, ncol = 1),
-         width = 14, height = 6 * length(plot_list), dpi = 300, bg = "white")
+         width = 18, height = 18, dpi = 300, bg = "white")
 
 
 # =============================================================================

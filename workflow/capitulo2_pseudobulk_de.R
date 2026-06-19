@@ -56,8 +56,16 @@ message("\n✓ SECTION 14 COMPLETE: Cell-type subsets created")
 # Assigns random pseudo-replicates within each condition for every cell type.
 # Only subsets containing at least two conditions are kept for Part 2.
 #
+# Important columns:
+#   condition  = biological group used for DESeq2 comparisons
+#                examples: "0N", "0.5N", "5N"
+#   orig.ident = original CellRanger sample/library
+#                examples: "0N", "0.5N_R1", "5N_R1"
+#   replicate  = pseudo-replicate created here inside each condition
+#                examples: "0N_rep1", "0N_rep2", "5N_rep3"
+#
 # Edit here:
-#   NULL = use all conditions
+#   NULL = use all condition values present in pbmc_harmony$condition
 #   n_pseudoreps = pseudo-replicates per condition
 pseudobulk_conditions <- NULL
 n_pseudoreps          <- 3
@@ -68,6 +76,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(cell_type_subsets,
 
 
 # QC check — replace Pavement_Cell with any cell type name from your data:
+table(cell_type_subsets_replicates$Pavement_Cell$condition)
 table(cell_type_subsets_replicates$Pavement_Cell$replicate)
 table(cell_type_subsets_replicates$Pavement_Cell$orig.ident)
 
@@ -81,8 +90,14 @@ message("\n✓ SECTION 15 COMPLETE: Pseudo-replicates assigned")
 # count tables, and runs DESeq2 for the user-defined pairwise contrasts.
 #
 # Edit here:
-#   conds = c("reference", "treatment")
-#   log2FC > 0 means higher expression in treatment
+#   Use condition names, not orig.ident names and not replicate names.
+#   Check them with: table(cell_type_subsets_replicates$Pavement_Cell$condition)
+#
+#   conds = c("reference_condition", "treatment_condition")
+#   log2FC > 0 means higher expression in treatment_condition
+#
+#   Example:
+#     conds = c("0N", "5N") means log2FC = log2(5N / 0N)
 comparisons <- list(
   list(conds = c("condicion1", "condicion2"), tag = "condicion1_vs_condicion2")
 )
