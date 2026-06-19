@@ -127,11 +127,18 @@ message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
 # Renders one PNG volcano plot per cell type for a selected contrast and also
 # combines them into a single PDF.
 #
-# ┌─ VOLCANO PARAMETERS ─────────────────────────────────────────────────────────
-#   volcano_tag : tag of the contrast to visualize (must match comparisons)
-#   padj_cut    : adjusted p-value threshold
-#   lfc_cut     : absolute log2 fold-change threshold
-# └─────────────────────────────────────────────────────────────────────────────
+# Edit here:
+#   volcano_tag must be one of the tag values defined in comparisons above.
+#   It is not a condition name, not an orig.ident name, and not a replicate name.
+#
+#   Example:
+#     If Section 16 has:
+#       list(conds = c("0N", "5N"), tag = "0N_vs_5N")
+#     then use:
+#       volcano_tag <- "0N_vs_5N"
+#
+#   padj_cut = adjusted p-value threshold
+#   lfc_cut  = absolute log2 fold-change threshold
 volcano_tag <- "condicion1_vs_condicion2"
 padj_cut    <- 0.05
 lfc_cut     <- 1
