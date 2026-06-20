@@ -3454,6 +3454,53 @@ run_unified_hdwgcna <- function(seurat_obj,
 
 
 # =============================================================================
+# collect_de_genes_by_cell_type
+# =============================================================================
+# Collects significant DE genes separately for each cell type.
+collect_de_genes_by_cell_type <- function(seurat_obj,
+                                          annot_col,
+                                          comparisons,
+                                          de_base_dir,
+                                          padj_cut = 0.05,
+                                          lfc_cut = 1,
+                                          de_contrasts = NULL) {
+
+  contrasts_use <- comparisons
+  if (!is.null(de_contrasts)) {
+    contrasts_use <- Filter(function(comp) comp$tag %in% de_contrasts, comparisons)
+  }
+
+  all_types <- unique(seurat_obj@meta.data[[annot_col]])
+
+  de_genes_per_ct <- lapply(all_types, function(ct) {
+    ct_tag <- gsub("[^A-Za-z0-9_]", "_", ct)
+
+    genes <- unique(unlist(lapply(contrasts_use, function(comp) {
+      de_files <- list.files(
+        file.path(de_base_dir, comp$tag),
+        pattern = paste0("^DESeq2_", ct_tag, "\\.csv$"),
+        full.names = TRUE
+      )
+
+      unique(unlist(lapply(de_files, function(file) {
+        de_table <- read.csv(file, row.names = 1)
+        rownames(de_table)[
+          !is.na(de_table$padj) &
+            de_table$padj < padj_cut &
+            abs(de_table$log2FoldChange) >= lfc_cut
+        ]
+      })))
+    })))
+
+    intersect(genes, rownames(seurat_obj))
+  })
+
+  names(de_genes_per_ct) <- all_types
+  de_genes_per_ct
+}
+
+
+# =============================================================================
 # run_hdwgcna
 # =============================================================================
 # Runs the full hdWGCNA co-expression network pipeline per cell type.
@@ -3506,15 +3553,17 @@ run_hdwgcna <- function(seurat_obj,
     {
       dir.create(ct_dir, showWarnings = FALSE)
 
-      # ── Subset genes to DE genes specific to this cell type (if provided) ──
       n_genes_for_title <- nrow(seurat_obj)
-      seurat_ct <- if (!is.null(de_genes_per_ct) && !is.null(de_genes_per_ct[[ct]])) {
+      seurat_ct <- seurat_obj
+
+      if (!is.null(de_genes_per_ct) && !is.null(de_genes_per_ct[[ct]])) {
         genes_use <- intersect(de_genes_per_ct[[ct]], rownames(seurat_obj))
         n_genes_for_title <- length(genes_use)
-        cat("  DE genes (this cell type):", n_genes_for_title, "\n")
-        subset(seurat_obj, features = genes_use)  # Seurat 5 compatible
-      } else {
-        seurat_obj
+        if (n_genes_for_title < 10) {
+          message("Skipping ", ct, ": fewer than 10 DE genes.")
+          next
+        }
+        seurat_ct <- subset(seurat_obj, features = genes_use)
       }
 
       obj <- hdWGCNA::SetupForWGCNA(seurat_ct, gene_select = gene_select,

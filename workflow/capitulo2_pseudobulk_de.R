@@ -221,27 +221,45 @@ build_logfc_heatmap(
 # =============================================================================
 
 message("\n✓ SECTION 20 COMPLETE: Log2FC heatmap saved")
-# SECTION 21 - COEXPRESSION NETWORK (hdWGCNA) - UNIFICADO
+# SECTION 21 - COEXPRESSION NETWORK (hdWGCNA) BY CELL TYPE
 # =============================================================================
-# Builds one hdWGCNA network using the genes from the log2FC heatmap table.
-# Metacells are built by cell type and sample, but the final network is unified.
+# Builds hdWGCNA modules separately for each cell type.
+# Each cell type uses its own significant DE genes from the selected contrast(s).
 #
 # Edit here:
+#   de_contrasts_network = NULL uses all comparisons from Section 16
+#   c("0.5N_vs_5N") uses only that comparison
+#   cell_types_network = NULL analyzes all cell types
+#   c("Guard Cell", "Mesophyll") analyzes only those cell types
 #   n_metacells = metacells per celltype x sample
 #   soft_power  = NULL for automatic detection, or use a number
-wgcna_name  <- "unified"
-n_metacells <- 25
-soft_power  <- NULL
+#   max_modules = maximum number of modules shown per cell type
+de_contrasts_network <- c(volcano_tag)
+cell_types_network   <- NULL
+n_metacells          <- 25
+soft_power           <- NULL
+max_modules          <- 8
 
-run_unified_hdwgcna(
-  seurat_obj    = pbmc_harmony,
-  de_table_path = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
-  output_dir    = dir_08,
-  annot_col     = pseudobulk_annot_col,
-  sample_col    = "orig.ident",
-  wgcna_name    = wgcna_name,
-  n_metacells   = n_metacells,
-  soft_power    = soft_power
+de_genes_per_ct <- collect_de_genes_by_cell_type(
+  seurat_obj   = pbmc_harmony,
+  annot_col    = pseudobulk_annot_col,
+  comparisons  = comparisons,
+  de_base_dir  = dir_06,
+  padj_cut     = padj_cut,
+  lfc_cut      = lfc_cut,
+  de_contrasts = de_contrasts_network
+)
+
+run_hdwgcna(
+  seurat_obj      = pbmc_harmony,
+  annot_col       = pseudobulk_annot_col,
+  output_dir      = dir_08,
+  cell_types      = cell_types_network,
+  n_metacells     = n_metacells,
+  soft_power      = soft_power,
+  max_modules     = max_modules,
+  gene_select     = "all",
+  de_genes_per_ct = de_genes_per_ct
 )
 
 message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
@@ -250,20 +268,40 @@ message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
 # =============================================================================
 # SECTION 22 — NETWORK EXPORT & VISUALIZATION
 # =============================================================================
-# Reads the unified hdWGCNA object from Section 21 and saves:
-#   edges, nodes and a co-expression network PDF.
+# Reads the hdWGCNA objects from Section 21 and saves:
+#   1. networks from all module genes
+#   2. DE-filtered networks using only significant DE genes
 #
 # Edit here:
 #   tom_threshold = lower gives more edges; higher gives simpler networks
 #   n_hub_label = number of hub genes labelled in the plot
-tom_threshold <- 0.1
-n_hub_label   <- 5
+tom_threshold  <- 0.5
+n_hub_label    <- 5
+n_hub_label_de <- 10
+de_dirs_network <- if (is.null(de_contrasts_network)) {
+  sapply(comparisons, function(comp) file.path(dir_06, comp$tag))
+} else {
+  file.path(dir_06, de_contrasts_network)
+}
 
 plot_hdwgcna_network(
   hdwgcna_dir   = dir_08,
   output_dir    = dir_08,
   tom_threshold = tom_threshold,
-  n_hub_label   = n_hub_label
+  cell_types    = cell_types_network,
+  n_hub_label   = n_hub_label,
+  max_modules   = max_modules
+)
+
+filter_hdwgcna_by_de(
+  hdwgcna_dir   = dir_08,
+  de_dirs       = de_dirs_network,
+  output_dir    = dir_08,
+  padj_cut      = padj_cut,
+  lfc_cut       = lfc_cut,
+  n_hub_label   = n_hub_label_de,
+  tom_threshold = tom_threshold,
+  max_modules   = max_modules
 )
 
 message("\n✓ SECTION 22 COMPLETE: Network files and plots saved")
