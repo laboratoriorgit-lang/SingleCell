@@ -3454,53 +3454,6 @@ run_unified_hdwgcna <- function(seurat_obj,
 
 
 # =============================================================================
-# collect_de_genes_by_cell_type
-# =============================================================================
-# Collects significant DE genes separately for each cell type.
-collect_de_genes_by_cell_type <- function(seurat_obj,
-                                          annot_col,
-                                          comparisons,
-                                          de_base_dir,
-                                          padj_cut = 0.05,
-                                          lfc_cut = 1,
-                                          de_contrasts = NULL) {
-
-  contrasts_use <- comparisons
-  if (!is.null(de_contrasts)) {
-    contrasts_use <- Filter(function(comp) comp$tag %in% de_contrasts, comparisons)
-  }
-
-  all_types <- unique(seurat_obj@meta.data[[annot_col]])
-
-  de_genes_per_ct <- lapply(all_types, function(ct) {
-    ct_tag <- gsub("[^A-Za-z0-9_]", "_", ct)
-
-    genes <- unique(unlist(lapply(contrasts_use, function(comp) {
-      de_files <- list.files(
-        file.path(de_base_dir, comp$tag),
-        pattern = paste0("^DESeq2_", ct_tag, "\\.csv$"),
-        full.names = TRUE
-      )
-
-      unique(unlist(lapply(de_files, function(file) {
-        de_table <- read.csv(file, row.names = 1)
-        rownames(de_table)[
-          !is.na(de_table$padj) &
-            de_table$padj < padj_cut &
-            abs(de_table$log2FoldChange) >= lfc_cut
-        ]
-      })))
-    })))
-
-    intersect(genes, rownames(seurat_obj))
-  })
-
-  names(de_genes_per_ct) <- all_types
-  de_genes_per_ct
-}
-
-
-# =============================================================================
 # run_hdwgcna
 # =============================================================================
 # Runs the full hdWGCNA co-expression network pipeline per cell type.
