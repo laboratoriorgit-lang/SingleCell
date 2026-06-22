@@ -3739,11 +3739,14 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
       # ── Plot (ggraph) ──────────────────────────────────────────────────────
       if (nrow(edge_df) > 0) {
         edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
-        g       <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df)
-        mods    <- sort(unique(node_df$module))
+        nodes_in_plot <- unique(c(edge_df_plot$source, edge_df_plot$target))
+        node_df_plot <- node_df[node_df$gene %in% nodes_in_plot, ]
+
+        g       <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df_plot)
+        mods    <- sort(unique(node_df_plot$module))
         pal <- setNames(mods, mods)
 
-        vdata <- node_df[match(igraph::V(g)$name, node_df$gene), ]
+        vdata <- node_df_plot[match(igraph::V(g)$name, node_df_plot$gene), ]
 
         p <- ggraph::ggraph(g, layout = "graphopt") +
           ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
@@ -3760,7 +3763,7 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
             label.padding = ggplot2::unit(0.1, "lines"),
             label.size = 0.2, fill = "white", alpha = 0.85) +
           ggplot2::labs(title = paste("Co-expression network —", gsub("_", " ", ct_tag)),
-                        subtitle = paste(nrow(edge_df), "edges |", nrow(node_df), "genes")) +
+                        subtitle = paste(nrow(edge_df_plot), "edges |", nrow(node_df_plot), "connected genes")) +
           ggplot2::theme_void() +
           ggplot2::theme(
             plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
@@ -3893,49 +3896,58 @@ filter_hdwgcna_by_de <- function(hdwgcna_dir,
         weight = tom_sub[edges]
       )
 
+      nodes_in_edges <- unique(c(edge_df$source, edge_df$target))
+      node_df <- node_df[node_df$gene %in% nodes_in_edges, ]
+
       write.table(edge_df, file.path(ct_dir, paste0("edges_DE_", ct_tag, ".tsv")),
                   sep = "\t", quote = FALSE, row.names = FALSE)
       write.table(node_df, file.path(ct_dir, paste0("nodes_DE_", ct_tag, ".tsv")),
                   sep = "\t", quote = FALSE, row.names = FALSE)
       cat("  DE edges:", nrow(edge_df), "| DE nodes:", nrow(node_df), "\n")
 
+      if (nrow(edge_df) > 0) {
+        edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
+        nodes_in_plot <- unique(c(edge_df_plot$source, edge_df_plot$target))
+        node_df_plot <- node_df[node_df$gene %in% nodes_in_plot, ]
 
-      edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
-      g     <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df)
-      mods  <- sort(unique(node_df$module))
-      pal <- setNames(mods, mods)
-      vdata <- node_df[match(igraph::V(g)$name, node_df$gene), ]
-      lfc_q <- quantile(abs(vdata$log2FC), 0.85, na.rm=TRUE)
+        g     <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df_plot)
+        mods  <- sort(unique(node_df_plot$module))
+        pal <- setNames(mods, mods)
+        vdata <- node_df_plot[match(igraph::V(g)$name, node_df_plot$gene), ]
+        lfc_q <- quantile(abs(vdata$log2FC), 0.85, na.rm=TRUE)
 
-      p <- ggraph::ggraph(g, layout = "graphopt") +
-        ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
-                                color = "grey70", show.legend = FALSE) +
-        ggraph::scale_edge_width(range = c(0.1, 1.5)) +
-        ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
-        ggraph::geom_node_point(ggplot2::aes(size  = abs(vdata$log2FC),
-                                             color = vdata$module)) +
-        ggplot2::scale_color_manual(values = pal, name = "Module") +
-        ggplot2::scale_size(range = c(1.5, 7), name = "|log2FC|") +
-        ggraph::geom_node_label(
-          ggplot2::aes(label = ifelse(vdata$is_hub | abs(vdata$log2FC) >= lfc_q,
-                                      igraph::V(g)$name, NA)),
-          size = 2.5, repel = TRUE, max.overlaps = 20,
-          label.padding = ggplot2::unit(0.1,"lines"),
-          label.size = 0.2, fill = "white", alpha = 0.85) +
-        ggplot2::labs(
-          title    = paste("DE co-expression network —", gsub("_"," ",ct_tag)),
-          subtitle = paste0(nrow(edge_df), " edges | ", nrow(node_df),
-                            " DE genes | padj<", padj_cut, " | |log2FC|>=", lfc_cut)) +
-        ggplot2::theme_void() +
-        ggplot2::theme(
-          plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
-          plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
-          legend.position = "right")
+        p <- ggraph::ggraph(g, layout = "graphopt") +
+          ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
+                                  color = "grey70", show.legend = FALSE) +
+          ggraph::scale_edge_width(range = c(0.1, 1.5)) +
+          ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
+          ggraph::geom_node_point(ggplot2::aes(size  = abs(vdata$log2FC),
+                                               color = vdata$module)) +
+          ggplot2::scale_color_manual(values = pal, name = "Module") +
+          ggplot2::scale_size(range = c(1.5, 7), name = "|log2FC|") +
+          ggraph::geom_node_label(
+            ggplot2::aes(label = ifelse(vdata$is_hub | abs(vdata$log2FC) >= lfc_q,
+                                        igraph::V(g)$name, NA)),
+            size = 2.5, repel = TRUE, max.overlaps = 20,
+            label.padding = ggplot2::unit(0.1,"lines"),
+            label.size = 0.2, fill = "white", alpha = 0.85) +
+          ggplot2::labs(
+            title    = paste("DE co-expression network —", gsub("_"," ",ct_tag)),
+            subtitle = paste0(nrow(edge_df_plot), " edges | ", nrow(node_df_plot),
+                              " connected DE genes | padj<", padj_cut, " | |log2FC|>=", lfc_cut)) +
+          ggplot2::theme_void() +
+          ggplot2::theme(
+            plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
+            plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
+            legend.position = "right")
 
-      pdf(file.path(net_dir, paste0("network_DE_", ct_tag, ".pdf")), width=18, height=18)
-      print(p)
-      dev.off()
-      cat("  DE network PDF saved\n")
+        pdf(file.path(net_dir, paste0("network_DE_", ct_tag, ".pdf")), width=18, height=18)
+        print(p)
+        dev.off()
+        cat("  DE network PDF saved\n")
+      } else {
+        cat("  Skipped DE plot (0 edges - adjust tom_threshold)\n")
+      }
 
       # ── Eigengene heatmap — solo módulos con genes DE ────────────────────────
       {
