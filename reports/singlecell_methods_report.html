@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="SingleCell pipeline" />
+  <meta name="dcterms.date" content="2026-06-22" />
+  <title>SingleCell workflow methods</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {  background-color: #f8f8f8; }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ef2929; } /* Alert */
+    code span.an { color: #8f5902; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #204a87; } /* Attribute */
+    code span.bn { color: #0000cf; } /* BaseN */
+    code span.cf { color: #204a87; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4e9a06; } /* Char */
+    code span.cn { color: #8f5902; } /* Constant */
+    code span.co { color: #8f5902; font-style: italic; } /* Comment */
+    code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #8f5902; font-weight: bold; font-style: italic; } /* Documentation */
+    code span.dt { color: #204a87; } /* DataType */
+    code span.dv { color: #0000cf; } /* DecVal */
+    code span.er { color: #a40000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #0000cf; } /* Float */
+    code span.fu { color: #204a87; font-weight: bold; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #8f5902; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #204a87; font-weight: bold; } /* Keyword */
+    code span.op { color: #ce5c00; font-weight: bold; } /* Operator */
+    code span.ot { color: #8f5902; } /* Other */
+    code span.pp { color: #8f5902; font-style: italic; } /* Preprocessor */
+    code span.sc { color: #ce5c00; font-weight: bold; } /* SpecialChar */
+    code span.ss { color: #4e9a06; } /* SpecialString */
+    code span.st { color: #4e9a06; } /* String */
+    code span.va { color: #000000; } /* Variable */
+    code span.vs { color: #4e9a06; } /* VerbatimString */
+    code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="methods_report.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">SingleCell workflow methods</h1>
+<p class="subtitle">Stepwise single-cell RNA-seq analysis for wet-lab
+users</p>
+<p class="author">SingleCell pipeline</p>
+<p class="date">2026-06-22</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#computational-environment"
+id="toc-computational-environment">Computational environment</a></li>
+<li><a href="#chapter-1---single-cell-processing"
+id="toc-chapter-1---single-cell-processing">Chapter 1 - Single-cell
+processing</a>
+<ul>
+<li><a href="#sample-definition" id="toc-sample-definition">Sample
+definition</a></li>
+<li><a href="#loading-and-pre-filter-qc"
+id="toc-loading-and-pre-filter-qc">Loading and pre-filter QC</a></li>
+<li><a href="#filtering-and-doublet-detection"
+id="toc-filtering-and-doublet-detection">Filtering and doublet
+detection</a></li>
+<li><a href="#integration-harmony-and-clustering"
+id="toc-integration-harmony-and-clustering">Integration, Harmony and
+clustering</a></li>
+<li><a href="#marker-based-and-reference-based-annotation"
+id="toc-marker-based-and-reference-based-annotation">Marker-based and
+reference-based annotation</a></li>
+<li><a href="#optional-curation-and-export"
+id="toc-optional-curation-and-export">Optional curation and
+export</a></li>
+</ul></li>
+<li><a href="#chapter-2---pseudobulk-deseq2-go-and-hdwgcna"
+id="toc-chapter-2---pseudobulk-deseq2-go-and-hdwgcna">Chapter 2 -
+Pseudobulk, DESeq2, GO and hdWGCNA</a>
+<ul>
+<li><a href="#cell-type-subsets" id="toc-cell-type-subsets">Cell-type
+subsets</a></li>
+<li><a href="#pseudo-replicate-assignment"
+id="toc-pseudo-replicate-assignment">Pseudo-replicate
+assignment</a></li>
+<li><a href="#pseudobulk-aggregation-and-deseq2"
+id="toc-pseudobulk-aggregation-and-deseq2">Pseudobulk aggregation and
+DESeq2</a></li>
+<li><a href="#volcano-plots" id="toc-volcano-plots">Volcano
+plots</a></li>
+<li><a href="#differential-gene-tables"
+id="toc-differential-gene-tables">Differential gene tables</a></li>
+<li><a href="#go-enrichment" id="toc-go-enrichment">GO
+enrichment</a></li>
+<li><a href="#log2fc-heatmap" id="toc-log2fc-heatmap">Log2FC
+heatmap</a></li>
+<li><a href="#unified-hdwgcna-on-significant-genes"
+id="toc-unified-hdwgcna-on-significant-genes">Unified hdWGCNA on
+significant genes</a></li>
+<li><a href="#network-export-and-visualization"
+id="toc-network-export-and-visualization">Network export and
+visualization</a></li>
+</ul></li>
+<li><a href="#chapter-3---pseudotime"
+id="toc-chapter-3---pseudotime">Chapter 3 - Pseudotime</a>
+<ul>
+<li><a href="#load-curated-anndata-object"
+id="toc-load-curated-anndata-object">Load curated AnnData
+object</a></li>
+<li><a href="#select-cell-types" id="toc-select-cell-types">Select cell
+types</a></li>
+<li><a href="#infer-trajectory" id="toc-infer-trajectory">Infer
+trajectory</a></li>
+<li><a href="#plot-genes-on-the-trajectory"
+id="toc-plot-genes-on-the-trajectory">Plot genes on the
+trajectory</a></li>
+<li><a href="#gene-trends" id="toc-gene-trends">Gene trends</a></li>
+</ul></li>
+<li><a href="#principal-helper-functions"
+id="toc-principal-helper-functions">Principal helper functions</a>
+<ul>
+<li><a href="#r-helper-functions" id="toc-r-helper-functions">R helper
+functions</a></li>
+<li><a href="#python-helper-functions"
+id="toc-python-helper-functions">Python helper functions</a></li>
+</ul></li>
+<li><a href="#output-structure" id="toc-output-structure">Output
+structure</a></li>
+<li><a href="#reproducibility-notes"
+id="toc-reproducibility-notes">Reproducibility notes</a></li>
+</ul>
+</nav>
+<h1 id="overview">Overview</h1>
+<p>This document describes the current SingleCell workflow as a
+methods-style protocol. The pipeline is organized into three
+chapters:</p>
+<ol type="1">
+<li><strong>Chapter 1 - Single-cell processing:</strong> load raw
+matrices, quality control, filtering, doublet removal, integration,
+clustering, cell-type annotation and export of the curated object.</li>
+<li><strong>Chapter 2 - Pseudobulk, DESeq2 and networks:</strong> create
+cell-type subsets, assign pseudo-replicates, run DESeq2, render volcano
+plots, build differential expression tables, run GO enrichment, build
+log2FC heatmaps and infer a unified hdWGCNA network from significant
+genes.</li>
+<li><strong>Chapter 3 - Pseudotime:</strong> load the curated AnnData
+object, select cell types, infer a trajectory with Palantir and scFates,
+plot genes on the trajectory and generate gene trend heatmaps.</li>
+</ol>
+<p>The workflow is intentionally stepwise. A basic user should mainly
+edit the small parameter blocks inside each section, not the helper
+functions.</p>
+<h1 id="computational-environment">Computational environment</h1>
+<p>The analysis is designed to run inside the Docker image:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">-it</span> <span class="at">-v</span> ~/projects:/workspace matigara/scrnaseq:latest /bin/bash</span></code></pre></div>
+<p>The workflow scripts assume that the pipeline lives in:</p>
+<pre class="text"><code>/workspace/workflow_nuevo</code></pre>
+<p>and that output is written to:</p>
+<pre class="text"><code>/workspace/resultados</code></pre>
+<p>The R chapters load:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>PIPELINE_DIR <span class="ot">&lt;-</span> <span class="st">&quot;/workspace/workflow_nuevo&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>DATA_DIR     <span class="ot">&lt;-</span> <span class="st">&quot;/workspace/.&quot;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>base_dir     <span class="ot">&lt;-</span> <span class="fu">file.path</span>(DATA_DIR, <span class="st">&quot;resultados&quot;</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="fu">file.path</span>(PIPELINE_DIR, <span class="st">&quot;load_libraries.R&quot;</span>))</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="fu">file.path</span>(PIPELINE_DIR, <span class="st">&quot;custom_seurat.R&quot;</span>))</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="fu">file.path</span>(PIPELINE_DIR, <span class="st">&quot;ScRNA_Analysis_Functions.R&quot;</span>))</span></code></pre></div>
+<p>The Python chapter loads:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>PIPELINE_DIR <span class="op">=</span> <span class="st">&quot;/workspace/workflow_nuevo&quot;</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>DATA_DIR     <span class="op">=</span> <span class="st">&quot;/workspace/.&quot;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>base_dir     <span class="op">=</span> os.path.join(DATA_DIR, <span class="st">&quot;resultados&quot;</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="bu">exec</span>(<span class="bu">open</span>(os.path.join(PIPELINE_DIR, <span class="st">&quot;load_libraries_python.py&quot;</span>)).read(), <span class="bu">globals</span>())</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="bu">exec</span>(<span class="bu">open</span>(os.path.join(PIPELINE_DIR, <span class="st">&quot;ScRNA_Pseudotime_Functions.py&quot;</span>)).read(), <span class="bu">globals</span>())</span></code></pre></div>
+<h1 id="chapter-1---single-cell-processing">Chapter 1 - Single-cell
+processing</h1>
+<p>Chapter 1 produces the curated Seurat object used by the rest of the
+pipeline. It is implemented in:</p>
+<pre class="text"><code>workflow/capitulo1_single_cell.R</code></pre>
+<h2 id="sample-definition">Sample definition</h2>
+<p>The user edits the sample list and colors at the beginning of the
+chapter. Each sample points to a raw matrix file and defines the
+biological condition.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>samples <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">file =</span> <span class="st">&quot;sample_1/filtered_feature_bc_matrix.h5&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">label =</span> <span class="st">&quot;Sample_1&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>       <span class="at">condition =</span> <span class="st">&quot;condition_1&quot;</span>),</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">file =</span> <span class="st">&quot;sample_2/filtered_feature_bc_matrix.h5&quot;</span>,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>       <span class="at">label =</span> <span class="st">&quot;Sample_2&quot;</span>,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">condition =</span> <span class="st">&quot;condition_2&quot;</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>colors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;condition_1&quot;</span> <span class="ot">=</span> <span class="st">&quot;#3B82F6&quot;</span>,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;condition_2&quot;</span> <span class="ot">=</span> <span class="st">&quot;#EF4444&quot;</span>)</span></code></pre></div>
+<h2 id="loading-and-pre-filter-qc">Loading and pre-filter QC</h2>
+<p>The function <code>load_seurat_samples()</code> loads all samples and
+computes quality metrics such as mitochondrial and chloroplast
+percentages.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>mt_pattern <span class="ot">&lt;-</span> <span class="st">&quot;^ATMG&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>cp_pattern <span class="ot">&lt;-</span> <span class="st">&quot;^ATCG&quot;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>seurat_list_raw <span class="ot">&lt;-</span> <span class="fu">load_seurat_samples</span>(</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">samples     =</span> samples,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">DATA_DIR    =</span> DATA_DIR,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">USE_CELLBENDER =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">mt_pattern  =</span> mt_pattern,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cp_pattern  =</span> cp_pattern</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="filtering-and-doublet-detection">Filtering and doublet
+detection</h2>
+<p>The function <code>filter_seurat_samples()</code> applies simple QC
+thresholds and runs the sample-level filtering logic.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>seurat_list <span class="ot">&lt;-</span> <span class="fu">filter_seurat_samples</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  seurat_list_raw,</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">min_features =</span> <span class="dv">200</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">max_mt       =</span> <span class="dv">5</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="integration-harmony-and-clustering">Integration, Harmony and
+clustering</h2>
+<p>The merged object is normalized, scaled, reduced by PCA and corrected
+with Harmony. Clustering is then selected from a user-defined
+resolution.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">reduce</span>(seurat_list, merge)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">NormalizeData</span>(pbmc_harmony)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">FindVariableFeatures</span>(pbmc_harmony)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">ScaleData</span>(pbmc_harmony)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">RunPCA</span>(pbmc_harmony)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">RunHarmony</span>(pbmc_harmony, <span class="at">group.by.vars =</span> <span class="st">&quot;orig.ident&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>cluster_resolution <span class="ot">&lt;-</span> <span class="fl">0.3</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> pbmc_harmony <span class="sc">|&gt;</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">FindNeighbors</span>(<span class="at">reduction =</span> <span class="st">&quot;harmony&quot;</span>, <span class="at">dims =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">30</span>) <span class="sc">|&gt;</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">FindClusters</span>(<span class="at">resolution =</span> cluster_resolution) <span class="sc">|&gt;</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">RunUMAP</span>(<span class="at">reduction =</span> <span class="st">&quot;harmony&quot;</span>, <span class="at">dims =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">30</span>)</span></code></pre></div>
+<h2 id="marker-based-and-reference-based-annotation">Marker-based and
+reference-based annotation</h2>
+<p>The function <code>find_markers()</code> identifies cluster markers.
+The function <code>annotate_by_markers()</code> applies a manual marker
+table. When a reference object is available,
+<code>annotate_by_reference()</code> transfers cell-type labels.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>markers <span class="ot">&lt;-</span> <span class="fu">find_markers</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  pbmc_harmony,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir =</span> dir_03</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">annotate_by_markers</span>(</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  pbmc_harmony,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">markers    =</span> markers,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir =</span> dir_03</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>reference_obj <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="fu">file.path</span>(DATA_DIR, <span class="st">&quot;GSE273033_seuratObj_for_publication.rds&quot;</span>))</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>pbmc_harmony <span class="ot">&lt;-</span> <span class="fu">annotate_by_reference</span>(</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">query_obj     =</span> pbmc_harmony,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">reference_obj =</span> reference_obj,</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir    =</span> dir_03</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="optional-curation-and-export">Optional curation and export</h2>
+<p>The user can manually group or reassign cell types. The final curated
+object is saved as both RDS and H5AD.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">saveRDS</span>(pbmc_harmony, <span class="fu">file.path</span>(dir_objects, <span class="st">&quot;pbmc_harmony_curated.rds&quot;</span>))</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="fu">export_to_scanpy</span>(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">seurat_obj =</span> pbmc_harmony,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_h5ad =</span> <span class="fu">file.path</span>(dir_objects, <span class="st">&quot;pbmc_harmony_curated.h5ad&quot;</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h1 id="chapter-2---pseudobulk-deseq2-go-and-hdwgcna">Chapter 2 -
+Pseudobulk, DESeq2, GO and hdWGCNA</h1>
+<p>Chapter 2 starts from the curated Seurat object:</p>
+<pre class="text"><code>workflow/capitulo2_pseudobulk_de.R</code></pre>
+<h2 id="cell-type-subsets">Cell-type subsets</h2>
+<p>The analysis first creates one Seurat object per cell type using
+<code>create_cell_type_subsets()</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>pseudobulk_annot_col <span class="ot">&lt;-</span> <span class="st">&quot;celltype_curated&quot;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>cell_type_subsets <span class="ot">&lt;-</span> <span class="fu">create_cell_type_subsets</span>(</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  pbmc_harmony,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">annot_col =</span> pseudobulk_annot_col</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="pseudo-replicate-assignment">Pseudo-replicate assignment</h2>
+<p>Pseudo-replicates are assigned within each condition. The condition
+column is used for DESeq2 comparisons; <code>orig.ident</code> stores
+the original sample or library; <code>replicate</code> is created by
+this step.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>pseudobulk_conditions <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>n_pseudoreps          <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>cell_type_subsets_replicates <span class="ot">&lt;-</span> <span class="fu">assign_pseudoreplicates_batch</span>(</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  cell_type_subsets,</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">pseudobulk_conditions =</span> pseudobulk_conditions,</span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">n_pseudoreps          =</span> n_pseudoreps</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>The user can check the three relevant metadata columns:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(cell_type_subsets_replicates<span class="sc">$</span>Pavement_Cell<span class="sc">$</span>condition)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(cell_type_subsets_replicates<span class="sc">$</span>Pavement_Cell<span class="sc">$</span>replicate)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(cell_type_subsets_replicates<span class="sc">$</span>Pavement_Cell<span class="sc">$</span>orig.ident)</span></code></pre></div>
+<h2 id="pseudobulk-aggregation-and-deseq2">Pseudobulk aggregation and
+DESeq2</h2>
+<p>The function <code>run_pseudobulk_deseq2_analysis()</code> aggregates
+counts by pseudo-replicate and runs DESeq2 for each requested
+comparison.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>comparisons <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">conds =</span> <span class="fu">c</span>(<span class="st">&quot;condicion1&quot;</span>, <span class="st">&quot;condicion2&quot;</span>),</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">tag   =</span> <span class="st">&quot;condicion1_vs_condicion2&quot;</span>)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>cell_types_to_analyze <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>deseq2_results <span class="ot">&lt;-</span> <span class="fu">run_pseudobulk_deseq2_analysis</span>(</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">cell_type_subsets_replicates =</span> cell_type_subsets_replicates,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">comparisons                  =</span> comparisons,</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir                   =</span> dir_06,</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">cell_types                   =</span> cell_types_to_analyze,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">pseudobulk_dir               =</span> <span class="fu">file.path</span>(dir_objects, <span class="st">&quot;pseudobulk_replicas&quot;</span>)</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>Interpretation:</p>
+<pre class="text"><code>conds = c(&quot;reference&quot;, &quot;treatment&quot;)
+log2FC &gt; 0 means higher expression in treatment</code></pre>
+<h2 id="volcano-plots">Volcano plots</h2>
+<p>The function <code>render_volcano_plots()</code> uses the DESeq2
+tables from a selected contrast.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>volcano_tag <span class="ot">&lt;-</span> <span class="st">&quot;condicion1_vs_condicion2&quot;</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>padj_cut    <span class="ot">&lt;-</span> <span class="fl">0.05</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>lfc_cut     <span class="ot">&lt;-</span> <span class="dv">1</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">render_volcano_plots</span>(</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">results_dir =</span> <span class="fu">file.path</span>(dir_06, volcano_tag),</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir  =</span> <span class="fu">file.path</span>(dir_06, volcano_tag, <span class="st">&quot;volcano&quot;</span>),</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">pdf_name    =</span> <span class="fu">paste0</span>(<span class="st">&quot;VolcanoPlots_&quot;</span>, volcano_tag, <span class="st">&quot;.pdf&quot;</span>),</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">padj_cut    =</span> padj_cut,</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">lfc_cut     =</span> lfc_cut</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="differential-gene-tables">Differential gene tables</h2>
+<p>The function <code>build_differential_tables()</code> creates the
+summary tables used by the heatmap and by the network step.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>diff_tables <span class="ot">&lt;-</span> <span class="fu">build_differential_tables</span>(</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">results_dir =</span> <span class="fu">file.path</span>(dir_06, volcano_tag),</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir  =</span> <span class="fu">file.path</span>(dir_06, volcano_tag),</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">prefix      =</span> <span class="fu">paste0</span>(<span class="st">&quot;diff_table_&quot;</span>, volcano_tag),</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">padj_cut    =</span> padj_cut,</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">lfc_cut     =</span> lfc_cut</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="go-enrichment">GO enrichment</h2>
+<p>GO enrichment is wrapped in
+<code>run_go_enrichment_for_contrast()</code>, so the chapter stays
+readable.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>go_results <span class="ot">&lt;-</span> <span class="fu">run_go_enrichment_for_contrast</span>(</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">results_dir  =</span> <span class="fu">file.path</span>(dir_06, volcano_tag),</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir   =</span> <span class="fu">file.path</span>(dir_07, volcano_tag),</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">orgdb        =</span> org.At.tair.db,</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">keytype      =</span> <span class="st">&quot;TAIR&quot;</span>,</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">go_space     =</span> <span class="st">&quot;BP&quot;</span>,</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">padj_cutoff  =</span> <span class="fl">0.05</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="log2fc-heatmap">Log2FC heatmap</h2>
+<p>The heatmap compares the differential expression pattern across cell
+types.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>heatmap_limits <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">5</span>, <span class="dv">5</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">build_logfc_heatmap</span>(</span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">logfc_table  =</span> <span class="fu">file.path</span>(dir_06, volcano_tag, <span class="st">&quot;tabla_log2FC_fc1_padj_005.tsv&quot;</span>),</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_file  =</span> <span class="fu">file.path</span>(dir_06, volcano_tag, <span class="st">&quot;log2FC_heatmap.pdf&quot;</span>),</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">color_limits =</span> heatmap_limits</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="unified-hdwgcna-on-significant-genes">Unified hdWGCNA on
+significant genes</h2>
+<p>The function <code>run_unified_hdwgcna()</code> filters the Seurat
+object to the significant genes in the DE summary table and runs one
+unified hdWGCNA network. This is not one network per cell type; it is
+one network over the significant gene subset.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>wgcna_name  <span class="ot">&lt;-</span> <span class="st">&quot;unified&quot;</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>n_metacells <span class="ot">&lt;-</span> <span class="dv">25</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>soft_power  <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="fu">run_unified_hdwgcna</span>(</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">seurat_obj    =</span> pbmc_harmony,</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">de_table_path =</span> <span class="fu">file.path</span>(dir_06, volcano_tag, <span class="st">&quot;tabla_log2FC_fc1_padj_005.tsv&quot;</span>),</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir    =</span> dir_08,</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">annot_col     =</span> pseudobulk_annot_col,</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">sample_col    =</span> <span class="st">&quot;orig.ident&quot;</span>,</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">wgcna_name    =</span> wgcna_name,</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">n_metacells   =</span> n_metacells,</span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">soft_power    =</span> soft_power</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="network-export-and-visualization">Network export and
+visualization</h2>
+<p>The function <code>plot_hdwgcna_network()</code> exports edge and
+node tables and draws the network. Genes without connections after the
+TOM threshold are not plotted.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>tom_threshold <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>n_hub_label   <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_hdwgcna_network</span>(</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">hdwgcna_dir   =</span> dir_08,</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">output_dir    =</span> dir_08,</span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">tom_threshold =</span> tom_threshold,</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">n_hub_label   =</span> n_hub_label</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<p>Interpretation:</p>
+<pre class="text"><code>Lower tom_threshold = more edges and more genes.
+Higher tom_threshold = stronger edges and fewer genes.
+Only connected genes are shown in the final plot.</code></pre>
+<h1 id="chapter-3---pseudotime">Chapter 3 - Pseudotime</h1>
+<p>Chapter 3 is implemented in Python:</p>
+<pre class="text"><code>workflow/capitulo3_pseudotime.py</code></pre>
+<p>It uses:</p>
+<pre class="text"><code>workflow/ScRNA_Pseudotime_Functions.py</code></pre>
+<h2 id="load-curated-anndata-object">Load curated AnnData object</h2>
+<p>The function <code>load_curated_object()</code> reads the H5AD object
+from Chapter 1, standardizes coordinate names and saves an overview
+UMAP.</p>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>INPUT_H5AD     <span class="op">=</span> os.path.join(<span class="st">&quot;/workspace/resultados/objects/pbmc_harmony_curated.h5ad&quot;</span>)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>ANNOTATION_COL <span class="op">=</span> <span class="st">&quot;celltype_curated&quot;</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>N_JOBS         <span class="op">=</span> <span class="dv">4</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>adata, N_JOBS <span class="op">=</span> load_curated_object(</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>    input_h5ad     <span class="op">=</span> INPUT_H5AD,</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>    dir_pseudotime <span class="op">=</span> dir_pseudotime,</span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    annotation_col <span class="op">=</span> ANNOTATION_COL,</span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    n_jobs         <span class="op">=</span> N_JOBS,</span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="select-cell-types">Select cell types</h2>
+<p>The function <code>preview_trajectory_selection()</code> subsets the
+selected cell types and saves a UMAP preview.</p>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>TRAJECTORY_CLUSTERS <span class="op">=</span> [<span class="st">&quot;Pavement Cell&quot;</span>, <span class="st">&quot;Stomatal Line&quot;</span>]</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>adata_sub <span class="op">=</span> preview_trajectory_selection(</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>    adata          <span class="op">=</span> adata,</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>    clusters       <span class="op">=</span> TRAJECTORY_CLUSTERS,</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>    annotation_col <span class="op">=</span> ANNOTATION_COL,</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>    dir_pseudotime <span class="op">=</span> dir_pseudotime,</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="infer-trajectory">Infer trajectory</h2>
+<p>The function <code>trajectory_run()</code> defines one parameter set.
+The function <code>run_trajectory_runs()</code> builds the trajectory
+using Palantir diffusion maps and scFates PPT, selects a root cell and
+assigns pseudotime.</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>ROOT_CLUSTER <span class="op">=</span> <span class="st">&quot;Stomatal Line&quot;</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>TRAJECTORY_RUNS <span class="op">=</span> [</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>    trajectory_run(nodes<span class="op">=</span><span class="dv">25</span>, sigma<span class="op">=</span><span class="fl">0.5</span>, lambda_value<span class="op">=</span><span class="dv">30</span>, eigs<span class="op">=</span><span class="dv">3</span>, seed<span class="op">=</span><span class="dv">3</span>),</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>adata_traj, selected_trajectory_dir, trajectory_runs <span class="op">=</span> run_trajectory_runs(</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>    adata           <span class="op">=</span> adata,</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a>    clusters        <span class="op">=</span> TRAJECTORY_CLUSTERS,</span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>    root_cluster    <span class="op">=</span> ROOT_CLUSTER,</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>    annotation_col  <span class="op">=</span> ANNOTATION_COL,</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>    output_base_dir <span class="op">=</span> dir_pseudotime,</span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>    runs            <span class="op">=</span> TRAJECTORY_RUNS,</span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h2 id="plot-genes-on-the-trajectory">Plot genes on the trajectory</h2>
+<p>Section 28 is intentionally plain Scanpy code. The user edits only
+the gene list.</p>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>GENES <span class="op">=</span> [<span class="st">&quot;AT1G22690&quot;</span>, <span class="st">&quot;AT4G04890&quot;</span>, <span class="st">&quot;AT1G80070&quot;</span>]</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>gene_plots_dir <span class="op">=</span> os.path.join(selected_trajectory_dir, <span class="st">&quot;gene_plots&quot;</span>)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>os.makedirs(gene_plots_dir, exist_ok<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>fig <span class="op">=</span> sc.pl.draw_graph(</span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>    adata_traj,</span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>    color      <span class="op">=</span> GENES,</span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>    title      <span class="op">=</span> GENES,</span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a>    show       <span class="op">=</span> <span class="va">False</span>,</span>
+<span id="cb33-11"><a href="#cb33-11" aria-hidden="true" tabindex="-1"></a>    return_fig <span class="op">=</span> <span class="va">True</span>,</span>
+<span id="cb33-12"><a href="#cb33-12" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb33-13"><a href="#cb33-13" aria-hidden="true" tabindex="-1"></a>fig.set_size_inches(<span class="dv">18</span>, <span class="dv">18</span>, forward<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb33-14"><a href="#cb33-14" aria-hidden="true" tabindex="-1"></a>fig.savefig(os.path.join(gene_plots_dir, <span class="st">&quot;step28_genes_FINAL_18x18.png&quot;</span>),</span>
+<span id="cb33-15"><a href="#cb33-15" aria-hidden="true" tabindex="-1"></a>            dpi<span class="op">=</span><span class="dv">200</span>, facecolor<span class="op">=</span><span class="st">&quot;white&quot;</span>)</span>
+<span id="cb33-16"><a href="#cb33-16" aria-hidden="true" tabindex="-1"></a>fig.savefig(os.path.join(gene_plots_dir, <span class="st">&quot;step28_genes_FINAL_18x18.pdf&quot;</span>),</span>
+<span id="cb33-17"><a href="#cb33-17" aria-hidden="true" tabindex="-1"></a>            dpi<span class="op">=</span><span class="dv">200</span>, facecolor<span class="op">=</span><span class="st">&quot;white&quot;</span>)</span>
+<span id="cb33-18"><a href="#cb33-18" aria-hidden="true" tabindex="-1"></a>plt.close(fig)</span></code></pre></div>
+<h2 id="gene-trends">Gene trends</h2>
+<p>The function <code>run_step29_gene_trends()</code> creates two
+heatmaps:</p>
+<ol type="1">
+<li>The top <code>TOP_N</code> trajectory-associated genes.</li>
+<li>A customizable highlight list chosen by the user.</li>
+</ol>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>TOP_N           <span class="op">=</span> <span class="dv">10</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>HIGHLIGHT_GENES <span class="op">=</span> [<span class="st">&quot;AT1G22690&quot;</span>, <span class="st">&quot;AT4G04890&quot;</span>, <span class="st">&quot;AT1G80070&quot;</span>]</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>ORDERING        <span class="op">=</span> <span class="st">&quot;max&quot;</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>top_path, highlight_path <span class="op">=</span> run_step29_gene_trends(</span>
+<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>    adata        <span class="op">=</span> adata_traj,</span>
+<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a>    run_dir      <span class="op">=</span> selected_trajectory_dir,</span>
+<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>    name         <span class="op">=</span> os.path.basename(selected_trajectory_dir),</span>
+<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>    custom_genes <span class="op">=</span> HIGHLIGHT_GENES,</span>
+<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>    top_n        <span class="op">=</span> TOP_N,</span>
+<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>    ordering     <span class="op">=</span> ORDERING,</span>
+<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a>    n_jobs       <span class="op">=</span> N_JOBS,</span>
+<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<h1 id="principal-helper-functions">Principal helper functions</h1>
+<p>The workflow keeps complex implementation inside helper functions.
+The chapter scripts remain readable and mostly contain parameters.</p>
+<h2 id="r-helper-functions">R helper functions</h2>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">load_seurat_samples</span>()</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">filter_seurat_samples</span>()</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="fu">find_markers</span>()</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">annotate_by_markers</span>()</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="fu">annotate_by_reference</span>()</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a><span class="fu">export_to_scanpy</span>()</span>
+<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a><span class="fu">create_cell_type_subsets</span>()</span>
+<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a><span class="fu">assign_pseudoreplicates_batch</span>()</span>
+<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a><span class="fu">run_pseudobulk_deseq2_analysis</span>()</span>
+<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a><span class="fu">render_volcano_plots</span>()</span>
+<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a><span class="fu">build_differential_tables</span>()</span>
+<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a><span class="fu">run_go_enrichment_for_contrast</span>()</span>
+<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a><span class="fu">build_logfc_heatmap</span>()</span>
+<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a><span class="fu">run_unified_hdwgcna</span>()</span>
+<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_hdwgcna_network</span>()</span></code></pre></div>
+<h2 id="python-helper-functions">Python helper functions</h2>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>load_curated_object()</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>preview_trajectory_selection()</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>trajectory_run()</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>build_pseudotime_trajectory()</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>run_trajectory_runs()</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>run_step29_gene_trends()</span></code></pre></div>
+<h1 id="output-structure">Output structure</h1>
+<p>The main output folders are:</p>
+<pre class="text"><code>resultados/
+├── 01_qc/
+├── 02_clustering/
+├── 03_annotation/
+├── 04_gene_expression/
+├── 05_celltype_curation/
+├── 06_pseudobulk_deseq2/
+├── 07_go_enrichment/
+├── 08_networks/
+├── 09_pseudotime/
+└── objects/</code></pre>
+<h1 id="reproducibility-notes">Reproducibility notes</h1>
+<p>All plot sizes are standardized to 18 x 18 where applicable. The most
+important user-edited parameters are kept directly inside each section.
+The document intentionally shows the relevant calls in their native
+language:</p>
+<pre class="text"><code>R      = Chapters 1 and 2
+Python = Chapter 3</code></pre>
+<p>This keeps the protocol close to how a wet-lab user actually executes
+the pipeline: step by step, changing only visible parameters.</p>
+</body>
+</html>

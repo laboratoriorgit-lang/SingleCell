@@ -1,0 +1,123 @@
+@page {
+  size: Letter;
+  margin: 0.72in;
+}
+
+body {
+  color: #1f2933;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.42;
+}
+
+h1, h2, h3 {
+  color: #102a43;
+  font-weight: 700;
+  line-height: 1.15;
+  page-break-after: avoid;
+}
+
+h1 {
+  border-bottom: 2px solid #d9e2ec;
+  font-size: 22pt;
+  margin-top: 1.1em;
+  padding-bottom: 0.22em;
+}
+
+h2 {
+  font-size: 15pt;
+  margin-top: 1.15em;
+}
+
+h3 {
+  font-size: 12.5pt;
+  margin-top: 1em;
+}
+
+p {
+  margin: 0.44em 0;
+}
+
+ul, ol {
+  margin-top: 0.35em;
+}
+
+code {
+  color: #102a43;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 9.3pt;
+}
+
+pre {
+  background: #f5f7fa;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  color: #102a43;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 8.4pt;
+  line-height: 1.32;
+  margin: 0.75em 0 1em;
+  overflow-wrap: break-word;
+  padding: 0.85em;
+  white-space: pre-wrap;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 9.2pt;
+  margin: 0.8em 0;
+  width: 100%;
+}
+
+th {
+  background: #edf2f7;
+  color: #102a43;
+  font-weight: 700;
+}
+
+th, td {
+  border: 1px solid #d9e2ec;
+  padding: 0.35em 0.5em;
+  vertical-align: top;
+}
+
+a {
+  color: #0f609b;
+  text-decoration: none;
+}
+
+#header {
+  border-bottom: 3px solid #bcccdc;
+  margin-bottom: 1.2em;
+  padding-bottom: 0.6em;
+}
+
+.title {
+  color: #102a43;
+  font-size: 27pt;
+  font-weight: 800;
+  margin-bottom: 0.1em;
+}
+
+.subtitle {
+  color: #52606d;
+  font-size: 13pt;
+  font-weight: 500;
+}
+
+.author, .date {
+  color: #627d98;
+  font-size: 9.5pt;
+  margin: 0.12em 0;
+}
+
+.toc {
+  background: #f8fafc;
+  border: 1px solid #d9e2ec;
+  border-radius: 6px;
+  padding: 0.8em 1em;
+}
+
+.toc ul {
+  margin-bottom: 0;
+}
