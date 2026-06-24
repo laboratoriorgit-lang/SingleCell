@@ -47,27 +47,6 @@ PIPELINE_DIR <- "/workspace/ScRNASeq-Docker/workflow"
 DATA_DIR   <- "/workspace/."
 base_dir   <- file.path(DATA_DIR, "resultados")
 
-# ── Sample manifest (CellRanger filtered_feature_bc_matrix) ──────────────────
-# Add one entry per sample. Each entry needs:
-#   file      — path to the filtered_feature_bc_matrix/ directory (relative to DATA_DIR)
-#   label     — unique name for this sample (appears in all plots)
-#   condition — experimental group this sample belongs to
-samples <- list(
-  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",  label = "Sample_0N",  condition = "0N"),
-  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix", label = "Sample_05N", condition = "0.5N"),
-  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",  label = "Sample_5N",  condition = "5N")
-)
-
-
-# ── Plot colors (one color per sample label) ───────────────────────────────────
-colors <- c(
-  "Sample_0N"  = "#66c2a5",
-  "Sample_05N" = "#41ae76",
-  "Sample_5N"  = "#fc8d62"
-)
-
-
-
 # =============================================================================
 # INITIALIZATION
 # =============================================================================
@@ -91,22 +70,10 @@ output_dir <- base_dir
 
 
 # =============================================================================
-# SECTION 0 — PIPELINE WORKFLOW FIGURE
-# =============================================================================
-# Generates a visual overview of the full pipeline saved to 01_qc/.
-# Run this section once immediately after initialization.
-
-plot_pipeline_workflow(file.path(dir_01, "pipeline_workflow.pdf"))
-
-
-# =============================================================================
 # ████████████████████████  PART 1 — SINGLE-CELL ANALYSIS  ████████████████████
 # =============================================================================
 
 
-# =============================================================================
-
-message("\n✓ SECTION 0 COMPLETE: Pipeline workflow figure saved")
 # SECTION 1 — DATA LOADING AND PRE-FILTER QC
 # =============================================================================
 # Each sample is loaded from its input file and mitochondrial / chloroplast
@@ -119,6 +86,26 @@ message("\n✓ SECTION 0 COMPLETE: Pipeline workflow figure saved")
 #   Mouse       : mt_pattern = "^mt-"   |  cp_pattern = NULL
 # └─────────────────────────────────────────────────────────────────────────────
 output_dir <- dir_01
+
+# ── Sample manifest (CellRanger filtered_feature_bc_matrix) ──────────────────
+# Add one entry per sample. Each entry needs:
+#   file      — path to the filtered_feature_bc_matrix/ directory (relative to DATA_DIR)
+#   label     — unique name for this sample (appears in all plots)
+#   condition — experimental group this sample belongs to
+samples <- list(
+  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",  label = "Sample_0N",  condition = "0N"),
+  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix", label = "Sample_05N", condition = "0.5N"),
+  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",  label = "Sample_5N",  condition = "5N")
+)
+
+
+# ── Plot colors (one color per sample label) ───────────────────────────────────
+colors <- c(
+  "Sample_0N"  = "#66c2a5",
+  "Sample_05N" = "#41ae76",
+  "Sample_5N"  = "#fc8d62"
+)
+
 
 mt_pattern <- "^ATMG"  # Arabidopsis mitochondrial genes
 cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
