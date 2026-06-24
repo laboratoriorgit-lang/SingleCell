@@ -255,6 +255,7 @@ pbmc_harmony <- reduce(seurat_list, merge) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 ```
 
+::: {.output-group}
 The pre-correction UMAP is saved by sample identity, followed by a checkpoint
 of the merged object.
 
@@ -274,6 +275,7 @@ saveRDS(
   <img src="assets/umap_preharmony_generic.png" alt="Representative UMAP before Harmony correction">
   <figcaption>Representative UMAP before Harmony correction, colored by sample identity.</figcaption>
 </figure>
+:::
 
 <div class="pagebreak"></div>
 

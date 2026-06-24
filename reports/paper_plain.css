@@ -134,6 +134,11 @@ a { color: #285d86; text-decoration: underline; }
   text-align: center;
 }
 
+.output-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .qc-preview img,
 .output-preview img {
   border: 0.75pt solid #b8b8b8;
