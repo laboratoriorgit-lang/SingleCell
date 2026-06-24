@@ -28,8 +28,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     scipy \
     scikit-learn \
     matplotlib \
-    seaborn \
-    cellbender
+    seaborn
 
 # ── R global options ───────────────────────────────────────────────────────────
 RUN echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/noble/latest"))' \

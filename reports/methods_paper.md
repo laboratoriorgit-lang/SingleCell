@@ -95,19 +95,24 @@ Chapter 1 (`capitulo1_single_cell.R`) runs entirely from this session.
 
 #### Initialization
 
-Paths are set once at the top of the script: `PIPELINE_DIR` points to the
-helper scripts, and `DATA_DIR`/`base_dir` define where input data are read
-from and where every result file is written. Three helper scripts are then
-sourced — package loading, custom Seurat plotting utilities, and the core
-analysis functions used throughout the chapter — before fixing the random
-seed (1807) for reproducibility, disabling `Seurat.allow.s4` for Seurat 5
-compatibility, and setting the working directory to `DATA_DIR`.
+After entering the R session, Chapter 1 starts by defining the two paths
+that control the analysis. `PIPELINE_DIR` points to the helper scripts
+inside the container. `DATA_DIR` is the mounted project directory, and
+`base_dir` is the root under which all step-specific outputs are written.
+In a standard Docker run these paths do not need to be changed.
 
 ```r
 PIPELINE_DIR <- "/workspace/ScRNASeq-Docker/workflow"
-DATA_DIR     <- "/workspace/."
-base_dir     <- file.path(DATA_DIR, "resultados")
+DATA_DIR   <- "/workspace/."
+base_dir   <- file.path(DATA_DIR, "resultados")
+```
 
+The analysis environment is then initialized by loading the package set,
+custom plotting utilities, and core workflow functions. A fixed random seed
+is used throughout the chapter, Seurat 5 compatibility is enabled, and the
+working directory is set to the mounted project folder.
+
+```r
 source(file.path(PIPELINE_DIR, "load_libraries.R"))
 source(file.path(PIPELINE_DIR, "custom_seurat.R"))
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))
@@ -117,28 +122,72 @@ options(Seurat.allow.s4 = FALSE)
 setwd(DATA_DIR)
 ```
 
-#### Sample definition and data loading
-
-Three samples spanning a nitrogen-availability gradient were analyzed —
-`Sample_0N`, `Sample_05N`, `Sample_5N` (conditions 0N, 0.5N, 5N) — each
-loaded from its CellRanger `filtered_feature_bc_matrix` output. For every
-cell, the mitochondrial (`^ATMG`) and chloroplast (`^ATCG`) read fraction
-was computed alongside the standard `nFeature_RNA`/`nCount_RNA` metrics, to
-guide the filtering thresholds applied in the next step.
+Finally, the pipeline creates the output directory structure under
+`resultados/`. The helper functions use `output_dir` as the active destination
+for plots and tables; it is initialized to `base_dir` and reassigned at the
+start of later sections.
 
 ```r
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
+output_dir <- base_dir
+```
+
+#### Section 1 — Data loading and pre-filter QC
+
+Section 1 begins by selecting the first output folder and declaring the
+sample manifest. Each sample entry provides the CellRanger
+`filtered_feature_bc_matrix` directory, the label used in figures, and the
+experimental condition used downstream. The same structure is used for any
+number of samples; only paths, labels, and condition names need to be
+adapted.
+
+```r
+output_dir <- dir_01
+
 samples <- list(
-  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",
-       label = "Sample_0N",  condition = "0N"),
-  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",
-       label = "Sample_05N", condition = "0.5N"),
-  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",
-       label = "Sample_5N",  condition = "5N")
+  list(file = "cellranger/sample_1/outs/filtered_feature_bc_matrix",
+       label = "sample_1", condition = "condition_1"),
+  list(file = "cellranger/sample_2/outs/filtered_feature_bc_matrix",
+       label = "sample_2", condition = "condition_1"),
+  list(file = "cellranger/sample_3/outs/filtered_feature_bc_matrix",
+       label = "sample_3", condition = "condition_2"),
+  list(file = "cellranger/sample_4/outs/filtered_feature_bc_matrix",
+       label = "sample_4", condition = "condition_2")
+)
+```
+
+One color is assigned to each sample label so that all QC and UMAP plots use
+the same visual identity throughout the workflow.
+
+```r
+colors <- c(
+  "sample_1" = "#66c2a5",
+  "sample_2" = "#41ae76",
+  "sample_3" = "#fc8d62",
+  "sample_4" = "#e34a33"
+)
+```
+
+The Arabidopsis mitochondrial and chloroplast gene prefixes are then used to
+compute organelle-derived read fractions for every cell. These pre-filter QC
+distributions are saved as `qc_prefilter.pdf` and are inspected before
+choosing the filtering thresholds in the next step.
+
+```r
+mt_pattern <- "^ATMG"
+cp_pattern <- "^ATCG"
+
+seurat_list_raw <- load_seurat_samples(
+  samples = samples,
+  DATA_DIR = DATA_DIR,
+  mt_pattern = mt_pattern,
+  cp_pattern = cp_pattern
 )
 
-colors <- c("Sample_0N" = "#66c2a5", "Sample_05N" = "#41ae76", "Sample_5N" = "#fc8d62")
-
-seurat_list_raw <- load_seurat_samples(samples, DATA_DIR,
-                                        mt_pattern = "^ATMG",
-                                        cp_pattern = "^ATCG")
+plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 ```
+
+<figure class="qc-preview">
+  <img src="assets/qc_prefilter_cellranger_v2.png" alt="Representative pre-filter QC violin plots">
+  <figcaption>Representative pre-filter QC output produced by `plot_qc_batch()`.</figcaption>
+</figure>

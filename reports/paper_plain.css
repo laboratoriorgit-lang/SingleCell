@@ -4,22 +4,29 @@
 }
 
 body {
-  color: #000;
+  color: #1b1b1b;
   font-family: "Times New Roman", Times, Georgia, serif;
   font-size: 11pt;
   line-height: 1.45;
 }
 
 h1, h2, h3 {
-  color: #000;
+  color: #123f5a;
   font-weight: bold;
   line-height: 1.2;
   page-break-after: avoid;
+  break-after: avoid;
 }
 
 h1 { font-size: 14pt; margin-top: 1.6em; }
-h2 { font-size: 12pt; margin-top: 1.3em; }
+h2 {
+  border-bottom: 0.75pt solid #9bb7c8;
+  font-size: 12pt;
+  margin-top: 1.3em;
+  padding-bottom: 0.15em;
+}
 h3 {
+  color: #2d5f47;
   font-size: 11pt;
   font-style: italic;
   font-weight: normal;
@@ -32,24 +39,31 @@ ul, ol { margin-top: 0.4em; }
 
 code {
   background: none;
-  color: #000;
+  color: #123f5a;
   font-family: "Courier New", Courier, monospace;
   font-size: 10pt;
 }
 
 pre, pre.sourceCode, div.sourceCode pre {
-  background: none;
-  border: 0.75pt solid #000;
+  background: #fff;
+  border: 0.75pt solid #b8b8b8;
   border-radius: 0;
-  color: #000;
+  break-inside: avoid;
+  color: #1f4e67;
   font-family: "Courier New", Courier, monospace;
   font-size: 9pt;
   line-height: 1.35;
   margin: 1.3em -0.2in 1.1em;
   padding: 0.6em 0.5em;
+  page-break-inside: avoid;
   position: relative;
   white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+div.sourceCode {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 pre.bash::before, pre.r::before, pre.python::before {
@@ -61,14 +75,35 @@ pre.bash::before, pre.r::before, pre.python::before {
   font-family: "Times New Roman", Times, Georgia, serif;
   font-size: 8pt;
   font-style: italic;
-  color: #000;
+  color: #555;
 }
 
 pre.bash::before   { content: "bash"; }
 pre.r::before      { content: "R"; }
 pre.python::before { content: "python"; }
 
-div.sourceCode code span { color: #000 !important; }
+pre.bash {
+  border-color: #b8b8b8;
+  color: #245b7a;
+}
+
+pre.r {
+  border-color: #b8b8b8;
+  color: #2f6840;
+}
+
+pre.python {
+  border-color: #b8b8b8;
+  color: #7a5428;
+}
+
+pre.bash code { color: #245b7a; }
+pre.r code { color: #2f6840; }
+pre.python code { color: #7a5428; }
+
+pre.bash::before { color: #245b7a; }
+pre.r::before { color: #2f6840; }
+pre.python::before { color: #7a5428; }
 
 table {
   border-collapse: collapse;
@@ -78,45 +113,69 @@ table {
 }
 
 th {
-  background: none;
-  color: #000;
+  background: #f4f8fa;
+  color: #123f5a;
   font-weight: bold;
 }
 
 th, td {
-  border: 0.75pt solid #000;
+  border: 0.75pt solid #9bb7c8;
   padding: 0.35em 0.5em;
   vertical-align: top;
 }
 
-a { color: #000; text-decoration: underline; }
+a { color: #285d86; text-decoration: underline; }
+
+.qc-preview {
+  break-inside: avoid;
+  margin: 0.7em auto 0.2em;
+  page-break-inside: avoid;
+  text-align: center;
+}
+
+.qc-preview img {
+  border: 0.75pt solid #b8b8b8;
+  display: block;
+  margin: 0 auto 0.25em;
+  width: 3.25in;
+}
+
+.qc-preview figcaption {
+  color: #555;
+  font-size: 8.5pt;
+  font-style: italic;
+  line-height: 1.25;
+  margin: 0 auto;
+  max-width: 3.5in;
+  text-align: center;
+}
 
 .pagebreak {
   page-break-before: always;
 }
 
 #title-block-header {
-  border-bottom: 0.75pt solid #000;
+  border-bottom: 1pt solid #7397ad;
   margin-bottom: 1.4em;
   padding-bottom: 0.7em;
   text-align: center;
 }
 
 .title {
-  color: #000;
+  color: #123f5a;
   font-size: 16pt;
   font-weight: bold;
 }
 
 .subtitle {
-  color: #000;
+  color: #2d5f47;
   font-size: 12pt;
   font-style: italic;
   font-weight: normal;
 }
 
 .author, .date {
-  color: #000;
+  color: #444;
   font-size: 10.5pt;
   margin: 0.15em 0;
 }

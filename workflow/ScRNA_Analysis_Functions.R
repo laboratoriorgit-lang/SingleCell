@@ -11,16 +11,13 @@
 # =============================================================================
 #
 #  1. QC AND VISUALIZATION FUNCTIONS
-#     - load_cellbender_filtered_h5
 #     - plot_qc_violin_grid
 #     - summarize_nfeature_plot
 #
 #  2. PREPROCESSING AND DOUBLET DETECTION
 #     - preprocesar_y_doubletfinder
 #     - doubletfinder_pipeline
-#     - load_sample          (load + annotate only, no filtering)
 #     - filter_sample        (filter + DoubletFinder on annotated object)
-#     - process_sample       (shortcut: load_sample + filter_sample)
 #
 #  3. BULK / PSEUDOBULK UTILITIES
 #     - normalize_bulk_pseudobulk
@@ -61,42 +58,6 @@
 # =============================================================================
 # 1. QC AND VISUALIZATION FUNCTIONS
 # =============================================================================
-
-#' Load CellBender Filtered HDF5 Data
-#'
-#' Reads filtered expression matrix from CellBender HDF5 output.
-#'
-#' @param h5_path Path to filtered HDF5 file.
-#' @param project  Project name for Seurat object metadata.
-#' @return A Seurat object containing raw counts.
-#' @export
-load_cellbender_filtered_h5 <- function(h5_path, project = "Sample") {
-
-  f <- H5File$new(h5_path, mode = "r")
-
-  message("Reading CSR components...")
-  data    <- f[["matrix/data"]]$read()
-  indices <- f[["matrix/indices"]]$read()
-  indptr  <- f[["matrix/indptr"]]$read()
-  shape   <- f[["matrix/shape"]]$read()
-
-  message("Reading gene IDs and barcodes...")
-  gene_ids <- f[["matrix/features/id"]]$read()
-  barcodes <- f[["matrix/barcodes"]]$read()
-
-  message("Creating sparse gene x cell matrix...")
-  mat <- new("dgCMatrix",
-             x         = as.numeric(data),
-             i         = indices,
-             p         = indptr,
-             Dim       = shape,
-             Dimnames  = list(gene_ids, barcodes))
-
-  seu <- CreateSeuratObject(counts = mat, project = project)
-
-  return(seu)
-}
-
 
 #' QC Violin Plot Grid
 #'
@@ -340,34 +301,6 @@ doubletfinder_pipeline <- function(obj,
 }
 
 
-#' Load and Annotate a Single Sample
-#'
-#' Loads a CellBender h5 file and computes mitochondrial / chloroplast
-#' percentages. No filtering or doublet detection — use this to inspect raw
-#' QC metrics before deciding thresholds.
-#'
-#' @param sample_info Named list with fields: file, label, condition.
-#' @param mt_pattern  Regex for mitochondrial genes (e.g. "^MT-", "^ATMG").
-#' @param cp_pattern  Regex for chloroplast genes (e.g. "^ATCG"); NULL to skip.
-#' @return Seurat object with percent.mt (and percent.cp) in metadata.
-#' @export
-load_sample <- function(sample_info,
-                        mt_pattern = "^ATMG",
-                        cp_pattern = "^ATCG") {
-
-  obj <- load_cellbender_filtered_h5(sample_info$file, sample_info$label)
-
-  obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = mt_pattern)
-  if (!is.null(cp_pattern))
-    obj[["percent.cp"]] <- PercentageFeatureSet(obj, pattern = cp_pattern)
-
-  obj <- RenameCells(obj, add.cell.id = sample_info$condition)
-  obj$condition <- sample_info$condition
-
-  return(obj)
-}
-
-
 #' Filter and Run DoubletFinder on an Annotated Sample
 #'
 #' Applies QC thresholds to an already-annotated Seurat object (output of
@@ -421,39 +354,6 @@ filter_sample <- function(obj,
   if (run_doubletfinder)
     obj <- doubletfinder_pipeline(obj, etiqueta = Project(obj))
 
-  return(obj)
-}
-
-
-#' Load, Annotate, Filter and Run DoubletFinder (full pipeline shortcut)
-#'
-#' Convenience wrapper that calls load_sample() then filter_sample().
-#' Useful when you do not need to inspect raw QC plots before filtering.
-#'
-#' @inheritParams load_sample
-#' @inheritParams filter_sample
-#' @return Filtered Seurat object.
-#' @export
-process_sample <- function(sample_info,
-                           mt_pattern        = "^ATMG",
-                           cp_pattern        = "^ATCG",
-                           min_features      = 200,
-                           max_features      = Inf,
-                           min_counts        = 0,
-                           max_counts        = Inf,
-                           max_mt            = 5,
-                           max_cp            = 100,
-                           run_doubletfinder = TRUE) {
-
-  obj <- load_sample(sample_info, mt_pattern = mt_pattern, cp_pattern = cp_pattern)
-  obj <- filter_sample(obj,
-                       min_features      = min_features,
-                       max_features      = max_features,
-                       min_counts        = min_counts,
-                       max_counts        = max_counts,
-                       max_mt            = max_mt,
-                       max_cp            = max_cp,
-                       run_doubletfinder = run_doubletfinder)
   return(obj)
 }
 
@@ -659,20 +559,20 @@ unificar_nombres <- function(obj) {
 #'
 #' Creates and displays a cell type count comparison table using grid graphics.
 #'
-#' @param filtered_vec   Filtered annotation vector.
-#' @param cellbender_vec CellBender annotation vector.
-#' @param titulo         Table title.
+#' @param filtered_vec  Filtered annotation vector.
+#' @param reference_vec Reference annotation vector.
+#' @param titulo        Table title.
 #' @export
-mostrar_tabla <- function(filtered_vec, cellbender_vec, titulo = "Annotations") {
+mostrar_tabla <- function(filtered_vec, reference_vec, titulo = "Annotations") {
 
   t1       <- table(filtered_vec)
-  t2       <- table(cellbender_vec)
+  t2       <- table(reference_vec)
   all_types <- union(names(t1), names(t2))
 
   df <- data.frame(
     celltype   = all_types,
     filtered   = as.integer(t1[all_types]),
-    cellbender = as.integer(t2[all_types]),
+    reference  = as.integer(t2[all_types]),
     stringsAsFactors = FALSE
   )
   df[is.na(df)] <- 0
@@ -680,7 +580,7 @@ mostrar_tabla <- function(filtered_vec, cellbender_vec, titulo = "Annotations") 
   total_row <- data.frame(
     celltype   = "Total",
     filtered   = sum(df$filtered),
-    cellbender = sum(df$cellbender),
+    reference  = sum(df$reference),
     stringsAsFactors = FALSE
   )
   df <- rbind(df, total_row)
@@ -2811,37 +2711,27 @@ run_pseudobulk_pipeline <- function(obj,
 # DATA LOADING
 # =============================================================================
 
-#' Load Seurat objects from samples (CellBender or CellRanger)
+#' Load Seurat objects from CellRanger samples
 #'
 #' @param samples List of sample configurations (file, label, condition)
 #' @param DATA_DIR Root data directory path
-#' @param USE_CELLBENDER Logical; if TRUE load CellBender HDF5, if FALSE load CellRanger
 #' @param mt_pattern Regex pattern for mitochondrial genes (e.g., "^ATMG" for Arabidopsis)
 #' @param cp_pattern Regex pattern for chloroplast genes (e.g., "^ATCG" for Arabidopsis)
 #'
 #' @return Named list of Seurat objects with QC metrics (percent.mt, percent.cp)
 #'
 #' @export
-load_seurat_samples <- function(samples, DATA_DIR, USE_CELLBENDER, mt_pattern, cp_pattern) {
-  
-  if (USE_CELLBENDER) {
-    # Load CellBender-filtered HDF5 files
-    seurat_list <- lapply(samples, load_sample,
-                          mt_pattern = mt_pattern,
-                          cp_pattern = cp_pattern)
-  } else {
-    # Load CellRanger filtered_feature_bc_matrix directories
-    seurat_list <- lapply(samples, function(s) {
-      mat <- Read10X(data.dir = file.path(DATA_DIR, s$file))
-      obj <- CreateSeuratObject(counts = mat, project = s$label,
-                                min.cells = 3, min.features = 200)
-      obj$condition <- s$condition
-      obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = mt_pattern)
-      if (!is.null(cp_pattern))
-        obj[["percent.cp"]] <- PercentageFeatureSet(obj, pattern = cp_pattern)
-      obj
-    })
-  }
+load_seurat_samples <- function(samples, DATA_DIR, mt_pattern, cp_pattern) {
+  seurat_list <- lapply(samples, function(s) {
+    mat <- Read10X(data.dir = file.path(DATA_DIR, s$file))
+    obj <- CreateSeuratObject(counts = mat, project = s$label,
+                              min.cells = 3, min.features = 200)
+    obj$condition <- s$condition
+    obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = mt_pattern)
+    if (!is.null(cp_pattern))
+      obj[["percent.cp"]] <- PercentageFeatureSet(obj, pattern = cp_pattern)
+    obj
+  })
   
   names(seurat_list) <- sapply(samples, `[[`, "label")
   return(seurat_list)

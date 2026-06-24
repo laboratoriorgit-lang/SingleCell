@@ -112,21 +112,6 @@ ScRNASeq-Docker/
 
 ---
 
-#### `load_cellbender_filtered_h5()`
-
-Reads a filtered expression matrix from a CellBender HDF5 output file and returns a Seurat object containing the raw counts.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `h5_path` | `character` | Path to the filtered `.h5` file produced by CellBender |
-| `project` | `character` | Project name stored in Seurat object metadata (default `"Sample"`) |
-
-```r
-seu <- load_cellbender_filtered_h5("results/sample_filtered.h5", project = "Root_WT")
-```
-
----
-
 #### `plot_qc_violin_grid()`
 
 Produces a violin plot grid showing `nFeature_RNA`, `nCount_RNA`, `percent.mt`, and (if present) `percent.cp` for a single Seurat object, with the cell count in the plot title.
@@ -199,29 +184,42 @@ seu_clean <- doubletfinder_pipeline(seu, etiqueta = "Root_WT", PCs = 1:30, retur
 
 ---
 
-#### `load_sample()`
+#### `load_seurat_samples()`
 
-Loads a CellBender HDF5 file, computes mitochondrial and (optionally) chloroplast percentages, prefixes cell barcodes with the condition label, and returns the annotated object without applying any filters — useful for inspecting raw QC metrics before deciding thresholds.
+Loads one or more CellRanger `filtered_feature_bc_matrix` directories, creates Seurat objects, and computes mitochondrial and optional chloroplast percentages before filtering.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `sample_info` | `list` | Named list with fields `file` (path), `label` (project name), and `condition` (barcode prefix) |
+| `samples` | `list` | List of sample definitions with `file`, `label`, and `condition` fields |
+| `DATA_DIR` | `character` | Root directory containing the CellRanger folders |
 | `mt_pattern` | `character` | Regex matching mitochondrial gene IDs (default `"^ATMG"`) |
 | `cp_pattern` | `character` | Regex matching chloroplast gene IDs; `NULL` to skip (default `"^ATCG"`) |
 
 ```r
-seu_raw <- load_sample(list(file = "sample.h5", label = "WT", condition = "WT"), mt_pattern = "^ATMG", cp_pattern = "^ATCG")
+samples <- list(
+  list(file = "cellranger/sample_1/outs/filtered_feature_bc_matrix",
+       label = "sample_1", condition = "condition_1"),
+  list(file = "cellranger/sample_2/outs/filtered_feature_bc_matrix",
+       label = "sample_2", condition = "condition_2")
+)
+
+seurat_list_raw <- load_seurat_samples(
+  samples = samples,
+  DATA_DIR = DATA_DIR,
+  mt_pattern = "^ATMG",
+  cp_pattern = "^ATCG"
+)
 ```
 
 ---
 
 #### `filter_sample()`
 
-Applies QC thresholds to an already-annotated Seurat object (output of `load_sample()`) and optionally runs the full DoubletFinder pipeline on the filtered cells.
+Applies QC thresholds to an already-annotated Seurat object and optionally runs the full DoubletFinder pipeline on the filtered cells.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `obj` | `Seurat` | Annotated Seurat object (from `load_sample()`) |
+| `obj` | `Seurat` | Annotated Seurat object |
 | `min_features` | `numeric` | Minimum `nFeature_RNA` (default `200`) |
 | `max_features` | `numeric` | Maximum `nFeature_RNA` (default `Inf`) |
 | `min_counts` | `numeric` | Minimum `nCount_RNA` (default `0`) |
@@ -232,29 +230,6 @@ Applies QC thresholds to an already-annotated Seurat object (output of `load_sam
 
 ```r
 seu_filt <- filter_sample(seu_raw, min_features = 300, max_features = 8000, max_mt = 5)
-```
-
----
-
-#### `process_sample()`
-
-Convenience wrapper that calls `load_sample()` followed by `filter_sample()` in a single step; use this when you do not need to inspect raw QC plots before setting thresholds.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `sample_info` | `list` | Named list with fields `file`, `label`, and `condition` (see `load_sample()`) |
-| `mt_pattern` | `character` | Mitochondrial gene regex (default `"^ATMG"`) |
-| `cp_pattern` | `character` | Chloroplast gene regex; `NULL` to skip (default `"^ATCG"`) |
-| `min_features` | `numeric` | Minimum `nFeature_RNA` (default `200`) |
-| `max_features` | `numeric` | Maximum `nFeature_RNA` (default `Inf`) |
-| `min_counts` | `numeric` | Minimum `nCount_RNA` (default `0`) |
-| `max_counts` | `numeric` | Maximum `nCount_RNA` (default `Inf`) |
-| `max_mt` | `numeric` | Maximum mitochondrial percent (default `5`) |
-| `max_cp` | `numeric` | Maximum chloroplast percent (default `100`) |
-| `run_doubletfinder` | `logical` | Whether to run DoubletFinder (default `TRUE`) |
-
-```r
-seu <- process_sample(list(file = "sample.h5", label = "WT", condition = "WT"), min_features = 300, max_mt = 5)
 ```
 
 ---
@@ -345,12 +320,12 @@ seu <- unificar_nombres(seu)
 
 #### `mostrar_tabla()`
 
-Creates and renders a side-by-side cell-type count comparison table (filtered vs. CellBender annotations) using grid graphics.
+Creates and renders a side-by-side cell-type count comparison table using grid graphics.
 
 | Parameter | Type | Description |
 |---|---|---|
 | `filtered_vec` | `character` | Annotation vector from the filtered object |
-| `cellbender_vec` | `character` | Annotation vector from the CellBender object |
+| `reference_vec` | `character` | Reference annotation vector |
 | `titulo` | `character` | Table title (default `"Annotations"`) |
 
 ```r
@@ -776,7 +751,7 @@ docker run --rm -it \
 
 ## Adapting to other organisms
 
-Swap the organism-specific parameters below when applying this pipeline to species other than *Arabidopsis thaliana*. The `mt_pattern` and `cp_pattern` arguments are passed to `load_sample()` / `process_sample()`; the `orgdb` and `keytype` arguments are passed to `correr_enriquecimiento_go()`.
+Swap the organism-specific parameters below when applying this pipeline to species other than *Arabidopsis thaliana*. The `mt_pattern` and `cp_pattern` arguments are passed to `load_seurat_samples()`; the `orgdb` and `keytype` arguments are passed to `correr_enriquecimiento_go()`.
 
 | Organism | `mt_pattern` | `cp_pattern` | `orgdb` | `keytype` |
 |---|---|---|---|---|
@@ -785,5 +760,3 @@ Swap the organism-specific parameters below when applying this pipeline to speci
 | *Mus musculus* | `"^mt-"` | `NULL` | `org.Mm.eg.db` | `"ENSEMBL"` |
 
 For rice (*Oryza sativa*) use `org.Os.eg.db` with `keytype = "GID"`, and set `mt_pattern` / `cp_pattern` to match your genome annotation's organelle gene naming convention. Also update the `universo` background gene vector in the GO enrichment step to reflect the full gene set of your target organism.
-
-

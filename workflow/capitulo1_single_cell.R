@@ -114,7 +114,6 @@ cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
 # Load all samples using the helper function
 seurat_list_raw <- load_seurat_samples(samples = samples,
                                        DATA_DIR = DATA_DIR,
-                                       USE_CELLBENDER = FALSE,
                                        mt_pattern = mt_pattern,
                                        cp_pattern = cp_pattern)
 
