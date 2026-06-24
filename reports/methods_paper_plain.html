@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="SingleCell Pipeline" />
+  <meta name="dcterms.date" content="2026-06-24" />
+  <title>Computational Methods for Single-Cell RNA-Seq Analysis of Arabidopsis thaliana</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <link rel="stylesheet" href="paper_plain.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Computational Methods for Single-Cell RNA-Seq Analysis
+of <em>Arabidopsis thaliana</em></h1>
+<p class="subtitle">Part 1 — Computational Environment and Quick
+Start</p>
+<p class="author">SingleCell Pipeline</p>
+<p class="date">2026-06-24</p>
+</header>
+<h1 id="materials-and-methods">Materials and Methods</h1>
+<h2 id="materials">Materials</h2>
+<p>The pipeline source code is available at
+<code>https://github.com/cliford2001/SingleCell</code>:</p>
+<pre class="bash"><code>git clone https://github.com/cliford2001/SingleCell.git
+cd SingleCell</code></pre>
+<p>The repository is meant to sit inside a working directory that also
+holds the raw data and the pipeline’s output folder — for instance
+<code>~/your-workdir/SingleCell</code>, with
+<code>~/your-workdir/resultados</code> alongside it. That parent
+directory, not the repository alone, is what gets mounted into the
+container, so that code, input matrices, and results are all visible
+together at <code>/workspace</code>.</p>
+<p>Docker packages R, Python, and every pipeline dependency into one
+portable <strong>image</strong> (<code>matigara/scrnaseq:latest</code>),
+so the analysis runs identically on any machine with Docker installed.
+Two equivalent ways to start it:</p>
+<h3 id="option-1-single-command">Option 1 — single command</h3>
+<pre class="bash"><code>docker run -it --rm \
+  -v ~/your-workdir:/workspace \
+  matigara/scrnaseq:latest /bin/bash</code></pre>
+<p>Pulls the image if missing and opens a shell. Replace
+<code>~/your-workdir</code> with the actual path to that working
+directory if it lives somewhere else.</p>
+<h3 id="option-2-the-repositorys-docker-compose.yml">Option 2 — the
+repository’s <code>docker-compose.yml</code></h3>
+<p>Run as-is from the repository root:</p>
+<pre class="bash"><code>docker compose pull
+docker compose run --rm r bash</code></pre>
+<p><code>pull</code> only reads that file and downloads the image it
+names — unrelated to git, which just placed the file on disk. Same
+<code>~/your-workdir</code> → <code>/workspace</code> mount as Option
+1.</p>
+<p>Either way, <code>/workspace</code> <strong>is</strong>
+<code>~/your-workdir</code> on the host: files written there persist
+after the container exits.</p>
+<p>Once inside the shell, Chapter 1-2 commands are typed into R, and
+Chapter 3 commands into Python:</p>
+<pre class="r"><code>R</code></pre>
+<pre class="python"><code>python3</code></pre>
+<div class="pagebreak">
+
+</div>
+<h2 id="methods">Methods</h2>
+<h3 id="chapter-1-single-cell-processing">Chapter 1 — Single-cell
+processing</h3>
+<p>Running Option 1 opens a self-contained terminal inside the
+container, separate from the host shell it was launched from:</p>
+<pre class="bash"><code>docker run -it --rm \
+  -v ~/your-workdir:/workspace \
+  matigara/scrnaseq:latest /bin/bash</code></pre>
+<p><code>R</code> is then started from that terminal, on its own:</p>
+<pre class="r"><code>R</code></pre>
+<p>Chapter 1 (<code>capitulo1_single_cell.R</code>) runs entirely from
+this session.</p>
+<h4 id="initialization">Initialization</h4>
+<p>Paths are set once at the top of the script:
+<code>PIPELINE_DIR</code> points to the helper scripts, and
+<code>DATA_DIR</code>/<code>base_dir</code> define where input data are
+read from and where every result file is written. Three helper scripts
+are then sourced — package loading, custom Seurat plotting utilities,
+and the core analysis functions used throughout the chapter — before
+fixing the random seed (1807) for reproducibility, disabling
+<code>Seurat.allow.s4</code> for Seurat 5 compatibility, and setting the
+working directory to <code>DATA_DIR</code>.</p>
+<pre class="r"><code>PIPELINE_DIR &lt;- &quot;/workspace/ScRNASeq-Docker/workflow&quot;
+DATA_DIR     &lt;- &quot;/workspace/.&quot;
+base_dir     &lt;- file.path(DATA_DIR, &quot;resultados&quot;)
+
+source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;custom_seurat.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))
+
+set.seed(1807)
+options(Seurat.allow.s4 = FALSE)
+setwd(DATA_DIR)</code></pre>
+<h4 id="sample-definition-and-data-loading">Sample definition and data
+loading</h4>
+<p>Three samples spanning a nitrogen-availability gradient were analyzed
+— <code>Sample_0N</code>, <code>Sample_05N</code>,
+<code>Sample_5N</code> (conditions 0N, 0.5N, 5N) — each loaded from its
+CellRanger <code>filtered_feature_bc_matrix</code> output. For every
+cell, the mitochondrial (<code>^ATMG</code>) and chloroplast
+(<code>^ATCG</code>) read fraction was computed alongside the standard
+<code>nFeature_RNA</code>/<code>nCount_RNA</code> metrics, to guide the
+filtering thresholds applied in the next step.</p>
+<pre class="r"><code>samples &lt;- list(
+  list(file = &quot;cellranger/Sample_0N/outs/filtered_feature_bc_matrix&quot;,
+       label = &quot;Sample_0N&quot;,  condition = &quot;0N&quot;),
+  list(file = &quot;cellranger/Sample_05N/outs/filtered_feature_bc_matrix&quot;,
+       label = &quot;Sample_05N&quot;, condition = &quot;0.5N&quot;),
+  list(file = &quot;cellranger/Sample_5N/outs/filtered_feature_bc_matrix&quot;,
+       label = &quot;Sample_5N&quot;,  condition = &quot;5N&quot;)
+)
+
+colors &lt;- c(&quot;Sample_0N&quot; = &quot;#66c2a5&quot;, &quot;Sample_05N&quot; = &quot;#41ae76&quot;, &quot;Sample_5N&quot; = &quot;#fc8d62&quot;)
+
+seurat_list_raw &lt;- load_seurat_samples(samples, DATA_DIR,
+                                        mt_pattern = &quot;^ATMG&quot;,
+                                        cp_pattern = &quot;^ATCG&quot;)</code></pre>
+</body>
+</html>
