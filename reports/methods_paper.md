@@ -313,3 +313,75 @@ saveRDS(
   <img src="assets/umap_postharmony_generic.png" alt="Representative UMAP after Harmony correction">
   <figcaption>Representative UMAP after Harmony correction, colored by sample identity.</figcaption>
 </figure>
+
+<div class="pagebreak"></div>
+
+#### Section 5 — Resolution optimization
+
+Cluster granularity is selected using two complementary diagnostics. The elbow
+plot summarizes how within-cluster dispersion decreases as the number of
+clusters increases, while the cluster tree tracks how Leiden communities split
+or remain stable across candidate resolutions. Together, these outputs guide
+the final clustering resolution used in the next section.
+
+```r
+k_range <- 1:31
+resolutions_test <- c(0.15, 0.30, 0.50, 0.8, 1.0)
+
+output_dir <- dir_02
+```
+
+The elbow diagnostic is computed from the first 30 PCA dimensions of the
+post-Harmony object.
+
+```r
+pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
+wss <- sapply(
+  k_range,
+  function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
+)
+
+elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    x = "Number of clusters (k)",
+    y = "Within-cluster sum of squares"
+  ) +
+  theme_minimal()
+
+save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
+```
+
+The cluster tree is generated after building the Harmony neighbor graph and
+sweeping the selected Leiden resolutions.
+
+```r
+clu <- pbmc_harmony %>%
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  FindNeighbors(
+    reduction = "harmony",
+    dims = 1:30,
+    k.param = 30,
+    verbose = FALSE
+  )
+
+for (res in resolutions_test) {
+  clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
+}
+
+save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree.pdf", w = 18, h = 18)
+```
+
+<div class="paired-output">
+<div class="paired-output-grid">
+<div class="paired-panel">
+<img src="assets/elbow_plot_generic.png" alt="Representative elbow plot">
+<p class="paired-caption">Elbow plot computed from the post-Harmony object.</p>
+</div>
+<div class="paired-panel">
+<img src="assets/clustree_generic.png" alt="Representative cluster tree">
+<p class="paired-caption">Cluster tree across candidate Leiden resolutions.</p>
+</div>
+</div>
+</div>

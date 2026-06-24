@@ -134,6 +134,18 @@ a { color: #285d86; text-decoration: underline; }
   text-align: center;
 }
 
+.paired-output {
+  break-inside: avoid;
+  margin: 0.75em -0.1in 0.2em;
+  page-break-inside: avoid;
+}
+
+.paired-output-grid {
+  display: grid;
+  gap: 0.18in;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .output-group {
   break-inside: avoid;
   page-break-inside: avoid;
@@ -147,6 +159,12 @@ a { color: #285d86; text-decoration: underline; }
   width: 3.25in;
 }
 
+.paired-output img {
+  border: 0.75pt solid #b8b8b8;
+  display: block;
+  width: 100%;
+}
+
 .qc-preview figcaption,
 .output-preview figcaption {
   color: #555;
@@ -155,6 +173,16 @@ a { color: #285d86; text-decoration: underline; }
   line-height: 1.25;
   margin: 0 auto;
   max-width: 3.5in;
+  text-align: center;
+}
+
+.paired-output figcaption,
+.paired-caption {
+  color: #555;
+  font-size: 8pt;
+  font-style: italic;
+  line-height: 1.2;
+  margin-top: 0.25em;
   text-align: center;
 }
 
