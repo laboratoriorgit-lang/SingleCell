@@ -132,6 +132,8 @@ list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
 output_dir <- base_dir
 ```
 
+<div class="pagebreak"></div>
+
 #### Section 1 — Data loading and pre-filter QC
 
 Section 1 begins by selecting the first output folder and declaring the
@@ -187,7 +189,125 @@ seurat_list_raw <- load_seurat_samples(
 plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 ```
 
-<figure class="qc-preview">
-  <img src="assets/qc_prefilter_cellranger_v2.png" alt="Representative pre-filter QC violin plots">
+<figure class="output-preview">
+  <img src="assets/qc_prefilter_generic.png" alt="Representative pre-filter QC violin plots">
   <figcaption>Representative pre-filter QC output produced by `plot_qc_batch()`.</figcaption>
+</figure>
+
+<div class="pagebreak"></div>
+
+#### Section 2 — Cell filtering and doublet detection
+
+Section 2 applies the first cell-level exclusion criteria. The default
+thresholds retain cells with at least 200 detected genes and less than 5%
+mitochondrial signal. DoubletFinder is then applied sample-by-sample through
+the filtering helper, and the same QC panel is regenerated after filtering.
+
+```r
+output_dir <- dir_01
+
+seurat_list <- filter_seurat_samples(
+  seurat_list_raw,
+  min_features = 200,
+  max_mt = 5
+)
+
+plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
+```
+
+The filtered list is saved as a checkpoint so the workflow can restart from
+this point without reloading and refiltering the raw matrices.
+
+```r
+saveRDS(
+  seurat_list,
+  file.path(dir_objects, "seurat_list_postfilter.rds")
+)
+```
+
+<figure class="output-preview">
+  <img src="assets/qc_postfilter_generic.png" alt="Representative post-filter QC violin plots">
+  <figcaption>Representative post-filter QC output after cell filtering and doublet removal.</figcaption>
+</figure>
+
+<div class="pagebreak"></div>
+
+#### Section 3 — Merge and initial preprocessing
+
+The filtered samples are merged into one Seurat object and processed with the
+standard log-normalization workflow. Variable features are selected by VST,
+the matrix is scaled, PCA is computed over 30 components, and an initial UMAP
+is generated from the PCA space. This pre-Harmony UMAP is used to visualize
+sample structure before batch correction.
+
+```r
+output_dir <- dir_01
+
+pbmc_harmony <- reduce(seurat_list, merge) %>%
+  NormalizeData(verbose = FALSE) %>%
+  FindVariableFeatures(
+    selection.method = "vst",
+    nfeatures = 2000,
+    verbose = FALSE
+  ) %>%
+  ScaleData(verbose = FALSE) %>%
+  RunPCA(npcs = 30, verbose = FALSE) %>%
+  RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+```
+
+The pre-correction UMAP is saved by sample identity, followed by a checkpoint
+of the merged object.
+
+```r
+save_pdf(
+  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  "umap_preharmony.pdf"
+)
+
+saveRDS(
+  pbmc_harmony,
+  file.path(dir_objects, "pbmc_harmony_preharmony.rds")
+)
+```
+
+<figure class="output-preview">
+  <img src="assets/umap_preharmony_generic.png" alt="Representative UMAP before Harmony correction">
+  <figcaption>Representative UMAP before Harmony correction, colored by sample identity.</figcaption>
+</figure>
+
+<div class="pagebreak"></div>
+
+#### Section 4 — Harmony batch correction
+
+Harmony is then run on the sample identity field (`orig.ident`) to reduce
+sample-level batch structure while preserving biological variation. The UMAP
+embedding is recomputed from the Harmony reduction, and downstream sections
+use Harmony coordinates rather than the original PCA space.
+
+```r
+output_dir <- dir_01
+
+pbmc_harmony <- pbmc_harmony %>%
+  RunHarmony("orig.ident", plot_convergence = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
+```
+
+The post-Harmony UMAP and object checkpoint are written to disk for later
+resolution testing, clustering, annotation, and export.
+
+```r
+save_pdf(
+  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  "umap_postharmony.pdf"
+)
+
+saveRDS(
+  pbmc_harmony,
+  file.path(dir_objects, "pbmc_harmony_postharmony.rds")
+)
+```
+
+<figure class="output-preview">
+  <img src="assets/umap_postharmony_generic.png" alt="Representative UMAP after Harmony correction">
+  <figcaption>Representative UMAP after Harmony correction, colored by sample identity.</figcaption>
 </figure>

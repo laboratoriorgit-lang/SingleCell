@@ -126,21 +126,24 @@ th, td {
 
 a { color: #285d86; text-decoration: underline; }
 
-.qc-preview {
+.qc-preview,
+.output-preview {
   break-inside: avoid;
   margin: 0.7em auto 0.2em;
   page-break-inside: avoid;
   text-align: center;
 }
 
-.qc-preview img {
+.qc-preview img,
+.output-preview img {
   border: 0.75pt solid #b8b8b8;
   display: block;
   margin: 0 auto 0.25em;
   width: 3.25in;
 }
 
-.qc-preview figcaption {
+.qc-preview figcaption,
+.output-preview figcaption {
   color: #555;
   font-size: 8.5pt;
   font-style: italic;
