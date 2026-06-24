@@ -100,7 +100,7 @@ adata_sub = preview_trajectory_selection(
 ROOT_CLUSTER = "Stomatal Line"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=25, sigma=0.5, lambda_value=30, eigs=3, seed=3),
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=200, eigs=8, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
