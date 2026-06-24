@@ -482,14 +482,18 @@ def strip_segment_frames(ax):
                 p.remove()
 
 
-def save_trends_18x18(axes_list, png_path, pdf_path):
+# Trends plots get their own canvas (24x18, wider than tall) instead of the
+# generic PLOT_FIGSIZE (18x18) used by other plot types — the dendrogram
+# panel looks cramped at a square 18x18 once the tree is a single segment.
+def save_trends_plot(axes_list, png_path, pdf_path):
     for ax in axes_list:
         strip_segment_frames(ax)
     fig = axes_list[0].get_figure()
-    fig.set_size_inches(*PLOT_FIGSIZE, forward=True)
-    fig.subplots_adjust(left=0.06, right=0.90, bottom=0.06, top=0.92)
-    save_plot_18x18(fig, png_path)
-    save_plot_18x18(fig, pdf_path)
+    fig.set_size_inches(24, 18, forward=True)
+    fig.subplots_adjust(left=0.04, right=0.85, bottom=0.06, top=0.92)
+    fig.savefig(png_path, dpi=PLOT_DPI, facecolor="white")
+    fig.savefig(pdf_path, dpi=PLOT_DPI, facecolor="white")
+    plt.close(fig)
     plt.close(fig)
 
 
@@ -501,6 +505,9 @@ def run_step29_gene_trends(
     top_n        = 50,
     ordering     = "max",
     n_jobs       = 4,
+    spline_df    = 5,
+    A_cut        = 0.3,
+    p_val_cut    = 0.001,
 ):
     output_dir = os.path.join(run_dir, "gene_trends")
     os.makedirs(output_dir, exist_ok=True)
@@ -508,57 +515,72 @@ def run_step29_gene_trends(
     if adata.X is None and "logcounts" in adata.layers:
         adata.X = adata.layers["logcounts"]
 
+    # spline_df: degrees of freedom of the per-segment GAM smoothing spline
+    # used by test_association. Lower it (e.g. 3) if you hit "A term has
+    # fewer unique covariate combinations than specified maximum degrees of
+    # freedom" — that means some tree segment has too few distinct pseudotime
+    # values for the default of 5.
+    #
+    # A_cut / p_val_cut: significance is redefined from scFates's own
+    # combined fdr/A/st cutoffs (very conservative on small datasets) to a
+    # lower amplitude cutoff plus the raw (non-FDR-corrected) p-value — the
+    # global/whole-tree version of the technique used per-branch in pse.py.
     scf.tl.dendrogram(adata)
-    scf.tl.test_association(adata, n_jobs=n_jobs)
+    scf.tl.test_association(adata, n_jobs=n_jobs, spline_df=spline_df, A_cut=A_cut)
+    adata.var["signi"] = adata.var["p_val"] < p_val_cut
     significant_genes = adata.var_names[adata.var["signi"]].tolist()
 
-    adata_top = adata.copy()
-    scf.tl.fit(adata_top, n_jobs=n_jobs)
-    top_genes = adata_top.var.sort_values("A", ascending=False).head(top_n).index.tolist()
+    # Custom genes are force-included in the fit even if not statistically
+    # significant, so a gene you explicitly asked for never silently
+    # disappears from either heatmap.
+    custom_genes  = custom_genes or []
+    genes_present = [g for g in custom_genes if g in adata.var_names]
+    missing       = sorted(set(custom_genes) - set(genes_present))
+    if missing:
+        print(f"custom selection: genes ignored (not found in adata): {', '.join(missing)}")
+    fit_features = list(dict.fromkeys(significant_genes + genes_present))
+
+    # Fit on a copy so the caller's adata is never subsetted. Both heatmaps
+    # below reuse this single fit — rows = significant + custom genes, only
+    # the highlighted/labeled subset differs between the two plots.
+    adata_fitted = adata.copy()
+    scf.tl.fit(adata_fitted, features=fit_features, n_jobs=n_jobs)
+
+    top_genes = adata_fitted.var.sort_values("A", ascending=False).head(top_n).index.tolist()
     axes_list = scf.pl.trends(
-        adata_top,
+        adata_fitted,
         highlight_features = top_genes,
         style               = "italic",
         add_outline         = True,
         basis               = "dendro",
         show_segs           = False,
         fontsize            = 18,
-        figsize             = PLOT_FIGSIZE,
         ordering            = ordering,
         show                = False,
         title               = f"{name} — top {top_n} variable genes",
     )
-    top_png = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_18x18.png")
-    top_pdf = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_18x18.pdf")
-    save_trends_18x18(axes_list, top_png, top_pdf)
+    top_png = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.png")
+    top_pdf = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.pdf")
+    save_trends_plot(axes_list, top_png, top_pdf)
     print(f"✓ Top-{top_n} gene trends saved: {top_png}")
 
     custom_png = None
-    if custom_genes:
-        genes_present = [g for g in custom_genes if g in adata.var_names]
-        missing       = sorted(set(custom_genes) - set(genes_present))
-        if missing:
-            print(f"custom selection: genes ignored (not found in adata): {', '.join(missing)}")
-
-        adata_custom = adata.copy()
-        fit_features = list(dict.fromkeys(significant_genes + genes_present))
-        scf.tl.fit(adata_custom, features=fit_features, n_jobs=n_jobs)
+    if genes_present:
         axes_list = scf.pl.trends(
-            adata_custom,
+            adata_fitted,
             highlight_features = genes_present,
             style               = "italic",
             add_outline         = True,
             basis               = "dendro",
             show_segs           = False,
             fontsize            = 18,
-            figsize             = PLOT_FIGSIZE,
             ordering            = ordering,
             show                = False,
             title               = f"{name} — custom selection",
         )
-        custom_png = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_18x18.png")
-        custom_pdf = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_18x18.pdf")
-        save_trends_18x18(axes_list, custom_png, custom_pdf)
+        custom_png = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.png")
+        custom_pdf = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.pdf")
+        save_trends_plot(axes_list, custom_png, custom_pdf)
         print(f"✓ Custom selection gene trends saved: {custom_png}")
 
     print("STEP 29 COMPLETE: gene trends saved")

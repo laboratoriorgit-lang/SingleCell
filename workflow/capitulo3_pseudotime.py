@@ -123,6 +123,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 #   Write the gene IDs you want to visualize.
 
 GENES = ["AT1G22690", "AT4G04890", "AT1G80070"]
+name  = os.path.basename(selected_trajectory_dir)
 
 if adata_traj.X is None and "logcounts" in adata_traj.layers:
     adata_traj.X = adata_traj.layers["logcounts"]
@@ -137,9 +138,8 @@ fig = sc.pl.draw_graph(
     show       = False,
     return_fig = True,
 )
-fig.set_size_inches(18, 18, forward=True)
-fig.savefig(os.path.join(gene_plots_dir, "step28_genes_FINAL_18x18.png"), dpi=200, facecolor="white")
-fig.savefig(os.path.join(gene_plots_dir, "step28_genes_FINAL_18x18.pdf"), dpi=200, facecolor="white")
+save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.png"))
+save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
 plt.close(fig)
 
 print("SECTION 28 COMPLETE: Gene trajectory plots saved")
@@ -161,6 +161,9 @@ print("SECTION 28 COMPLETE: Gene trajectory plots saved")
 TOP_N           = 10
 HIGHLIGHT_GENES = ["AT1G22690", "AT4G04890", "AT1G80070"]
 ORDERING        = "max"
+# Lower this (e.g. 3) if you hit "fewer unique covariate combinations than
+# specified maximum degrees of freedom" during test_association.
+SPLINE_DF       = 5
 
 top_path, highlight_path = run_step29_gene_trends(
     adata        = adata_traj,
@@ -170,6 +173,7 @@ top_path, highlight_path = run_step29_gene_trends(
     top_n        = TOP_N,
     ordering     = ORDERING,
     n_jobs       = N_JOBS,
+    spline_df    = SPLINE_DF,
 )
 
 print("SECTION 29 COMPLETE: Gene trend plots saved")

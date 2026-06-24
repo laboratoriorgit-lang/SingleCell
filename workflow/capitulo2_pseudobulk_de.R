@@ -99,7 +99,7 @@ message("\n✓ SECTION 15 COMPLETE: Pseudo-replicates assigned")
 #   Example:
 #     conds = c("0N", "5N") means log2FC = log2(5N / 0N)
 comparisons <- list(
-  list(conds = c("condicion1", "condicion2"), tag = "condicion1_vs_condicion2")
+  list(conds = c("0.5N", "5N"), tag = "0.5N_vs_5N")
 )
 
 # Edit here:
@@ -139,7 +139,7 @@ message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
 #
 #   padj_cut = adjusted p-value threshold
 #   lfc_cut  = absolute log2 fold-change threshold
-volcano_tag <- "condicion1_vs_condicion2"
+volcano_tag <- "0.5N_vs_5N"
 padj_cut    <- 0.05
 lfc_cut     <- 1
 

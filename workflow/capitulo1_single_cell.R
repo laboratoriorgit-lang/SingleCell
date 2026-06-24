@@ -53,19 +53,17 @@ base_dir   <- file.path(DATA_DIR, "resultados")
 #   label     — unique name for this sample (appears in all plots)
 #   condition — experimental group this sample belongs to
 samples <- list(
-  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",      label = "0N",      condition = "0N"),
-  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix",     label = "0.5N_R1", condition = "0.5N"),
-  list(file = "cellranger/Sample_05N_2/outs/filtered_feature_bc_matrix",   label = "0.5N_R2", condition = "0.5N"),
-  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",      label = "5N_R1",   condition = "5N")#,
-  #list(file = "cellranger/Sample_5N_2/outs/filtered_feature_bc_matrix",    label = "5N_R2",   condition = "5N")
+  list(file = "cellranger/Sample_0N/outs/filtered_feature_bc_matrix",  label = "Sample_0N",  condition = "0N"),
+  list(file = "cellranger/Sample_05N/outs/filtered_feature_bc_matrix", label = "Sample_05N", condition = "0.5N"),
+  list(file = "cellranger/Sample_5N/outs/filtered_feature_bc_matrix",  label = "Sample_5N",  condition = "5N")
 )
 
 
 # ── Plot colors (one color per sample label) ───────────────────────────────────
 colors <- c(
-  "0N"      = "#66c2a5",
-  "0.5N_R1" = "#fc8d62",# "0.5N_R2" = "#fc8d62",
-  "5N_R1"   = "#8da0cb"#, "5N_R2"   = "#8da0cb"
+  "Sample_0N"  = "#66c2a5",
+  "Sample_05N" = "#41ae76",
+  "Sample_5N"  = "#fc8d62"
 )
 
 

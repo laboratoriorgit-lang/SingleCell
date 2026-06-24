@@ -50,37 +50,39 @@ The repository is organized around three workflow chapters. Chapter 1 creates th
 
 ## Quick Start with Docker
 
-A pre-built Docker image with all dependencies (R 4.5, Python 3.12, Seurat, scanpy, CellRanger 9.0.1, and all required packages) is available on Docker Hub.
-
-### Pull the image
-
-```bash
-docker pull matigara/scrnaseq:latest
-```
-
-### Run interactively with docker compose (recommended)
+`docker-compose.yml` ya está configurado para usar **la nube o local, a
+elección** — declara `image: matigara/scrnaseq:latest` y `build: .` al
+mismo tiempo:
 
 ```bash
-cd /path/to/your/data   # folder containing ScRNASeq-Docker/ and your data
-docker compose run --rm r
+docker compose pull      # usa la imagen de Docker Hub (no construye nada)
+docker compose build     # o construye tu propia versión local
+                          #   (sobreescribe el mismo tag, solo en este host)
+docker compose run --rm r          # abre consola R con lo que haya quedado
+docker compose run --rm r bash     # o bash, si se prefiere
 ```
 
-### Or run manually
+Monta `~/projects` en `/workspace` — editar esa ruta en `docker-compose.yml`
+si los datos están en otra carpeta.
+
+**Manual, sin docker-compose:**
 
 ```bash
-# R console
-docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest R
+docker pull matigara/scrnaseq:latest                     # nube
+# o: docker build -t matigara/scrnaseq:latest .          # local
 
-# Python console
-docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest python3
-
-# Bash shell
-docker run -it -v /path/to/your/data:/workspace matigara/scrnaseq:latest /bin/bash
+docker run -it -v ~/projects:/workspace matigara/scrnaseq:latest /bin/bash
 ```
 
-**Note:** Replace `/path/to/your/data` with your local data directory. Inside the container it will be available at `/workspace`. The pipeline scripts expect `PIPELINE_DIR = "/workspace/ScRNASeq-Docker/workflow"` and `DATA_DIR = "/workspace/."` — both set by default in each chapter script.
+Cualquiera de las dos vías deja el proyecto disponible en `/workspace`. Una
+vez dentro:
 
----
+```bash
+R                                     # consola interactiva de R
+python3                               # consola interactiva de Python
+Rscript capitulo1_single_cell.R       # correr un script R completo
+python3 capitulo3_pseudotime.py       # correr un script Python completo
+```
 
 ## Repository files
 

@@ -1,15 +1,9 @@
 services:
   r:
+    image: matigara/scrnaseq:latest
     build: .
-    image: scrnaseq_docker:latest
-    container_name: r45
     volumes:
-      - ./workspace:/workspace
-      - r-packages:/usr/local/lib/R/library
+      - ~/projects:/workspace
     stdin_open: true
     tty: true
     command: R
-
-volumes:
-  r-packages:
-    name: r45-packages
