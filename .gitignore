@@ -6,3 +6,7 @@ cellranger-9.0.1.tar.gz
 *.bak_*
 __pycache__/
 .ipynb_checkpoints/
+reports/*
+!reports/*.md
+!reports/*.css
+!reports/assets/

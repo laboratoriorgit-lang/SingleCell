@@ -33,6 +33,18 @@ h3 {
   margin-top: 1.1em;
 }
 
+h4 {
+  color: #1b1b1b;
+  font-size: 10.5pt;
+  font-weight: bold;
+  margin-top: 0.3em;
+  margin-bottom: 0.5em;
+  break-before: page;
+  page-break-before: always;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
 p { margin: 0.55em 0; text-align: justify; }
 
 ul, ol { margin-top: 0.4em; }
@@ -183,6 +195,33 @@ a { color: #285d86; text-decoration: underline; }
   font-style: italic;
   line-height: 1.2;
   margin-top: 0.25em;
+  text-align: center;
+}
+
+.quad-output {
+  break-inside: avoid;
+  margin: 0.7em -0.1in 0.3em;
+  page-break-inside: avoid;
+}
+
+.quad-output-grid {
+  display: grid;
+  gap: 0.12in;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.quad-output img {
+  border: 0.75pt solid #b8b8b8;
+  display: block;
+  width: 100%;
+}
+
+.quad-caption {
+  color: #555;
+  font-size: 7pt;
+  font-style: italic;
+  line-height: 1.15;
+  margin-top: 0.15em;
   text-align: center;
 }
 

@@ -7,7 +7,7 @@
 # =============================================================================
 
 # ── Configuration (must match capitulo1_single_cell.R) ───────────────────────────────
-PIPELINE_DIR <- "/workspace/workflow_nuevo"
+PIPELINE_DIR <- "/workspace/SingleCell/workflow"
 DATA_DIR     <- "/workspace/."
 base_dir     <- file.path(DATA_DIR, "resultados")
 
@@ -99,7 +99,7 @@ message("\n✓ SECTION 15 COMPLETE: Pseudo-replicates assigned")
 #   Example:
 #     conds = c("0N", "5N") means log2FC = log2(5N / 0N)
 comparisons <- list(
-  list(conds = c("0.5N", "5N"), tag = "0.5N_vs_5N")
+  list(conds = c("condition_1", "condition_2"), tag = "condition_1_vs_condition_2")
 )
 
 # Edit here:
@@ -139,7 +139,7 @@ message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
 #
 #   padj_cut = adjusted p-value threshold
 #   lfc_cut  = absolute log2 fold-change threshold
-volcano_tag <- "0.5N_vs_5N"
+volcano_tag <- "condition_1_vs_condition_2"
 padj_cut    <- 0.05
 lfc_cut     <- 1
 
@@ -230,18 +230,22 @@ message("\n✓ SECTION 20 COMPLETE: Log2FC heatmap saved")
 #   n_metacells = metacells per celltype x sample
 #   soft_power  = NULL for automatic detection, or use a number
 wgcna_name  <- "unified"
-n_metacells <- 25
-soft_power  <- NULL
+n_metacells     <- 50
+soft_power      <- NULL
+min_module_size <- 20
+deep_split      <- 2
 
 run_unified_hdwgcna(
-  seurat_obj    = pbmc_harmony,
-  de_table_path = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
-  output_dir    = dir_08,
-  annot_col     = pseudobulk_annot_col,
-  sample_col    = "orig.ident",
-  wgcna_name    = wgcna_name,
-  n_metacells   = n_metacells,
-  soft_power    = soft_power
+  seurat_obj      = pbmc_harmony,
+  de_table_path   = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
+  output_dir      = dir_08,
+  annot_col       = pseudobulk_annot_col,
+  sample_col      = "orig.ident",
+  wgcna_name      = wgcna_name,
+  n_metacells     = n_metacells,
+  soft_power      = soft_power,
+  min_module_size = min_module_size,
+  deep_split      = deep_split
 )
 
 message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
@@ -256,7 +260,7 @@ message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
 # Edit here:
 #   tom_threshold = lower gives more edges; higher gives simpler networks
 #   n_hub_label = number of hub genes labelled in the plot
-tom_threshold <- 0.5
+tom_threshold <- 0.2
 n_hub_label   <- 5
 
 plot_hdwgcna_network(
@@ -267,3 +271,37 @@ plot_hdwgcna_network(
 )
 
 message("\n✓ SECTION 22 COMPLETE: Network files and plots saved")
+
+# =============================================================================
+# SECTION 22b — TF CO-EXPRESSION NETWORK (DE-direction coloring)
+# =============================================================================
+# Filters the hdWGCNA edges to TF-containing pairs using AtTFDB locus list
+# (downloaded from https://agris-knowledgebase.org/AtTFDB/download_csv).
+# Nodes colored by DE direction: up (red), down (blue), mixed (grey).
+# TFs drawn as triangles; co-expression partners as circles.
+#
+# Edit here:
+#   tom_threshold_tf = TOM weight cutoff for TF network
+#   n_hub_label_tf   = number of top hub TFs to label
+tom_threshold_tf <- 0.2
+n_hub_label_tf   <- 15
+
+edges_all <- read.table(file.path(dir_08, "edges_unified.tsv"),
+                        header=TRUE, sep="\t")
+tfs       <- trimws(readLines(file.path(DATA_DIR, "AtTFDB_loci.txt")))
+de_mat    <- read.table(
+  file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
+  header=TRUE, sep="\t", row.names=1, check.names=FALSE)
+
+edges_tf <- edges_all[edges_all$weight >= tom_threshold_tf, ]
+net_tf   <- build_tf_network(edges_tf, tfs, de_mat)
+plot_tf_de_network(net_tf,
+                   output_dir    = dir_08,
+                   layout        = "graphopt",
+                   n_hub_label   = n_hub_label_tf,
+                   contrast_tag  = volcano_tag,
+                   output_pdf    = "network_tf_DE_direction.pdf",
+                   output_width  = 22,
+                   output_height = 22)
+
+message("\n✓ SECTION 22b COMPLETE: TF network saved to network_tf_DE_direction.pdf")

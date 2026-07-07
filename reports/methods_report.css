@@ -86,6 +86,36 @@ a {
   text-decoration: none;
 }
 
+figure img, .output-preview img {
+  display: block;
+  max-width: 72%;
+  height: auto;
+  margin: 0.4em auto;
+}
+
+.quad-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4em;
+}
+
+.quad-panel img, .paired-panel img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.quad-panel, .paired-panel {
+  font-size: 8pt;
+  text-align: center;
+}
+
+.paired-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4em;
+}
+
 #header {
   border-bottom: 3px solid #bcccdc;
   margin-bottom: 1.2em;

@@ -3083,7 +3083,9 @@ run_unified_hdwgcna <- function(seurat_obj,
                                 sample_col = "orig.ident",
                                 wgcna_name = "unified",
                                 n_metacells = 25,
-                                soft_power = NULL) {
+                                soft_power = NULL,
+                                min_module_size = 30,
+                                deep_split = 2) {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -3102,7 +3104,7 @@ run_unified_hdwgcna <- function(seurat_obj,
     group.by    = c(annot_col, sample_col, "all_group"),
     reduction   = "harmony",
     k           = n_metacells,
-    max_shared  = 10,
+    max_shared  = max(10L, as.integer(n_metacells * 0.4)),
     ident.group = "all_group",
     wgcna_name  = wgcna_name
   )
@@ -3125,6 +3127,8 @@ run_unified_hdwgcna <- function(seurat_obj,
     obj,
     soft_power    = selected_power,
     networkType   = "signed hybrid",
+    minModuleSize = min_module_size,
+    deepSplit     = deep_split,
     tom_outdir    = sub("^/workspace/", "", output_dir),
     maxBlockSize  = max(length(de_genes) + 1L, 30000L),
     useDiskCache  = FALSE,
@@ -3495,13 +3499,14 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
 
       # ── Plot (ggraph) ──────────────────────────────────────────────────────
       if (nrow(edge_df) > 0) {
-        edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
+        edge_df_plot <- if (nrow(edge_df) > 50000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(50000)], ] else edge_df
         nodes_in_plot <- unique(c(edge_df_plot$source, edge_df_plot$target))
         node_df_plot <- node_df[node_df$gene %in% nodes_in_plot, ]
 
         g       <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df_plot)
         mods    <- sort(unique(node_df_plot$module))
-        pal <- setNames(mods, mods)
+        pal <- setNames(as.character(mods), mods)
+        if ("grey" %in% names(pal)) pal["grey"] <- "grey30"
 
         vdata <- node_df_plot[match(igraph::V(g)$name, node_df_plot$gene), ]
 
@@ -3539,6 +3544,104 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
   }
 
   invisible(NULL)
+}
+
+
+# =============================================================================
+# plot_hdwgcna_network_tf
+# =============================================================================
+# Restricts an already-exported hdWGCNA network (edges_<wgcna_name>.tsv and
+# nodes_<wgcna_name>.tsv, written by plot_hdwgcna_network()) to TF-TF and
+# TF-target co-expression edges, using a flat list of Arabidopsis TF loci
+# (e.g. AtTFDB, from AGRIS / TAIR: https://agris-knowledgebase.org/Downloads/).
+# Target-target edges (neither endpoint a known TF) are dropped.
+#
+# Parameters:
+#   network_dir  — directory containing edges_<wgcna_name>.tsv / nodes_<wgcna_name>.tsv
+#   tf_list_file — plain text file, one Arabidopsis locus per line (case-insensitive)
+#   wgcna_name   — name used when the network was exported (default "unified")
+#   output_dir   — where to save the filtered tables and plot
+#   n_hub_label  — number of hub genes to label in the plot
+#
+# Saves: edges_{wgcna_name}_TFfiltered.tsv, nodes_{wgcna_name}_TFfiltered.tsv,
+#        network_{wgcna_name}_TFfiltered.pdf (TFs shown as triangles, targets as circles)
+plot_hdwgcna_network_tf <- function(network_dir,
+                                     tf_list_file,
+                                     wgcna_name  = "unified",
+                                     output_dir  = network_dir,
+                                     n_hub_label = 10) {
+
+  edge_df <- read.table(file.path(network_dir, paste0("edges_", wgcna_name, ".tsv")),
+                        header = TRUE, sep = "\t")
+  node_df <- read.table(file.path(network_dir, paste0("nodes_", wgcna_name, ".tsv")),
+                        header = TRUE, sep = "\t")
+
+  tf_loci <- toupper(trimws(readLines(tf_list_file)))
+  node_df$is_TF <- toupper(node_df$gene) %in% tf_loci
+
+  edge_df$source_TF <- toupper(edge_df$source) %in% tf_loci
+  edge_df$target_TF  <- toupper(edge_df$target) %in% tf_loci
+  edge_df_tf <- edge_df[edge_df$source_TF | edge_df$target_TF, ]
+  edge_df_tf$edge_type <- ifelse(edge_df_tf$source_TF & edge_df_tf$target_TF,
+                                 "TF-TF", "TF-Target")
+
+  cat("Edges total:", nrow(edge_df), "\n")
+  cat("Edges TF-TF:", sum(edge_df_tf$edge_type == "TF-TF"), "\n")
+  cat("Edges TF-Target:", sum(edge_df_tf$edge_type == "TF-Target"), "\n")
+  cat("Edges dropped (Target-Target):", nrow(edge_df) - nrow(edge_df_tf), "\n")
+
+  nodes_in_edges <- unique(c(edge_df_tf$source, edge_df_tf$target))
+  node_df_tf <- node_df[node_df$gene %in% nodes_in_edges, ]
+  cat("Nodes kept:", nrow(node_df_tf), "( TFs:", sum(node_df_tf$is_TF),
+      "| targets:", sum(!node_df_tf$is_TF), ")\n")
+
+  write.table(edge_df_tf, file.path(output_dir, paste0("edges_", wgcna_name, "_TFfiltered.tsv")),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(node_df_tf, file.path(output_dir, paste0("nodes_", wgcna_name, "_TFfiltered.tsv")),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+
+  hub_pool <- node_df_tf$gene[order(-node_df_tf$kME)]
+  hubs <- head(hub_pool, n_hub_label)
+
+  g    <- igraph::graph_from_data_frame(edge_df_tf, directed = FALSE, vertices = node_df_tf)
+  mods <- sort(unique(node_df_tf$module))
+  pal  <- setNames(as.character(mods), mods)
+  if ("grey" %in% names(pal)) pal["grey"] <- "grey30"
+
+  vdata <- node_df_tf[match(igraph::V(g)$name, node_df_tf$gene), ]
+
+  p <- ggraph::ggraph(g, layout = "graphopt") +
+    ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight, color = edge_type)) +
+    ggraph::scale_edge_width(range = c(0.2, 1.5)) +
+    ggraph::scale_edge_alpha(range = c(0.2, 0.7)) +
+    ggraph::scale_edge_color_manual(values = c("TF-TF" = "firebrick", "TF-Target" = "grey60"),
+                                     name = "Edge type") +
+    ggraph::geom_node_point(ggplot2::aes(size = vdata$kME, color = vdata$module,
+                                          shape = vdata$is_TF)) +
+    ggplot2::scale_color_manual(values = pal, name = "Module") +
+    ggplot2::scale_shape_manual(values = c(`TRUE` = 17, `FALSE` = 16),
+                                 labels = c(`TRUE` = "TF", `FALSE` = "Target"), name = "Role") +
+    ggplot2::scale_size(range = c(1.5, 6), name = "kME") +
+    ggraph::geom_node_label(
+      ggplot2::aes(label = ifelse(igraph::V(g)$name %in% hubs, igraph::V(g)$name, NA)),
+      size = 2.5, repel = TRUE, max.overlaps = 20,
+      label.padding = ggplot2::unit(0.1, "lines"),
+      label.size = 0.2, fill = "white", alpha = 0.85) +
+    ggplot2::labs(title = paste("TF-filtered co-expression network —", gsub("_", " ", wgcna_name)),
+                  subtitle = paste(nrow(edge_df_tf), "edges |", nrow(node_df_tf), "genes |",
+                                    sum(node_df_tf$is_TF), "TFs")) +
+    ggplot2::theme_void() +
+    ggplot2::theme(
+      plot.title    = ggplot2::element_text(face="bold", size=14, hjust=0.5),
+      plot.subtitle = ggplot2::element_text(size=9, hjust=0.5, color="grey50"),
+      legend.position = "right")
+
+  pdf(file.path(output_dir, paste0("network_", wgcna_name, "_TFfiltered.pdf")), width = 18, height = 18)
+  print(p)
+  dev.off()
+  cat("  TF-filtered network PDF saved\n")
+
+  invisible(list(edges = edge_df_tf, nodes = node_df_tf))
 }
 
 
@@ -3663,13 +3766,14 @@ filter_hdwgcna_by_de <- function(hdwgcna_dir,
       cat("  DE edges:", nrow(edge_df), "| DE nodes:", nrow(node_df), "\n")
 
       if (nrow(edge_df) > 0) {
-        edge_df_plot <- if (nrow(edge_df) > 10000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(10000)], ] else edge_df
+        edge_df_plot <- if (nrow(edge_df) > 50000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(50000)], ] else edge_df
         nodes_in_plot <- unique(c(edge_df_plot$source, edge_df_plot$target))
         node_df_plot <- node_df[node_df$gene %in% nodes_in_plot, ]
 
         g     <- igraph::graph_from_data_frame(edge_df_plot, directed = FALSE, vertices = node_df_plot)
         mods  <- sort(unique(node_df_plot$module))
-        pal <- setNames(mods, mods)
+        pal <- setNames(as.character(mods), mods)
+        if ("grey" %in% names(pal)) pal["grey"] <- "grey30"
         vdata <- node_df_plot[match(igraph::V(g)$name, node_df_plot$gene), ]
         lfc_q <- quantile(abs(vdata$log2FC), 0.85, na.rm=TRUE)
 
@@ -4801,3 +4905,119 @@ test_network_thresholds <- function(heatmap_results,
 
   invisible(list(pdf = pdf_path, summary = results_summary, recommendation = best_name))
 }
+
+
+# ── TF Co-expression Network ─────────────────────────────────────────────────
+
+build_tf_network <- function(edges, tfs, de_mat) {
+  e_tf <- edges[(edges$source %in% tfs) | (edges$target %in% tfs), ]
+
+  .classify_de <- function(row) {
+    vals <- as.numeric(row[!is.na(row)])
+    if (length(vals) == 0) return("mixed")
+    n_up <- sum(vals > 0); n_dn <- sum(vals < 0)
+    if (n_up > 0 && n_dn == 0) return("up")
+    if (n_dn > 0 && n_up == 0) return("down")
+    return("mixed")
+  }
+  de_dir <- data.frame(
+    gene      = rownames(de_mat),
+    direction = apply(de_mat, 1, .classify_de),
+    stringsAsFactors = FALSE
+  )
+
+  all_genes <- unique(c(e_tf$source, e_tf$target))
+  node_df   <- data.frame(
+    gene  = all_genes,
+    is_tf = all_genes %in% tfs,
+    stringsAsFactors = FALSE
+  )
+  node_df$direction <- de_dir$direction[match(node_df$gene, de_dir$gene)]
+  node_df$direction[is.na(node_df$direction)] <- "mixed"
+
+  g <- igraph::graph_from_data_frame(
+    e_tf[, c("source", "target", "weight")],
+    directed = FALSE, vertices = node_df
+  )
+  list(graph = g, node_df = node_df, edge_df = e_tf)
+}
+
+plot_tf_de_network <- function(net, output_dir,
+                                layout       = "stress",
+                                n_hub_label  = 15,
+                                contrast_tag = "condition_1_vs_condition_2",
+                                output_pdf   = "network_tf_DE_direction.pdf",
+                                output_width = 12,
+                                output_height = 10) {
+  g       <- net$graph
+  node_df <- net$node_df
+
+  dir_colors <- c("up" = "#C0392B", "down" = "#2471A3", "mixed" = "#AAAAAA")
+  node_df$color      <- dir_colors[node_df$direction]
+  node_df$shape_type <- ifelse(node_df$is_tf, "triangle", "circle")
+
+  deg     <- igraph::degree(g)
+  tf_idx  <- which(node_df$is_tf)
+  tf_degs <- deg[node_df$gene[tf_idx]]
+  top_tfs <- names(sort(tf_degs, decreasing = TRUE))[seq_len(min(n_hub_label, length(tf_degs)))]
+  node_df$label <- ifelse(node_df$gene %in% top_tfs, node_df$gene, NA_character_)
+
+  igraph::V(g)$node_color <- node_df$color[match(igraph::V(g)$name, node_df$gene)]
+  igraph::V(g)$shape_type <- node_df$shape_type[match(igraph::V(g)$name, node_df$gene)]
+  igraph::V(g)$node_label <- node_df$label[match(igraph::V(g)$name, node_df$gene)]
+
+  # Pre-compute layout with spacing control
+  if (layout == "fr") {
+    set.seed(42)
+    coords <- igraph::layout_with_fr(g, niter = 1000)
+    coords[, 1] <- coords[, 1] * 3.5
+    coords[, 2] <- coords[, 2] * 3.5
+    lay <- ggraph::create_layout(g, layout = "manual",
+                                  x = coords[, 1], y = coords[, 2])
+  } else if (layout == "lgl") {
+    g_simple <- igraph::simplify(g)
+    coords   <- suppressWarnings(igraph::layout_with_lgl(g_simple,
+                                         maxiter  = 200,
+                                         maxdelta = igraph::vcount(g_simple)^0.6,
+                                         area     = igraph::vcount(g_simple)^3.0,
+                                         coolexp  = 1.5))
+    coords[, 1] <- coords[, 1] * 2.0
+    coords[, 2] <- coords[, 2] * 2.0
+    lay <- ggraph::create_layout(g, layout = "manual",
+                                  x = coords[, 1], y = coords[, 2])
+  } else {
+    lay <- ggraph::create_layout(g, layout = layout)
+  }
+  p <- ggraph::ggraph(lay) +
+    ggraph::geom_edge_link(alpha = 0.15, colour = "grey70", linewidth = 0.3) +
+    ggraph::geom_node_point(
+      ggplot2::aes(colour = node_color, shape = shape_type),
+      size = 2.5
+    ) +
+    ggraph::geom_node_text(
+      ggplot2::aes(label = node_label),
+      size = 2.5, repel = TRUE, max.overlaps = 20, na.rm = TRUE
+    ) +
+    ggplot2::scale_colour_identity() +
+    ggplot2::scale_shape_manual(
+      values = c("circle" = 16, "triangle" = 17),
+      labels = c("circle" = "Co-expression partner", "triangle" = "Transcription factor"),
+      name   = NULL
+    ) +
+    ggplot2::theme_void() +
+    ggplot2::labs(
+      title   = paste0("TF co-expression network (", contrast_tag, ")"),
+      caption = "Red = up-regulated | Blue = down-regulated | Grey = mixed across cell types"
+    ) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      plot.title      = ggplot2::element_text(size = 11, face = "bold"),
+      plot.caption    = ggplot2::element_text(size = 8, colour = "grey40")
+    )
+
+  out_file <- file.path(output_dir, output_pdf)
+  ggplot2::ggsave(out_file, p, width = output_width, height = output_height, device = "pdf")
+  message("Network saved to ", out_file)
+  invisible(p)
+}
+
