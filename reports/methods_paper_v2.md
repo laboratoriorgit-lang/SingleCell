@@ -70,6 +70,36 @@ R
 python3
 ```
 
+### Computational requirements
+
+The pipeline was validated on two Linux servers: CellRanger alignment ran on a 128-core / 1 TB RAM node; all downstream R and Python steps ran on a 24-core / 70 GB RAM server. The table below lists minimum and recommended specifications for each stage.
+
+| Stage | Step | Min RAM | Rec. RAM | Min CPU | Rec. CPU |
+|---|---|---|---|---|---|
+| Chapter 0 | `cellranger mkref` | 16 GB | 64 GB | 8 | 16 |
+| Chapter 0 | `cellranger count` | 32 GB | 64 GB | 16 | 80 |
+| Chapter 1 | QC → Harmony → clustering | 32 GB | 64 GB | 8 | 24 |
+| Chapter 1 | DoubletFinder | 32 GB | 64 GB | 8 | 24 |
+| Chapter 2 | DESeq2 → GO → hdWGCNA | 16 GB | 64 GB | 4 | 16 |
+| Chapter 3 | scFates pseudotime | 16 GB | 32 GB | 4 | 8 |
+
+#### Storage footprint
+
+All sizes are measured from the 4-sample *Arabidopsis thaliana* run described in this paper.
+
+| Component | Size |
+|---|---|
+| Docker image (`matigara/scrnaseq:latest`) | 10.4 GB |
+| CellRanger 7.1.0 binary | 1.9 GB |
+| Reference genome (TAIR10, `cellranger mkref` output) | 1.6 GB |
+| Raw FASTQs (4 samples, R1 + R2) | 15 – 25 GB |
+| CellRanger output (4 samples, `--no-bam`) | 2.5 GB |
+| Seurat checkpoint objects (`.rds`) | 1.4 GB |
+| Pipeline results (plots, tables, PDFs) | 2.2 GB |
+| **Total** | **~35 – 45 GB** |
+
+Using `--no-bam` in `cellranger count` eliminates per-sample BAM files (~20–30 GB each), reducing storage requirements by approximately 75 %. Intermediate Seurat `.rds` checkpoints (written after each chapter) can be removed once downstream steps are validated to further reduce disk usage.
+
 <div class="pagebreak"></div>
 
 ## Methods
