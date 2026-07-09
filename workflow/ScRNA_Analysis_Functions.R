@@ -821,6 +821,13 @@ annotate_by_markers <- function(seurat_obj,
   cat("\nCoincidencias encontradas:\n")
   print(merged[, c("cluster", "gene", "cell.types")])
 
+  # Add .1 .2 suffix when multiple clusters share the same cell type label
+  type_count <- ave(seq_len(nrow(merged)), merged$cell.types, FUN = seq_along)
+  type_total <- ave(seq_len(nrow(merged)), merged$cell.types, FUN = length)
+  merged$cell.types <- ifelse(type_total > 1,
+                              paste0(merged$cell.types, ".", type_count),
+                              merged$cell.types)
+
   Idents(seurat_obj)  <- "seurat_clusters"
   new_ids             <- merged$cell.types
   names(new_ids)      <- merged$cluster

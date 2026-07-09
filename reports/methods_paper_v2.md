@@ -560,6 +560,13 @@ bibliography-based approach that crosses cluster-level differential genes
 with the marker table, and a reference-transfer approach that projects
 labels from a published Arabidopsis leaf atlas (GSE273033).
 
+The bibliography-based method assigns each cluster the cell type whose
+marker gene is ranked highest (lowest adjusted p-value) among that
+cluster's differential genes. When multiple clusters independently match
+the same cell type, they receive unique suffixed labels
+(`Epidermis.1`, `Epidermis.2`, etc.) so that each original cluster is
+preserved as a distinct entity in all downstream analyses.
+
 ::: {.output-group}
 ```r
 markers <- find_markers(
