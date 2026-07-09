@@ -104,6 +104,141 @@ Using `--no-bam` in `cellranger count` eliminates per-sample BAM files (~20–30
 
 ## Methods
 
+### Chapter 0 — CellRanger preprocessing (bash)
+
+CellRanger 7.1.0 is included in the Docker image and is available directly from the container shell.
+
+#### Step 1 — Download raw sequencing data
+
+Raw FASTQ files are deposited in the CNCB Genome Sequence Archive (GSA) under study accession **CRA010863**. The four runs used in this analysis are:
+
+| Run | Sample | Condition | R1 size | R2 size |
+|---|---|---|---|---|
+| CRR775252 | scDS1a | condition\_1 | 8.6 GB | 8.8 GB |
+| CRR775253 | scDS1b | condition\_1 | 8.0 GB | 8.0 GB |
+| CRR775256 | scDS2a | condition\_2 | 8.7 GB | 8.1 GB |
+| CRR775257 | scDS2b | condition\_2 | 10 GB | 9.3 GB |
+
+**Total download size: ~70 GB.**
+
+Files can be downloaded via FTP from the CNCB BIG Data Center. Using `aria2c` with parallel connections reduces download time substantially:
+
+```bash
+# Create a URL list file
+cat > urls_cra010863.txt << 'EOF'
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775252/CRR775252_f1.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775252/CRR775252_r2.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775253/CRR775253_f1.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775253/CRR775253_r2.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775256/CRR775256_f1.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775256/CRR775256_r2.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775257/CRR775257_f1.fq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775257/CRR775257_r2.fq.gz
+EOF
+
+# Download with aria2 (5 connections per file, 8 files in parallel)
+aria2c -x 5 -j 8 --input-file=urls_cra010863.txt
+
+# Alternatively, with wget (sequential)
+# wget -i urls_cra010863.txt
+```
+
+#### Step 2 — Build the genome reference index
+
+The reference index is built once per genome assembly and reused across all samples. For *Arabidopsis thaliana* TAIR10 (Ensembl Plants release 59):
+
+```bash
+# Download genome FASTA and gene annotation
+wget https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-59/fasta/\
+arabidopsis_thaliana/dna/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+wget https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/release-59/gtf/\
+arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.59.gtf.gz
+
+gunzip Arabidopsis_thaliana.TAIR10.dna.toplevel.fa.gz
+gunzip Arabidopsis_thaliana.TAIR10.59.gtf.gz
+
+# Build the CellRanger reference (output: Arabidopsis_thaliana_TAIR10/)
+cellranger mkref \
+  --genome=Arabidopsis_thaliana_TAIR10 \
+  --fasta=Arabidopsis_thaliana.TAIR10.dna.toplevel.fa \
+  --genes=Arabidopsis_thaliana.TAIR10.59.gtf \
+  --nthreads=16
+```
+
+The resulting `Arabidopsis_thaliana_TAIR10/` directory (1.6 GB) is passed to `--transcriptome` in Step 2.
+
+#### Step 3 — Prepare FASTQ files
+
+CellRanger requires files named `{SAMPLE}_S{N}_L001_R{1,2}_001.fastq.gz`. Files downloaded from public repositories (e.g. NCBI SRA / CNCB) must be renamed before alignment:
+
+```bash
+# Example: CNCB accession files → CellRanger naming convention
+mv CRR775252_f1.fq.gz  scDS1a_S1_L001_R1_001.fastq.gz
+mv CRR775252_r2.fq.gz  scDS1a_S1_L001_R2_001.fastq.gz
+mv CRR775253_f1.fq.gz  scDS1b_S1_L001_R1_001.fastq.gz
+mv CRR775253_r2.fq.gz  scDS1b_S1_L001_R2_001.fastq.gz
+mv CRR775256_f1.fq.gz  scDS2a_S1_L001_R1_001.fastq.gz
+mv CRR775256_r2.fq.gz  scDS2a_S1_L001_R2_001.fastq.gz
+mv CRR775257_f1.fq.gz  scDS2b_S1_L001_R1_001.fastq.gz
+mv CRR775257_r2.fq.gz  scDS2b_S1_L001_R2_001.fastq.gz
+```
+
+Read 1 (R1) carries the 10x Chromium cell barcode and UMI (28 bp); Read 2 (R2) carries the cDNA insert.
+
+#### Step 4 — Run alignment
+
+Each sample is aligned independently. The helper function below checks for a completed output before launching, making the script safely re-runnable:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+REF=/workspace/Arabidopsis_thaliana_TAIR10   # output of cellranger mkref
+
+run_if_needed() {
+  local id="$1"
+  if [ -f "${id}/outs/metrics_summary.csv" ]; then
+    echo "[$(date '+%F %T')] ${id}: already complete — skipping."
+    return 0
+  fi
+  echo "[$(date '+%F %T')] Starting ${id} ..."
+  cellranger count \
+    --id="${id}" \
+    --fastqs=. \
+    --sample="${id}" \
+    --transcriptome="${REF}" \
+    --localcores=80 \
+    --no-bam
+  echo "[$(date '+%F %T')] ${id}: done."
+}
+
+run_if_needed scDS1a
+run_if_needed scDS1b
+run_if_needed scDS2a
+run_if_needed scDS2b
+```
+
+The `--no-bam` flag suppresses BAM output and reduces per-sample disk usage by ~20–30 GB. The `--localcores` value should be set to the number of available CPU threads.
+
+#### Step 5 — Output structure
+
+Each completed run produces the following layout:
+
+```
+scDS1a/
+└── outs/
+    ├── filtered_feature_bc_matrix/     ← input to Chapter 1
+    │   ├── barcodes.tsv.gz
+    │   ├── features.tsv.gz
+    │   └── matrix.mtx.gz
+    ├── metrics_summary.csv             ← per-sample QC summary
+    └── web_summary.html                ← interactive QC report
+```
+
+The `filtered_feature_bc_matrix/` directory is read by `load_seurat_samples()` at the start of Chapter 1 (Section 1).
+
+<div class="pagebreak"></div>
+
 ### Chapter 1 — Single-cell processing
 
 Running Option 1 opens a self-contained terminal inside the container,
