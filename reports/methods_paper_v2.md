@@ -1319,4 +1319,64 @@ top_path, highlight_path = run_step29_gene_trends(
 </div>
 :::
 
+# Supplementary Table S1 — Software and package versions
+
+All analyses were executed inside a reproducible Docker container (`matigara/scrnaseq:latest`) based on Ubuntu 24.04.4 LTS (Noble Numbat). The container bundles R 4.5.3 and Python 3.12.3 together with the packages listed below.
+
+## R packages
+
+| Package | Version |
+|---|---|
+| Seurat | 5.5.0 |
+| SeuratObject | 5.4.0 |
+| SeuratDisk | 0.0.0.9021 |
+| harmony | 2.0.3 |
+| hdWGCNA | 0.4.11 |
+| DESeq2 | 1.50.2 |
+| clusterProfiler | 4.18.4 |
+| org.At.tair.db | 3.22.0 |
+| DoubletFinder | 2.0.6 |
+| clustree | 0.5.1 |
+| scater | 1.38.1 |
+| SingleCellExperiment | 1.32.0 |
+| zellkonverter | 1.20.1 |
+| ggplot2 | 4.0.3 |
+| ggrepel | 0.9.8 |
+| ggraph | 2.2.2 |
+| patchwork | 1.3.2 |
+| cowplot | 1.2.0 |
+| ggpubr | 0.6.3 |
+| dplyr | 1.2.1 |
+| tidyr | 1.3.2 |
+| tidyverse | 2.0.0 |
+| igraph | 2.3.2 |
+| tidygraph | 1.3.1 |
+| WGCNA | 1.74 |
+| dynamicTreeCut | 1.63.1 |
+| enrichR | 3.4 |
+| UCell | 2.14.0 |
+| GeneOverlap | 1.46.0 |
+| Matrix | 1.7.5 |
+| hdf5r | 1.3.12 |
+| reticulate | 1.46.0 |
+| BiocGenerics | 0.56.0 |
+| GenomicRanges | 1.62.1 |
+
+## Python packages
+
+| Package | Version |
+|---|---|
+| scanpy | 1.12.1 |
+| anndata | 0.12.16 |
+| scFates | 1.2.4 |
+| palantir | 1.4.4 |
+| numpy | 2.4.6 |
+| pandas | 2.3.3 |
+| scipy | 1.17.1 |
+| matplotlib | 3.10.9 |
+| seaborn | 0.13.2 |
+| scikit-learn | 1.9.0 |
+| umap-learn | 0.5.12 |
+| igraph | 1.0.0 |
+
 This closes Chapter 3 and the methods covered so far.
