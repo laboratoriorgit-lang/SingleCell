@@ -483,53 +483,15 @@ saveRDS(
 
 #### Section 5 — Resolution optimization
 
-Cluster granularity is selected using two complementary diagnostics. The elbow
-plot summarizes how within-cluster dispersion decreases as the number of
-clusters increases, while the cluster tree tracks how Leiden communities split
-or remain stable across candidate resolutions. Together, these outputs guide
-the final clustering resolution used in the next section.
+Cluster granularity is selected with a cluster tree (clustree), which tracks
+how Leiden communities split or merge across candidate resolutions. The lowest
+resolution at which clusters stabilize is used in Section 6.
 
+::: {.output-group}
 ```r
-k_range <- 1:31
 resolutions_test <- c(0.15, 0.30, 0.50, 0.8, 1.0)
-
 output_dir <- dir_02
-```
 
-::: {.output-group}
-The elbow diagnostic is computed from the first 30 PCA dimensions of the
-post-Harmony object.
-
-```r
-pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
-wss <- sapply(
-  k_range,
-  function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
-)
-
-elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
-  geom_line() +
-  geom_point() +
-  labs(
-    x = "Number of clusters (k)",
-    y = "Within-cluster sum of squares"
-  ) +
-  theme_minimal()
-
-save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
-```
-
-<figure class="output-preview">
-  <img src="assets_v2/elbow_plot.png" alt="Representative elbow plot">
-  <figcaption>Elbow plot computed from the post-Harmony object.</figcaption>
-</figure>
-:::
-
-::: {.output-group}
-The cluster tree is generated after building the Harmony neighbor graph and
-sweeping the selected Leiden resolutions.
-
-```r
 clu <- pbmc_harmony %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(
@@ -591,56 +553,7 @@ save_pdf(
 
 <div class="pagebreak"></div>
 
-#### Section 7 — Dotplot: marker genes by cluster
-
-Before assigning cell-type labels, a dotplot of bibliography-derived marker
-genes across all numbered clusters helps identify which cluster corresponds
-to which cell type. Dot size encodes the fraction of expressing cells; color
-encodes mean expression level.
-
-`biblio_marks.txt` is a plain tab-separated text file with one marker gene
-per row, under two columns: `cell types` and `gene`. `read.table()`'s default
-`check.names` behavior rewrites the `cell types` header to `cell.types`,
-which is the column name used downstream by `plot_marker_dotplot()` and
-`plot_markers_for_subset()`. An excerpt:
-
-| cell types | gene |
-|---|---|
-| epidermis | AT4G21750 |
-| guard cell | AT5G26000 |
-| mesophyll | AT5G38420 |
-| companion cell | AT1G79430 |
-
-::: {.output-group}
-```r
-output_dir <- dir_03
-
-biblio_marks_file <- file.path(DATA_DIR, "biblio_marks.txt")
-marker_table <- read.table(
-  biblio_marks_file,
-  header = TRUE,
-  sep = "\t",
-  quote = ""
-)
-
-plot_marker_dotplot(
-  pbmc_harmony,
-  marker_table,
-  annot_col = "seurat_clusters",
-  outfile = file.path(output_dir, "dotplot_marker_table_preannotation.pdf"),
-  width = 18, height = 18
-)
-```
-
-<figure class="output-preview">
-  <img src="assets_v2/dotplot_preannotation.png" alt="Representative pre-annotation marker dotplot">
-  <figcaption>Marker gene expression by numbered cluster, before cell-type assignment.</figcaption>
-</figure>
-:::
-
-<div class="pagebreak"></div>
-
-#### Section 8 — Cell-type annotation
+#### Section 7 — Cell-type annotation
 
 Two complementary strategies assign cell-type labels to clusters: a
 bibliography-based approach that crosses cluster-level differential genes
