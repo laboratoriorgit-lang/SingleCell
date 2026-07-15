@@ -177,20 +177,20 @@ Before drafting the Chapter 2 tutorial, adapt it to the WT/pifq layout:
   the text should clearly state this as a demonstration when biological
   replicates are limited.
 
-Recommended Chapter 2 sections:
+Chapter 2 should preserve the base section order from
+`workflow/capitulo2_pseudobulk_de.R`:
 
-1. Load Chapter 1 annotated object.
-2. Inspect metadata columns required for pseudobulk.
-3. Create cell-type subsets.
-4. Assign pseudo-replicates or biological replicates.
-5. Aggregate pseudobulk counts.
-6. Run DESeq2 contrasts.
-7. Generate volcano plots.
-8. Build differential gene tables.
-9. Run GO enrichment.
-10. Build log2FC heatmap.
-11. Optional hdWGCNA/network analysis.
-12. Export result tables and session info.
+- Load annotated object from Part 1
+- Section 13 - Cell-type subsets
+- Section 14 - Pseudo-replicate assignment
+- Section 15 - Pseudobulk tables and DESeq2
+- Section 16 - Volcano plots
+- Section 17 - Differential gene tables
+- Section 18 - GO enrichment
+- Section 19 - Log2FC heatmap
+- Section 20 - Coexpression network (hdWGCNA) on significant genes
+- Section 21 - Network export and visualization
+- Section 21b - TF coexpression network
 
 ## Regeneration Notes
 
