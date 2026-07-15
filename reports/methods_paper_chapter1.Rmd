@@ -36,6 +36,8 @@ annotation is not part of this draft. The document stops after the optional
 subcluster marker-inspection section; h5ad export, pseudobulk, DESeq2, GO,
 network, and pseudotime analyses are intentionally excluded for now.
 
+\newpage
+
 ## Minimum computing requirements
 
 The table below summarizes the computing requirements for running Chapter 1 on
