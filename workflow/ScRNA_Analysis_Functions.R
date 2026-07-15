@@ -2984,6 +2984,60 @@ assign_pseudoreplicates_batch <- function(cell_type_subsets,
 }
 
 
+summarize_pseudobulk_celltype_counts <- function(seurat_obj,
+                                                 annot_col,
+                                                 output_file = NULL) {
+  celltype_counts <- as.data.frame(
+    table(seurat_obj@meta.data[[annot_col]]),
+    stringsAsFactors = FALSE
+  )
+  colnames(celltype_counts) <- c("celltype", "n_cells")
+  celltype_counts <- celltype_counts[order(celltype_counts$n_cells, decreasing = TRUE), ]
+
+  print(celltype_counts, row.names = FALSE)
+
+  if (!is.null(output_file)) {
+    write.table(celltype_counts, file = output_file, sep = "\t",
+                quote = FALSE, row.names = FALSE)
+  }
+
+  invisible(celltype_counts)
+}
+
+
+summarize_pseudoreplicate_counts <- function(cell_type_subsets_replicates,
+                                             output_file = NULL) {
+  pseudoreplicate_counts <- do.call(
+    rbind,
+    lapply(names(cell_type_subsets_replicates), function(ct) {
+      md <- cell_type_subsets_replicates[[ct]]@meta.data
+      tab <- as.data.frame(
+        table(condition = md$condition, replicate = md$replicate),
+        stringsAsFactors = FALSE
+      )
+      tab <- tab[tab$Freq > 0, , drop = FALSE]
+      tab$celltype <- ct
+      colnames(tab)[colnames(tab) == "Freq"] <- "n_cells"
+      tab[, c("celltype", "condition", "replicate", "n_cells")]
+    })
+  )
+  pseudoreplicate_counts <- pseudoreplicate_counts[
+    order(pseudoreplicate_counts$celltype,
+          pseudoreplicate_counts$condition,
+          pseudoreplicate_counts$replicate),
+  ]
+
+  print(pseudoreplicate_counts, row.names = FALSE)
+
+  if (!is.null(output_file)) {
+    write.table(pseudoreplicate_counts, file = output_file, sep = "\t",
+                quote = FALSE, row.names = FALSE)
+  }
+
+  invisible(pseudoreplicate_counts)
+}
+
+
 
 # =============================================================================
 # PSEUDOBULK AND DESEQ2 ANALYSIS
@@ -3210,13 +3264,17 @@ build_logfc_heatmap <- function(logfc_table,
 
     cluster_rows    = TRUE,
     cluster_columns = TRUE,
+    row_dend_gp     = grid::gpar(col = "black", lwd = 1.4),
+    column_dend_gp  = grid::gpar(col = "black", lwd = 1.4),
+    row_dend_width  = grid::unit(18, "mm"),
+    column_dend_height = grid::unit(18, "mm"),
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
     column_names_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
     column_names_rot  = 45,
 
-    column_title    = sprintf("log2FC — %s  (%d genes)", contrast_tag, nrow(mat)),
+    column_title    = sprintf("log2FC - %s  (%d genes)", contrast_tag, nrow(mat)),
     column_title_gp = gpar(fontsize = 15, fontface = "bold"),
 
     heatmap_legend_param = list(
@@ -3676,11 +3734,12 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
 
         p <- ggraph::ggraph(g, layout = "graphopt") +
           ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
-                                  color = "grey70", show.legend = FALSE) +
-          ggraph::scale_edge_width(range = c(0.1, 1.2)) +
-          ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
+                                  color = "grey35", show.legend = FALSE) +
+          ggraph::scale_edge_width(range = c(0.2, 1.8)) +
+          ggraph::scale_edge_alpha(range = c(0.18, 0.65)) +
           ggraph::geom_node_point(ggplot2::aes(size = vdata$kME,
-                                               color = vdata$module)) +
+                                               color = vdata$module),
+                                   alpha = 0.95) +
           ggplot2::scale_color_manual(values = pal, name = "Module") +
           ggplot2::scale_size(range = c(1.5, 6), name = "kME") +
           ggraph::geom_node_label(

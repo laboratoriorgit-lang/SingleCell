@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import csv
 import re
 from pathlib import Path
 
@@ -30,6 +31,41 @@ def img(filename: str, caption: str, cls: str = "") -> str:
         f"<figcaption>{esc(caption)}</figcaption>"
         "</figure>"
     )
+
+
+def html_table(headers: list[str], rows: list[list[object]], cls: str = "") -> str:
+    head = "".join(f"<th>{esc(h)}</th>" for h in headers)
+    body = "\n".join(
+        "<tr>" + "".join(f"<td>{esc(cell)}</td>" for cell in row) + "</tr>"
+        for row in rows
+    )
+    return f'<table class="data-table {esc(cls)}"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+
+
+def read_tsv(filename: str) -> list[dict[str, str]]:
+    path = ROOT / "assets" / filename
+    with path.open(newline="") as handle:
+        return list(csv.DictReader(handle, delimiter="\t"))
+
+
+def celltype_count_table() -> str:
+    rows = read_tsv("cap2_pseudobulk_celltype_counts.tsv")
+    table_rows = [[row["celltype"], row["n_cells"]] for row in rows]
+    return html_table(["Cell type", "Cells"], table_rows, "compact")
+
+
+def pseudoreplicate_summary_table() -> str:
+    rows = read_tsv("cap2_pseudobulk_pseudoreplicate_counts.tsv")
+    summary: dict[tuple[str, str], int] = {}
+    for row in rows:
+        key = (row["celltype"], row["condition"])
+        summary[key] = summary.get(key, 0) + int(row["n_cells"])
+
+    table_rows = [
+        [celltype.replace("_", " "), condition, n_cells]
+        for (celltype, condition), n_cells in sorted(summary.items())
+    ]
+    return html_table(["Cell type", "Condition", "Cells after pseudo-replicate assignment"], table_rows, "compact")
 
 
 def strip_comment_lines(text: str) -> str:
@@ -237,6 +273,40 @@ def build() -> str:
       font-size: 8.9pt;
       margin-top: 0.35em;
     }}
+
+    .data-table {{
+      border-collapse: collapse;
+      font-size: 8.8pt;
+      margin: 0.55em auto 0.95em;
+      page-break-inside: avoid;
+      width: 70%;
+    }}
+
+    .data-table.compact {{
+      width: 58%;
+    }}
+
+    .data-table th,
+    .data-table td {{
+      border-bottom: 0.7px solid #d1d5db;
+      padding: 0.18em 0.45em;
+      text-align: left;
+    }}
+
+    .data-table th {{
+      color: #123f5a;
+      font-weight: 700;
+    }}
+
+    figure.network img {{
+      max-height: 5.4in;
+      max-width: 92%;
+    }}
+
+    figure.heatmap img {{
+      max-height: 5.2in;
+      max-width: 86%;
+    }}
   </style>
 </head>
 <body>
@@ -287,6 +357,11 @@ def build() -> str:
       Object names are sanitized only for list names and filenames.
     </p>
     {code_block("R", s13)}
+    <p>
+      Cell numbers are recorded before pseudo-replicate assignment so that
+      low-abundance labels can be inspected before differential expression.
+    </p>
+    {celltype_count_table()}
   </section>
 
   <section class="page-section">
@@ -296,6 +371,12 @@ def build() -> str:
       uses <code>Mesophyll</code> as an existing label in the WT/pifq dataset.
     </p>
     {code_block("R", s14)}
+    <p>
+      After pseudo-replicate assignment, the cell numbers are summarized by
+      cell type and condition. The full replicate-level table is written to
+      <code>resultados_wt/objects/pseudobulk_pseudoreplicate_counts.tsv</code>.
+    </p>
+    {pseudoreplicate_summary_table()}
   </section>
 
   <section class="page-section">
@@ -330,7 +411,7 @@ def build() -> str:
   <section class="page-section">
     <h1>Section 19 - Log2FC Heatmap</h1>
     {code_block("R", s19)}
-    {img("cap2_heatmap_WT_vs_pifq.png", "log2FC heatmap produced by Section 19.", "tall")}
+    {img("cap2_heatmap_WT_vs_pifq.png", "log2FC heatmap produced by Section 19.", "heatmap")}
   </section>
 
   <section class="page-section">
@@ -345,6 +426,7 @@ def build() -> str:
   <section class="page-section">
     <h1>Section 21 - Network Export and Visualization</h1>
     {code_block("R", s21)}
+    {img("wgcna_network_generic.png", "Representative hdWGCNA co-expression network exported by Section 21.", "network")}
   </section>
 
   <section class="page-section">

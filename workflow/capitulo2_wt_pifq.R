@@ -47,6 +47,12 @@ pseudobulk_annot_col <- "celltype"
 # Create cell-type subsets for pseudobulk analysis
 cell_type_subsets <- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobulk_annot_col)
 
+celltype_counts <- summarize_pseudobulk_celltype_counts(
+  pbmc_harmony,
+  annot_col = pseudobulk_annot_col,
+  output_file = file.path(dir_objects, "pseudobulk_celltype_counts.tsv")
+)
+
 
 # =============================================================================
 
@@ -81,6 +87,11 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 table(cell_type_subsets_replicates$Mesophyll$condition)
 table(cell_type_subsets_replicates$Mesophyll$replicate)
 table(cell_type_subsets_replicates$Mesophyll$orig.ident)
+
+pseudoreplicate_counts <- summarize_pseudoreplicate_counts(
+  cell_type_subsets_replicates,
+  output_file = file.path(dir_objects, "pseudobulk_pseudoreplicate_counts.tsv")
+)
 
 
 # =============================================================================

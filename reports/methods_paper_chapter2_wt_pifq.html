@@ -168,6 +168,40 @@
       font-size: 8.9pt;
       margin-top: 0.35em;
     }
+
+    .data-table {
+      border-collapse: collapse;
+      font-size: 8.8pt;
+      margin: 0.55em auto 0.95em;
+      page-break-inside: avoid;
+      width: 70%;
+    }
+
+    .data-table.compact {
+      width: 58%;
+    }
+
+    .data-table th,
+    .data-table td {
+      border-bottom: 0.7px solid #d1d5db;
+      padding: 0.18em 0.45em;
+      text-align: left;
+    }
+
+    .data-table th {
+      color: #123f5a;
+      font-weight: 700;
+    }
+
+    figure.network img {
+      max-height: 5.4in;
+      max-width: 92%;
+    }
+
+    figure.heatmap img {
+      max-height: 5.2in;
+      max-width: 86%;
+    }
   </style>
 </head>
 <body>
@@ -231,9 +265,31 @@ set.seed(1807)</code></pre></div>
 
 cell_type_subsets &lt;- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobulk_annot_col)
 
+celltype_counts &lt;- summarize_pseudobulk_celltype_counts(
+  pbmc_harmony,
+  annot_col = pseudobulk_annot_col,
+  output_file = file.path(dir_objects, &quot;pseudobulk_celltype_counts.tsv&quot;)
+)
+
 
 
 message(&quot;\n✓ SECTION 13 COMPLETE: Cell-type subsets created&quot;)</code></pre></div>
+    <p>
+      Cell numbers are recorded before pseudo-replicate assignment so that
+      low-abundance labels can be inspected before differential expression.
+    </p>
+    <table class="data-table compact"><thead><tr><th>Cell type</th><th>Cells</th></tr></thead><tbody><tr><td>Epidermis Hypocotyl.1</td><td>1839</td></tr>
+<tr><td>2</td><td>1594</td></tr>
+<tr><td>Epidermis Cotyledon</td><td>1464</td></tr>
+<tr><td>4</td><td>875</td></tr>
+<tr><td>5</td><td>680</td></tr>
+<tr><td>Mesophyll</td><td>489</td></tr>
+<tr><td>Epidermis Hypocotyl.2</td><td>366</td></tr>
+<tr><td>7</td><td>366</td></tr>
+<tr><td>PHLOEM</td><td>148</td></tr>
+<tr><td>ENDO1</td><td>78</td></tr>
+<tr><td>C2</td><td>57</td></tr>
+<tr><td>guard cell</td><td>49</td></tr></tbody></table>
   </section>
 
   <section class="page-section">
@@ -256,9 +312,41 @@ table(cell_type_subsets_replicates$Mesophyll$condition)
 table(cell_type_subsets_replicates$Mesophyll$replicate)
 table(cell_type_subsets_replicates$Mesophyll$orig.ident)
 
+pseudoreplicate_counts &lt;- summarize_pseudoreplicate_counts(
+  cell_type_subsets_replicates,
+  output_file = file.path(dir_objects, &quot;pseudobulk_pseudoreplicate_counts.tsv&quot;)
+)
+
 
 
 message(&quot;\n✓ SECTION 14 COMPLETE: Pseudo-replicates assigned&quot;)</code></pre></div>
+    <p>
+      After pseudo-replicate assignment, the cell numbers are summarized by
+      cell type and condition. The full replicate-level table is written to
+      <code>resultados_wt/objects/pseudobulk_pseudoreplicate_counts.tsv</code>.
+    </p>
+    <table class="data-table compact"><thead><tr><th>Cell type</th><th>Condition</th><th>Cells after pseudo-replicate assignment</th></tr></thead><tbody><tr><td>2</td><td>WT</td><td>147</td></tr>
+<tr><td>2</td><td>pifq</td><td>1447</td></tr>
+<tr><td>4</td><td>WT</td><td>403</td></tr>
+<tr><td>4</td><td>pifq</td><td>472</td></tr>
+<tr><td>5</td><td>WT</td><td>28</td></tr>
+<tr><td>5</td><td>pifq</td><td>652</td></tr>
+<tr><td>7</td><td>WT</td><td>100</td></tr>
+<tr><td>7</td><td>pifq</td><td>266</td></tr>
+<tr><td>ENDO1</td><td>WT</td><td>53</td></tr>
+<tr><td>ENDO1</td><td>pifq</td><td>25</td></tr>
+<tr><td>Epidermis Cotyledon</td><td>WT</td><td>464</td></tr>
+<tr><td>Epidermis Cotyledon</td><td>pifq</td><td>1000</td></tr>
+<tr><td>Epidermis Hypocotyl 1</td><td>WT</td><td>805</td></tr>
+<tr><td>Epidermis Hypocotyl 1</td><td>pifq</td><td>1034</td></tr>
+<tr><td>Epidermis Hypocotyl 2</td><td>WT</td><td>334</td></tr>
+<tr><td>Epidermis Hypocotyl 2</td><td>pifq</td><td>32</td></tr>
+<tr><td>Mesophyll</td><td>WT</td><td>134</td></tr>
+<tr><td>Mesophyll</td><td>pifq</td><td>355</td></tr>
+<tr><td>PHLOEM</td><td>WT</td><td>72</td></tr>
+<tr><td>PHLOEM</td><td>pifq</td><td>76</td></tr>
+<tr><td>guard cell</td><td>WT</td><td>5</td></tr>
+<tr><td>guard cell</td><td>pifq</td><td>44</td></tr></tbody></table>
   </section>
 
   <section class="page-section">
@@ -364,7 +452,7 @@ build_logfc_heatmap(
 
 
 message(&quot;\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved&quot;)</code></pre></div>
-    <figure class="tall"><img src="assets/cap2_heatmap_WT_vs_pifq.png" alt="log2FC heatmap produced by Section 19."><figcaption>log2FC heatmap produced by Section 19.</figcaption></figure>
+    <figure class="heatmap"><img src="assets/cap2_heatmap_WT_vs_pifq.png" alt="log2FC heatmap produced by Section 19."><figcaption>log2FC heatmap produced by Section 19.</figcaption></figure>
   </section>
 
   <section class="page-section">
@@ -408,6 +496,7 @@ plot_hdwgcna_network(
 )
 
 message(&quot;\n✓ SECTION 21 COMPLETE: Network files and plots saved&quot;)</code></pre></div>
+    <figure class="network"><img src="assets/wgcna_network_generic.png" alt="Representative hdWGCNA co-expression network exported by Section 21."><figcaption>Representative hdWGCNA co-expression network exported by Section 21.</figcaption></figure>
   </section>
 
   <section class="page-section">
