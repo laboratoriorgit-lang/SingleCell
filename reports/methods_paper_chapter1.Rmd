@@ -36,6 +36,27 @@ annotation is not part of this draft. The document stops after the optional
 subcluster marker-inspection section; h5ad export, pseudobulk, DESeq2, GO,
 network, and pseudotime analyses are intentionally excluded for now.
 
+## Minimum computing requirements
+
+The table below summarizes the computing requirements for running Chapter 1 on
+a personal computer. These are practical requirements for the downstream
+Seurat/R workflow after Cell Ranger output has already been produced.
+
+| Component | Minimum | Recommended |
+|---|---:|---:|
+| Operating system | Linux, macOS, or WSL2 | Linux server or macOS with Docker Desktop |
+| CPU cores | 4 | 16 or more |
+| RAM | 32 GB | 64-128 GB for merged multi-sample objects |
+| Disk space | 100 GB free | 500 GB or more when keeping FASTQ, Cell Ranger output, and R objects |
+| Software | Docker | Docker plus external Cell Ranger installation |
+| Inputs | Cell Ranger `filtered_feature_bc_matrix/` per sample | Raw FASTQ plus Cell Ranger output retained for provenance |
+
+Small pilot datasets can be run on a laptop or desktop if memory is sufficient.
+For full experiments, repeated clustering sweeps, Cell Ranger processing from
+FASTQ, or large merged Seurat objects, a server or external cluster is strongly
+recommended. Cell Ranger is CPU- and memory-intensive and is not installed
+inside the downstream `matigara/scrnaseq:latest` Docker image.
+
 ## Materials and data preparation
 
 The workflow is designed to run inside the Docker image
@@ -69,29 +90,6 @@ marker-table row order on the Y axis, while the X axis is ordered according to
 the cell-type order implied by that same marker table. Labels with numeric
 suffixes, such as `Epidermis Hypocotyl.1` and `Epidermis Hypocotyl.2`, are kept
 adjacent to their parent marker category instead of being moved to the end.
-
-### Software and package versions
-
-The table below records the versions available in the active Docker container
-used for this methods draft.
-
-| Component | Version |
-|---|---|
-| R | 4.5.3 |
-| Python | 3.12.3 |
-| Seurat | 5.5.0 |
-| SeuratDisk | 0.0.0.9021 |
-| harmony | 2.0.3 |
-| DoubletFinder | 2.0.6 |
-| clustree | 0.5.1 |
-| ggplot2 | 4.0.3 |
-| dplyr | 1.2.1 |
-| patchwork | 1.3.2 |
-| zellkonverter | 1.20.1 |
-| scanpy | 1.12.1 |
-| anndata | 0.12.16 |
-| numpy | 2.4.6 |
-| pandas | 2.3.3 |
 
 ### Docker startup
 
@@ -249,6 +247,8 @@ output_dir <- base_dir
 ```
 
 
+\newpage
+
 ## Section 1 - DATA LOADING AND PRE-FILTER QC
 
 
@@ -303,8 +303,10 @@ message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
 
 Representative output from Section 1:
 
-![Pre-filter QC violin plots.](assets/qc_prefilter_generic.png){width=95%}
+![Pre-filter QC violin plots.](assets/qc_prefilter_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 2 - CELL FILTERING AND DOUBLET DETECTION
 
@@ -337,8 +339,10 @@ message("\nOK SECTION 2 COMPLETE: Filtering and doublet detection complete")
 
 Representative output from Section 2:
 
-![Post-filter QC violin plots.](assets/qc_postfilter_generic.png){width=95%}
+![Post-filter QC violin plots.](assets/qc_postfilter_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 3 - MERGE AND INITIAL PREPROCESSING
 
@@ -373,8 +377,10 @@ message("\nOK SECTION 3 COMPLETE: Merge and preprocessing complete")
 
 Representative output from Section 3:
 
-![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony_generic.png){width=95%}
+![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 4 - HARMONY BATCH CORRECTION
 
@@ -406,8 +412,10 @@ message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
 Representative output from Section 4:
 
-![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony_generic.png){width=95%}
+![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 5 - RESOLUTION OPTIMIZATION
 
@@ -464,10 +472,12 @@ message("\nOK SECTION 5 COMPLETE: Elbow plot and clustree saved - inspect elbow_
 
 Representative outputs from Section 5:
 
-![Elbow diagnostic used to inspect candidate cluster numbers.](assets/elbow_plot_generic.png){width=85%}
+![Elbow diagnostic used to inspect candidate cluster numbers.](assets/elbow_plot_generic.png){width=55%}
 
-![Cluster tree across candidate Leiden resolutions.](assets/clustree_generic.png){width=95%}
+![Cluster tree across candidate Leiden resolutions.](assets/clustree_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 6 - FINAL CLUSTERING
 
@@ -504,8 +514,10 @@ message("\nOK SECTION 6 COMPLETE: Final clustering complete")
 
 Representative output from Section 6:
 
-![Final UMAP colored by numbered Seurat clusters.](assets/umap_seuratclusters_generic.png){width=95%}
+![Final UMAP colored by numbered Seurat clusters.](assets/umap_seuratclusters_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 7 - CELL-TYPE ANNOTATION
 
@@ -556,10 +568,12 @@ message("\nOK SECTION 7 COMPLETE: Cell-type annotation complete")
 
 Representative outputs from Section 7:
 
-![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio_generic.png){width=95%}
+![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio_generic.png){width=55%}
 
-![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio_generic.png){width=95%}
+![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 8 - ANNOTATED CLUSTREE
 
@@ -603,8 +617,10 @@ message("\nOK SECTION 8 COMPLETE: Annotated clustree saved")
 
 Representative output from Section 8:
 
-![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated_generic.png){width=95%}
+![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 9 - GENE EXPRESSION VISUALIZATION
 
@@ -643,10 +659,12 @@ message("\nOK SECTION 9 COMPLETE: Gene expression visualization saved")
 
 Representative outputs from Section 9:
 
-![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_all_generic.png){width=95%}
+![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_all_generic.png){width=55%}
 
-![UMAP expression overlay for the selected gene.](assets/feature_gene_all_generic.png){width=95%}
+![UMAP expression overlay for the selected gene.](assets/feature_gene_all_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 10 - CELL-TYPE GROUPING  [OPTIONAL]
 
@@ -705,8 +723,10 @@ message("\nOK SECTION 10 COMPLETE: Cell-type grouping complete")
 
 Representative output from Section 10:
 
-![UMAP colored by grouped cell-type labels.](assets/umap_grouped_generic.png){width=95%}
+![UMAP colored by grouped cell-type labels.](assets/umap_grouped_generic.png){width=55%}
 
+
+\newpage
 
 ## Section 11 - SUBCLUSTER MARKER INSPECTION  [OPTIONAL]
 
@@ -826,7 +846,7 @@ message("\nOK SECTION 11 COMPLETE: Subcluster marker inspection saved")
 
 Representative output from Section 11:
 
-![Example subcluster UMAP used for manual marker inspection.](assets/subcluster_mesophyll_generic.png){width=95%}
+![Example subcluster UMAP used for manual marker inspection.](assets/subcluster_mesophyll_generic.png){width=55%}
 
 ## Current stopping point
 
@@ -834,26 +854,9 @@ This methods draft stops at optional subcluster marker inspection. Export to
 h5ad, pseudobulk, DESeq2, enrichment, network analysis, and pseudotime are not
 included in this version.
 
+\newpage
+
 ## Supplementary information
-
-### Minimum components to run on a personal computer
-
-The minimum practical setup for reproducing Chapter 1 on a local workstation is:
-
-| Component | Minimum | Recommended |
-|---|---:|---:|
-| Operating system | Linux, macOS, or WSL2 | Linux server or macOS with Docker Desktop |
-| CPU cores | 4 | 16 or more |
-| RAM | 32 GB | 64-128 GB for merged multi-sample objects |
-| Disk space | 100 GB free | 500 GB or more when keeping FASTQ, Cell Ranger output, and R objects |
-| Software | Docker | Docker plus external Cell Ranger installation |
-| Inputs | Cell Ranger `filtered_feature_bc_matrix/` per sample | Raw FASTQ plus Cell Ranger output retained for provenance |
-
-Small pilot datasets can be run on a laptop or desktop if memory is sufficient.
-For full experiments, repeated clustering sweeps, Cell Ranger processing from
-FASTQ, or large merged Seurat objects, a server or external cluster is strongly
-recommended. Cell Ranger is especially CPU- and memory-intensive and is not
-installed inside the downstream `matigara/scrnaseq:latest` Docker image.
 
 ### Docker image program and package versions
 
@@ -879,7 +882,10 @@ knitr::kable(cli_versions, caption = "Command-line tools detected in the Docker 
 
 ```{r supplementary-r-versions, eval=TRUE, echo=FALSE, results='asis'}
 r_versions <- read.delim(version_file("docker_r_package_versions.tsv"), check.names = FALSE)
-knitr::kable(r_versions, caption = "Complete R package inventory in the Docker image.")
+if ("Priority" %in% colnames(r_versions)) {
+  r_versions <- r_versions[is.na(r_versions$Priority) | !(r_versions$Priority %in% c("base", "recommended")), ]
+}
+knitr::kable(r_versions, caption = "R package inventory in the Docker image, excluding base/recommended R packages.")
 ```
 
 ```{r supplementary-python-versions, eval=TRUE, echo=FALSE, results='asis'}
