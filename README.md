@@ -104,6 +104,15 @@ ScRNASeq-Docker/
     └── custom_seurat.R                 # Custom Seurat plot utilities
 ```
 
+## Methods Paper Working Documents
+
+The methods-paper draft is being tracked under `reports/`:
+
+- `reports/methods_paper_working_memory.md` records the current Chapter 1
+  decisions, file locations, rendering style, and open assumptions.
+- `reports/methods_paper_chapter2_skeleton.md` is the working structure for
+  continuing the same tutorial format into Chapter 2.
+
 ---
 
 ## Function reference
