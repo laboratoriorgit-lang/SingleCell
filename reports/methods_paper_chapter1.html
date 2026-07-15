@@ -594,97 +594,41 @@ files.</p>
 <div id="configuration" class="section level2" number="0.3">
 <h2><span class="header-section-number">0.3</span> Configuration</h2>
 <p>Edit this block before running the pipeline.</p>
-<pre class="r"><code># CONFIGURATION - Edit only this block before running the pipeline
-# =============================================================================
-
-# Directory containing the pipeline helper scripts.
-# Inside the Docker container this is typically /workspace/SingleCell
-PIPELINE_DIR &lt;- &quot;/workspace/SingleCell/workflow&quot;
-
-# Root directory for your project data and results.
-# All result files will be written to DATA_DIR/resultados/&lt;step&gt;/
+<pre class="r"><code>PIPELINE_DIR &lt;- &quot;/workspace/SingleCell/workflow&quot;
 DATA_DIR   &lt;- &quot;/workspace/.&quot;
-base_dir   &lt;- file.path(DATA_DIR, &quot;resultados&quot;)
-
-# =============================================================================</code></pre>
+base_dir   &lt;- file.path(DATA_DIR, &quot;resultados&quot;)</code></pre>
 </div>
 <div id="initialization" class="section level2" number="0.4">
 <h2><span class="header-section-number">0.4</span> Initialization</h2>
 <p>Load helper scripts, set reproducibility options, and create output
 directories.</p>
-<pre class="r"><code># INITIALIZATION
-# =============================================================================
-
-# -- Load helper scripts --------------------------------------------------------
-# Each file is fully documented at https://github.com/cliford2001/SingleCell
-source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))          # all R packages
-source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))# analysis functions
-
+<pre class="r"><code>source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))
 set.seed(1807)
-options(Seurat.allow.s4 = FALSE)  # required for Seurat 5 compatibility
+options(Seurat.allow.s4 = FALSE)
 setwd(DATA_DIR)
-
-# -- Create per-step output directories ----------------------------------------
-list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)  # creates output folders and loads their paths as variables
-
-# output_dir is the global variable used by save_pdf / save_qc / save_vln helpers.
-# It is reassigned at the start of each section to the appropriate step directory.
-output_dir &lt;- base_dir
-
-
-# =============================================================================
-# ########################  PART 1 - SINGLE-CELL ANALYSIS  ####################
-# =============================================================================</code></pre>
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
+output_dir &lt;- base_dir</code></pre>
 <div style="page-break-after: always;"></div>
 </div>
 <div id="section-1---data-loading-and-pre-filter-qc" class="section level2" number="0.5">
 <h2><span class="header-section-number">0.5</span> Section 1 - DATA
 LOADING AND PRE-FILTER QC</h2>
-<pre class="r"><code># SECTION 1 - DATA LOADING AND PRE-FILTER QC
-# =============================================================================
-# Each sample is loaded from its input file and mitochondrial / chloroplast
-# read fractions are computed per cell to guide filtering thresholds in
-# Section 2. Pre-filter violin plots are saved to 01_qc/.
-#
-# +- CHANGE FOR YOUR ORGANISM --------------------------------------------------
-#   Arabidopsis : mt_pattern = &quot;^ATMG&quot;  |  cp_pattern = &quot;^ATCG&quot;
-#   Human       : mt_pattern = &quot;^MT-&quot;   |  cp_pattern = NULL
-#   Mouse       : mt_pattern = &quot;^mt-&quot;   |  cp_pattern = NULL
-# +-----------------------------------------------------------------------------
-output_dir &lt;- dir_01
-
-# -- Sample manifest (CellRanger filtered_feature_bc_matrix) ------------------
-# Add one entry per sample. Each entry needs:
-#   file      - path to the filtered_feature_bc_matrix/ directory (relative to DATA_DIR)
-#   label     - unique name for this sample (appears in all plots)
-#   condition - experimental group this sample belongs to
+<pre class="r"><code>output_dir &lt;- dir_01
 samples &lt;- list(
   list(file = &quot;cellranger_v2/ScWT/outs/filtered_feature_bc_matrix&quot;,  label = &quot;WT&quot;,  condition = &quot;WT&quot;),
   list(file = &quot;cellranger_v2/Scpifq/outs/filtered_feature_bc_matrix&quot;, label = &quot;pifq&quot;, condition = &quot;pifq&quot;))
-
-
-# -- Plot colors (one color per sample label) -----------------------------------
 colors &lt;- c(
   &quot;WT&quot;  = &quot;#66c2a5&quot;,
   &quot;pifq&quot;  = &quot;#fc8d62&quot;
 )
-
-
-mt_pattern &lt;- &quot;^ATMG&quot;  # Arabidopsis mitochondrial genes
-cp_pattern &lt;- &quot;^ATCG&quot;  # Arabidopsis chloroplast genes
-
-
-# Load all samples using the helper function
+mt_pattern &lt;- &quot;^ATMG&quot;
+cp_pattern &lt;- &quot;^ATCG&quot;
 seurat_list_raw &lt;- load_seurat_samples(samples = samples,
                                        DATA_DIR = DATA_DIR,
                                        mt_pattern = mt_pattern,
                                        cp_pattern = cp_pattern)
-
 plot_qc_batch(seurat_list_raw, colors, &quot;qc_prefilter.pdf&quot;)
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 1 COMPLETE: QC pre-filter plots saved&quot;)</code></pre>
 <p>Representative output from Section 1:</p>
 <div class="float">
@@ -696,28 +640,10 @@ message(&quot;\nOK SECTION 1 COMPLETE: QC pre-filter plots saved&quot;)</code></
 <div id="section-2---cell-filtering-and-doublet-detection" class="section level2" number="0.6">
 <h2><span class="header-section-number">0.6</span> Section 2 - CELL
 FILTERING AND DOUBLET DETECTION</h2>
-<pre class="r"><code># SECTION 2 - CELL FILTERING AND DOUBLET DETECTION
-# =============================================================================
-# Thresholds are set based on the pre-filter violin plots (01_qc/qc_prefilter.pdf).
-# Cells below min_features or above max_mt are removed. DoubletFinder is
-# applied per sample to discard putative doublets.
-#
-# +- ADJUST THRESHOLDS AFTER INSPECTING 01_qc/qc_prefilter.pdf -----------------
-#   min_features : minimum number of detected genes per cell (default 200)
-#   max_mt       : maximum mitochondrial read percentage  (default 5 %)
-# +-----------------------------------------------------------------------------
-output_dir &lt;- dir_01   # both pre- and post-filter QC plots go to 01_qc/
-
+<pre class="r"><code>output_dir &lt;- dir_01
 seurat_list &lt;- filter_seurat_samples(seurat_list_raw, min_features = 200, max_mt = 5)
-
 plot_qc_batch(seurat_list, colors, &quot;qc_postfilter.pdf&quot;)
-
-# Checkpoint - restore with: seurat_list &lt;- readRDS(&quot;resultados/objects/seurat_list_postfilter.rds&quot;)
 saveRDS(seurat_list, file.path(dir_objects, &quot;seurat_list_postfilter.rds&quot;))
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 2 COMPLETE: Filtering and doublet detection complete&quot;)</code></pre>
 <p>Representative output from Section 2:</p>
 <div class="float">
@@ -729,30 +655,16 @@ message(&quot;\nOK SECTION 2 COMPLETE: Filtering and doublet detection complete&
 <div id="section-3---merge-and-initial-preprocessing" class="section level2" number="0.7">
 <h2><span class="header-section-number">0.7</span> Section 3 - MERGE AND
 INITIAL PREPROCESSING</h2>
-<pre class="r"><code># SECTION 3 - MERGE AND INITIAL PREPROCESSING
-# =============================================================================
-# Filtered samples are merged and preprocessed: log-normalization, variable
-# feature selection (VST, 2,000 features), scaling, PCA (30 PCs), and UMAP.
-# The resulting UMAP shows batch effects before integration.
-
-output_dir &lt;- dir_01
-
-pbmc_harmony &lt;- reduce(seurat_list, merge) %&gt;%  # merge all samples into one object
+<pre class="r"><code>output_dir &lt;- dir_01
+pbmc_harmony &lt;- reduce(seurat_list, merge) %&gt;%
   NormalizeData(verbose = FALSE) %&gt;%
   FindVariableFeatures(selection.method = &quot;vst&quot;, nfeatures = 2000, verbose = FALSE) %&gt;%
   ScaleData(verbose = FALSE) %&gt;%
   RunPCA(npcs = 30, verbose = FALSE) %&gt;%
   RunUMAP(reduction = &quot;pca&quot;, dims = 1:30, verbose = FALSE)
-
 save_pdf(DimPlot(pbmc_harmony, group.by = &quot;orig.ident&quot;, cols = colors),
          &quot;umap_preharmony.pdf&quot;)
-
-# Checkpoint - restore with: pbmc_harmony &lt;- readRDS(&quot;resultados/objects/pbmc_harmony_preharmony.rds&quot;)
 saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_preharmony.rds&quot;))
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 3 COMPLETE: Merge and preprocessing complete&quot;)</code></pre>
 <p>Representative output from Section 3:</p>
 <div class="float">
@@ -765,27 +677,13 @@ sample.</div>
 <div id="section-4---harmony-batch-correction" class="section level2" number="0.8">
 <h2><span class="header-section-number">0.8</span> Section 4 - HARMONY
 BATCH CORRECTION</h2>
-<pre class="r"><code># SECTION 4 - HARMONY BATCH CORRECTION
-# =============================================================================
-# Harmony adjusts cell embeddings to remove sample-level batch effects while
-# preserving biological variation. All downstream steps use the &quot;harmony&quot;
-# reduction instead of &quot;pca&quot;.
-
-output_dir &lt;- dir_01
-
+<pre class="r"><code>output_dir &lt;- dir_01
 pbmc_harmony &lt;- pbmc_harmony %&gt;%
   RunHarmony(&quot;orig.ident&quot;, plot_convergence = FALSE) %&gt;%
   RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE)
-
 save_pdf(DimPlot(pbmc_harmony, group.by = &quot;orig.ident&quot;, cols = colors),
          &quot;umap_postharmony.pdf&quot;)
-
-# Checkpoint - restore with: pbmc_harmony &lt;- readRDS(&quot;resultados/objects/pbmc_harmony_postharmony.rds&quot;)
 saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_postharmony.rds&quot;))
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 4 COMPLETE: Harmony integration complete&quot;)</code></pre>
 <p>Representative output from Section 4:</p>
 <div class="float">
@@ -798,28 +696,14 @@ sample.</div>
 <div id="section-5---resolution-optimization" class="section level2" number="0.9">
 <h2><span class="header-section-number">0.9</span> Section 5 -
 RESOLUTION OPTIMIZATION</h2>
-<pre class="r"><code># SECTION 5 - RESOLUTION OPTIMIZATION
-# =============================================================================
-# Clustree tracks how Leiden communities split or merge across candidate
-# resolutions. Choose the lowest resolution where clusters stabilize.
-#
-# +- PARAMETERS ----------------------------------------------------------------
-#   resolutions_test : Leiden resolutions swept by clustree
-#   -&gt; Inspect elbow_plot.pdf and clustree2.pdf before setting cluster_resolution in Section 6.
-# +-----------------------------------------------------------------------------
-resolutions_test &lt;- c(0.15, 0.35, 0.45, 0.55, 1.0)
-
+<pre class="r"><code>resolutions_test &lt;- c(0.15, 0.35, 0.45, 0.55, 1.0)
 output_dir &lt;- dir_02
-
-# Elbow plot: k-means within-cluster sum of squares across candidate k values.
-# This is only a diagnostic plot; it does not change the clustering parameters.
 k_range &lt;- 1:31
 pca_data &lt;- Embeddings(pbmc_harmony, &quot;pca&quot;)[, 1:30]
 wss &lt;- sapply(
   k_range,
   function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
 )
-
 elbow_plot &lt;- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
   geom_line() +
   geom_point() +
@@ -828,22 +712,14 @@ elbow_plot &lt;- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
     y = &quot;Within-cluster sum of squares&quot;
   ) +
   theme_minimal()
-
 save_pdf(elbow_plot, &quot;elbow_plot.pdf&quot;, w = 18, h = 18)
-
 clu &lt;- pbmc_harmony %&gt;%
   RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE) %&gt;%
   FindNeighbors(reduction = &quot;harmony&quot;, dims = 1:30,
                 k.param = 20, verbose = FALSE)
-
 for (res in resolutions_test)
   clu &lt;- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
-
 save_pdf(clustree(clu, prefix = &quot;RNA_snn_res.&quot;), &quot;clustree2.pdf&quot;, w = 18, h = 18)
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 5 COMPLETE: Elbow plot and clustree saved - inspect elbow_plot.pdf and clustree2.pdf before setting resolution&quot;)</code></pre>
 <p>Representative outputs from Section 5:</p>
 <div class="float">
@@ -861,32 +737,16 @@ resolutions.</div>
 <div id="section-6---final-clustering" class="section level2" number="0.10">
 <h2><span class="header-section-number">0.10</span> Section 6 - FINAL
 CLUSTERING</h2>
-<pre class="r"><code># SECTION 6 - FINAL CLUSTERING
-# =============================================================================
-# Apply the selected resolution for the final cluster assignment.
-# After clustering, a UMAP coloured by Seurat cluster and a bar chart of
-# cells per sample are saved to 02_clustering/.
-#
-# +- SET RESOLUTION AFTER INSPECTING clustree.pdf -----------------------------
-#   cluster_resolution : Leiden resolution for final clustering (default 0.3)
-# +-----------------------------------------------------------------------------
-cluster_resolution &lt;- 0.35
+<pre class="r"><code>cluster_resolution &lt;- 0.35
 output_dir &lt;- dir_02
-
-# clu (Section 5) was temporary - re-run on pbmc_harmony to embed the final clusters
 pbmc_harmony &lt;- pbmc_harmony %&gt;%
   RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE) %&gt;%
   FindNeighbors(reduction = &quot;harmony&quot;, dims = 1:30,
                 k.param = 20, verbose = FALSE) %&gt;%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
-
 Idents(pbmc_harmony) &lt;- &quot;seurat_clusters&quot;
 save_pdf(DimPlot(pbmc_harmony, group.by = &quot;seurat_clusters&quot;, label = TRUE),
          &quot;umap_seuratclusters.pdf&quot;)
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 6 COMPLETE: Final clustering complete&quot;)</code></pre>
 <p>Representative output from Section 6:</p>
 <div class="float">
@@ -899,46 +759,23 @@ clusters.</div>
 <div id="section-7---cell-type-annotation" class="section level2" number="0.11">
 <h2><span class="header-section-number">0.11</span> Section 7 -
 CELL-TYPE ANNOTATION</h2>
-<pre class="r"><code># SECTION 7 - CELL-TYPE ANNOTATION
-# =============================================================================
-# Cell-type labels are assigned via bibliography-based markers
-# (biblio_marks.txt): the marker table read above is crossed with
-# cluster-level differential genes to assign initial labels automatically.
-# Result stored in pbmc_harmony$celltype.
-#
-# A second strategy - reference transfer from a published Seurat object
-# (e.g. an Arabidopsis leaf atlas) via FindTransferAnchors/TransferData - is
-# not run by default. The full block, plus the downstream sections wired to
-# it, is preserved in capitulo1_single_cell_reference_backup.R.
-
-output_dir &lt;- dir_03
-
+<pre class="r"><code>output_dir &lt;- dir_03
 biblio_marks_file &lt;- file.path(DATA_DIR, &quot;biblio_marks_custom.txt&quot;)
 marker_table      &lt;- read.table(biblio_marks_file, header = TRUE, sep = &quot;\t&quot;, quote = &quot;&quot;)
-
-# -- Bibliography-based annotation ---------------------------------------------
 markers &lt;- find_markers(pbmc_harmony,
                         output_file = file.path(output_dir, &quot;FindAllMarkers.tsv&quot;))
-
 pbmc_harmony &lt;- annotate_by_markers(pbmc_harmony, markers,
                                     reference_file = biblio_marks_file)
-# Annotation stored in: pbmc_harmony$celltype
-
 plot_marker_dotplot(
   pbmc_harmony,
   marker_table,
-  annot_col = &quot;celltype&quot;, # uses the newly assigned annotation column
+  annot_col = &quot;celltype&quot;,
   outfile   = file.path(output_dir, &quot;dotplot_marker_table_annotation_biblio.pdf&quot;),
   width = 18, height = 18
 )
-
 save_pdf(DimPlot(pbmc_harmony, group.by = &quot;celltype&quot;,
                  label = TRUE, repel = TRUE, raster = FALSE),
          &quot;umap_annotation_biblio.pdf&quot;)
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 7 COMPLETE: Cell-type annotation complete&quot;)</code></pre>
 <p>Representative outputs from Section 7:</p>
 <div class="float">
@@ -956,39 +793,24 @@ annotation.</div>
 <div id="section-8---annotated-clustree" class="section level2" number="0.12">
 <h2><span class="header-section-number">0.12</span> Section 8 -
 ANNOTATED CLUSTREE</h2>
-<pre class="r"><code># SECTION 8 - ANNOTATED CLUSTREE
-# =============================================================================
-# Reuses the resolution sweep object from Section 5 and overlays the final
-# bibliography-based annotation on each node.
-
-output_dir &lt;- dir_03
-
-# Mode: returns the most frequent annotation in each clustree node.
+<pre class="r"><code>output_dir &lt;- dir_03
 Mode &lt;- function(x) {
   x &lt;- as.character(x)
   x &lt;- x[!is.na(x) &amp; nzchar(x)]
   if (length(x) == 0) return(NA_character_)
   names(sort(table(x), decreasing = TRUE))[1]
 }
-
 stopifnot(exists(&quot;clu&quot;))
 stopifnot(&quot;celltype&quot; %in% colnames(pbmc_harmony@meta.data))
-
 celltype_label &lt;- as.character(pbmc_harmony$celltype)
 names(celltype_label) &lt;- Cells(pbmc_harmony)
 clu$celltype_label &lt;- celltype_label[Cells(clu)]
-
 print(table(clu$celltype_label, useNA = &quot;ifany&quot;))
-
 save_pdf(
   clustree(clu, prefix = &quot;RNA_snn_res.&quot;,
            node_label = &quot;celltype_label&quot;, node_label_aggr = &quot;Mode&quot;),
   &quot;clustree_annotated.pdf&quot;, w = 14, h = 14
 )
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 8 COMPLETE: Annotated clustree saved&quot;)</code></pre>
 <p>Representative output from Section 8:</p>
 <div class="float">
@@ -1001,34 +823,18 @@ bibliography-based annotation in each node.</div>
 <div id="section-9---gene-expression-visualization" class="section level2" number="0.13">
 <h2><span class="header-section-number">0.13</span> Section 9 - GENE
 EXPRESSION VISUALIZATION</h2>
-<pre class="r"><code># SECTION 9 - GENE EXPRESSION VISUALIZATION
-# =============================================================================
-# Simple inspection for one gene: violin plot across all annotated cell types
-# and UMAP expression overlay.
-#
-# +- SET GENE TO INSPECT ------------------------------------------------------
-#   gene : single gene to inspect
-# +-----------------------------------------------------------------------------
-gene &lt;- &quot;AT5G26000&quot;
-
+<pre class="r"><code>gene &lt;- &quot;AT5G26000&quot;
 output_dir &lt;- dir_04
-
-# JoinLayers is required in Seurat 5 after merging samples.
 pbmc_harmony &lt;- JoinLayers(pbmc_harmony)
 Idents(pbmc_harmony) &lt;- &quot;celltype&quot;
-
 save_vln(
   VlnPlot(pbmc_harmony, features = gene),
   &quot;vln_gene_all.pdf&quot;
 )
-
 save_pdf(
   FeaturePlot(pbmc_harmony, features = gene),
   &quot;feature_gene_all.pdf&quot;
 )
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 9 COMPLETE: Gene expression visualization saved&quot;)</code></pre>
 <p>Representative outputs from Section 9:</p>
 <div class="float">
@@ -1046,54 +852,18 @@ gene.</div>
 <div id="section-10---cell-type-grouping-optional" class="section level2" number="0.14">
 <h2><span class="header-section-number">0.14</span> Section 10 -
 CELL-TYPE GROUPING [OPTIONAL]</h2>
-<pre class="r"><code># SECTION 10 - CELL-TYPE GROUPING  [OPTIONAL]
-# =============================================================================
-# Fine-grained labels are collapsed into broader categories for downstream
-# analyses. Cell types NOT listed in &#39;grouping&#39; keep their original label.
-# Skip this section if you do not need to merge cell types.
-#
-# +- EDIT THIS MAP TO MATCH YOUR CELL TYPES -----------------------------------
-#   Left side  : original label (must match exactly)
-#   Right side : new broader label to assign
-# +-----------------------------------------------------------------------------
-# Leave empty if you do not want to merge labels.
-#
-# Example: uncomment and edit this if Section 7 produced several labels that
-# should be treated as one broader group downstream.
-#
-# grouping &lt;- c(
-#   &quot;Epidermis Hypocotyl.1&quot; = &quot;Epidermis Hypocotyl&quot;,
-#   &quot;Epidermis Hypocotyl.2&quot; = &quot;Epidermis Hypocotyl&quot;,
-#   &quot;Epidermis Hypocotyl.3&quot; = &quot;Epidermis Hypocotyl&quot;,
-#   &quot;ENDO1&quot; = &quot;Endodermis&quot;,
-#   &quot;ENDO2&quot; = &quot;Endodermis&quot;,
-#   &quot;PHLOEM AND SIEVE ELEMENT&quot; = &quot;PHLOEM&quot;
-# )
-#
-# Current default: no grouping; celltype_grouped is a straight pass-through
-# of celltype.
-grouping &lt;- c()
-
+<pre class="r"><code>grouping &lt;- c()
 output_dir &lt;- dir_05
-
-# !!! unpacks the grouping vector as named arguments to recode()
-# recode() errors on an empty replacement list, so an empty `grouping` (no
-# merging needed) falls back to a straight pass-through instead.
 if (length(grouping) &gt; 0) {
   pbmc_harmony$celltype_grouped &lt;- recode(pbmc_harmony$celltype, !!!grouping)
 } else {
   pbmc_harmony$celltype_grouped &lt;- pbmc_harmony$celltype
 }
-
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = &quot;celltype_grouped&quot;,  # grouped broad cell types
+  DimPlot(pbmc_harmony, group.by = &quot;celltype_grouped&quot;,
           label = TRUE, repel = TRUE, raster = FALSE),
   &quot;umap_grouped.pdf&quot;
 )
-
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 10 COMPLETE: Cell-type grouping complete&quot;)</code></pre>
 <p>Representative output from Section 10:</p>
 <div class="float">
@@ -1111,42 +881,19 @@ is needed. The section does not modify <code>pbmc_harmony</code> by
 default. Individual subcluster UMAPs are saved in a wide format so that
 UMAP dimensions keep the same visual proportions and do not appear
 compressed in the report.</p>
-<pre class="r"><code># SECTION 11 - SUBCLUSTER MARKER INSPECTION  [OPTIONAL]
-# =============================================================================
-# !!! WARNING: Run this section interactively, step by step.
-# !!! Do NOT source the entire script with this section active.
-# Skip this section if you are satisfied with the annotation from Section 7.
-#
-# Purpose: pick one or more annotated cell types, subcluster them, and inspect
-# marker expression across the subclusters before deciding whether any manual
-# reassignment is needed. This section does NOT modify pbmc_harmony by default.
-
-output_dir   &lt;- dir_05
+<pre class="r"><code>output_dir   &lt;- dir_05
 curation_col &lt;- &quot;celltype&quot;
 Idents(pbmc_harmony) &lt;- curation_col
-
 print(table(pbmc_harmony[[curation_col]], useNA = &quot;ifany&quot;))
-
-# Edit this vector using exact names from the table above.
-# Example options:
-#   types_to_inspect &lt;- c(&quot;Epidermis Hypocotyl.1&quot;)
-#   types_to_inspect &lt;- c(&quot;Epidermis Hypocotyl.1&quot;, &quot;Epidermis Hypocotyl.2&quot;)
-#   types_to_inspect &lt;- names(table(pbmc_harmony[[curation_col]]))  # all labels; can be slow
-
 types_to_inspect &lt;- c(&quot;2&quot;,&quot;4&quot;,&quot;5&quot;,&quot;8&quot;)
-
 subcluster_resolution &lt;- 0.3
 subcluster_dims       &lt;- 1:20
-
 subcluster_list    &lt;- list()
 inspection_entries &lt;- list()
-
 for (ct in types_to_inspect) {
   safe_name &lt;- make.names(ct)
   file_tag  &lt;- gsub(&quot;[^A-Za-z0-9]+&quot;, &quot;_&quot;, ct)
-
   message(&quot;\nInspecting: &quot;, ct)
-
   sub_obj &lt;- subcluster_cell_type(
     pbmc_harmony,
     tipo       = ct,
@@ -1154,12 +901,9 @@ for (ct in types_to_inspect) {
     resolution = subcluster_resolution,
     dims       = subcluster_dims
   )
-
   subcluster_list[[safe_name]] &lt;- sub_obj
   print(table(sub_obj$cluster_subtipo, useNA = &quot;ifany&quot;))
-
   p_dim &lt;- plot_subcluster_umap(sub_obj, ct, output_dir)
-
   plot_marker_dotplot(
     sub_obj,
     marker_table,
@@ -1168,51 +912,17 @@ for (ct in types_to_inspect) {
     width = 18,
     height = 18
   )
-
   inspection_entries[[safe_name]] &lt;- list(
     umap_plot = p_dim,
     obj       = sub_obj
   )
 }
-
 save_subcluster_composite(
   subcluster_list = inspection_entries,
   marker_table    = marker_table,
   output_dir      = output_dir,
   filename        = &quot;subclustering_marker_inspection2.pdf&quot;
 )
-
-# After reviewing the PDFs, manually decide whether to reassign subclusters.
-# Nothing is changed in pbmc_harmony unless you run an apply_subcluster_reassignment()
-# block intentionally.
-
-# Example reassignment template, left commented on purpose:
-#
-# reassign &lt;- list(
-#   Epidermis.Hypocotyl.1 = c(
-#     &quot;0&quot;      = &quot;Epidermis Hypocotyl&quot;,
-#     &quot;1&quot;      = &quot;Epidermis Cotyledon&quot;,
-#     &quot;others&quot; = &quot;Epidermis Hypocotyl&quot;
-#   )
-# )
-#
-# pbmc_harmony &lt;- apply_subcluster_reassignment(
-#   obj             = pbmc_harmony,
-#   subcluster_list = subcluster_list,
-#   reassign        = reassign,
-#   source_col      = curation_col,
-#   dest_col        = &quot;celltype_curated&quot;
-# )
-#
-# save_pdf(
-#   DimPlot(pbmc_harmony, group.by = &quot;celltype_curated&quot;,
-#           label = TRUE, repel = TRUE, raster = FALSE),
-#   &quot;umap_curated.pdf&quot;
-# )
-# saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_curated.rds&quot;))
-
-# =============================================================================
-
 message(&quot;\nOK SECTION 11 COMPLETE: Subcluster marker inspection saved&quot;)</code></pre>
 <p>Representative output from Section 11:</p>
 <div class="float">
