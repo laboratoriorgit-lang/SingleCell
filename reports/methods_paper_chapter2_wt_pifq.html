@@ -83,15 +83,6 @@
       text-align: justify;
     }
 
-    ul {
-      margin: 0.35em 0 0.75em 1.35em;
-      padding: 0;
-    }
-
-    li {
-      margin: 0.2em 0;
-    }
-
     code {
       color: #174a67;
       font-family: "SFMono-Regular", Menlo, Consolas, monospace;
@@ -146,18 +137,18 @@
       display: block;
       height: auto;
       margin: 0 auto;
-      max-height: 3.15in;
-      max-width: 48%;
+      max-height: 3.25in;
+      max-width: 50%;
     }
 
     figure.wide img {
-      max-height: 3.45in;
-      max-width: 62%;
+      max-height: 3.5in;
+      max-width: 64%;
     }
 
     figure.tall img {
-      max-height: 4.55in;
-      max-width: 62%;
+      max-height: 4.6in;
+      max-width: 64%;
     }
 
     .two-col {
@@ -182,160 +173,126 @@
 <body>
   <section class="title-page">
     <h1 class="title">Computational Methods for Single-Cell RNA-Seq Analysis of<br><em>Arabidopsis thaliana</em></h1>
-    <p class="subtitle">Chapter 2 - WT vs pifq tutorial: pseudobulk differential expression and functional enrichment</p>
+    <p class="subtitle">Chapter 2 - WT vs pifq: pseudobulk DE, GO enrichment, heatmaps and network sections</p>
     <p class="meta">SingleCell Pipeline</p>
     <p class="meta">2026-07-15</p>
     <div class="rule"></div>
 
     <h1>Purpose</h1>
     <p>
-      Chapter 2 starts from the annotated object produced in Chapter 1 and runs
-      pseudobulk differential expression by cell type. For this WT/pifq draft,
-      the analysis intentionally uses the direct bibliography annotation column
-      <code>celltype</code>. It does not use <code>celltype_grouped</code> and
-      does not use <code>celltype_curated</code>.
+      This Chapter 2 draft follows the structure of
+      <code>workflow/capitulo2_pseudobulk_de.R</code>. The WT/pifq adaptation
+      changes only the dataset-specific pieces: output folder
+      <code>resultados_wt</code>, input object
+      <code>pbmc_harmony_annotated.rds</code>, direct annotation column
+      <code>celltype</code>, and the <code>WT_vs_pifq</code> contrast.
     </p>
     <p>
-      The WT/pifq test currently has one Cell Ranger library per condition.
-      Therefore the pseudo-replicates used here are a practical demonstration
-      for method development and figure generation, not independent biological
-      replicates. This limitation should remain visible in the final methods
-      text.
+      No grouped or curated labels are used here. This keeps Chapter 2 aligned
+      with the direct bibliography annotation from Chapter 1.
     </p>
   </section>
 
   <section class="page-section">
-    <h1>Step 1 - Start from Chapter 1 celltype annotation</h1>
+    <h1>Configuration</h1>
     <p>
-      The input is the Chapter 1 annotated Seurat object. The object is loaded
-      before grouping or manual curation, so the active annotation column is
-      <code>celltype</code>. This keeps numeric labels such as <code>2</code>,
-      <code>4</code>, <code>5</code>, and <code>7</code> when no bibliography
-      marker match was assigned.
+      Configuration mirrors the original Chapter 2 script, with the WT/pifq
+      result directory and the same function sources.
     </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>PIPELINE_DIR &lt;- Sys.getenv(&quot;PIPELINE_DIR&quot;, unset = &quot;/workspace/workflow&quot;)
-DATA_DIR     &lt;- Sys.getenv(&quot;DATA_DIR&quot;,     unset = &quot;/workspace&quot;)
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>PIPELINE_DIR &lt;- &quot;/workspace/SingleCell/workflow&quot;
+DATA_DIR     &lt;- &quot;/workspace/.&quot;
 base_dir     &lt;- file.path(DATA_DIR, &quot;resultados_wt&quot;)
 
 source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;custom_seurat.R&quot;))
 source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))
 
-set.seed(1807)
-setwd(DATA_DIR)
-list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)  # creates output folders and loads their paths as variables
 
-pbmc_harmony &lt;- readRDS(file.path(dir_objects,
-                                  &quot;pbmc_harmony_annotated.rds&quot;))
-
-pseudobulk_annot_col &lt;- &quot;celltype&quot;
-pseudobulk_conditions &lt;- c(&quot;WT&quot;, &quot;pifq&quot;)
-comparison_tag &lt;- &quot;WT_vs_pifq&quot;</code></pre></div>
+set.seed(1807)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Step 2 - Celltype and condition check</h1>
+    <h1>Load - Annotated Object From Part 1</h1>
     <p>
-      The first diagnostic counts cells per <code>celltype</code> and
-      condition. Cell types with fewer than 20 cells in either WT or pifq are
-      not used for DESeq2 in this draft. With the current data, 10 cell-type
-      labels pass this filter.
+      The input is the Chapter 1 bibliography-annotated object. The active
+      annotation column for Chapter 2 is <code>celltype</code>.
     </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>min_cells_per_condition &lt;- 20
-
-celltype_condition_counts &lt;- as.data.frame.matrix(
-  table(pbmc_harmony[[pseudobulk_annot_col]][, 1],
-        pbmc_harmony$condition)
-)
-celltype_condition_counts$celltype &lt;- rownames(celltype_condition_counts)
-celltype_condition_counts &lt;- celltype_condition_counts[
-  , c(&quot;celltype&quot;, pseudobulk_conditions)
-]
-
-eligible_celltypes &lt;- celltype_condition_counts$celltype[
-  apply(celltype_condition_counts[, pseudobulk_conditions, drop = FALSE],
-        1, function(x) all(x &gt;= min_cells_per_condition))
-]</code></pre></div>
-    <figure class="wide"><img src="assets/cap2_celltype_condition_counts.png" alt="Cells per direct celltype annotation and condition."><figcaption>Cells per direct celltype annotation and condition.</figcaption></figure>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pbmc_harmony &lt;- readRDS(file.path(dir_objects, &quot;pbmc_harmony_annotated.rds&quot;))</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Step 3 - Build celltype subsets</h1>
+    <h1>Section 13 - Cell-Type Subsets</h1>
     <p>
       One Seurat subset is created per direct <code>celltype</code> label.
-      Labels are only sanitized for object names and filenames; they are not
-      grouped or manually curated.
+      Object names are sanitized only for list names and filenames.
     </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>cell_type_subsets &lt;- create_cell_type_subsets(
-  pbmc_harmony,
-  annot_col = pseudobulk_annot_col
-)
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pseudobulk_annot_col &lt;- &quot;celltype&quot;
 
-eligible_subset_names &lt;- gsub(&quot;[^[:alnum:]_]&quot;, &quot;_&quot;, eligible_celltypes)
-cell_type_subsets &lt;- cell_type_subsets[
-  names(cell_type_subsets) %in% eligible_subset_names
-]</code></pre></div>
-    <p class="small-note">
-      The retained labels were: Epidermis Hypocotyl.1, Epidermis Cotyledon,
-      Mesophyll, Epidermis Hypocotyl.2, PHLOEM, ENDO1, 2, 4, 5, and 7.
-    </p>
+cell_type_subsets &lt;- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobulk_annot_col)
+
+
+
+message(&quot;\n✓ SECTION 13 COMPLETE: Cell-type subsets created&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Step 4 - Pseudo-replicate assignment</h1>
+    <h1>Section 14 - Pseudo-Replicate Assignment</h1>
     <p>
-      Cells inside each retained cell type are randomly assigned to three
-      pseudo-replicates per condition. This creates replicate-level count
-      columns for DESeq2. Because the dataset has one library per condition,
-      these pseudo-replicates are used to exercise the workflow and should not
-      be described as biological replicates.
+      The same pseudo-replicate assignment structure is retained. The QC check
+      uses <code>Mesophyll</code> as an existing label in the WT/pifq dataset.
     </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>n_pseudoreps &lt;- 3
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pseudobulk_conditions &lt;- c(&quot;WT&quot;, &quot;pifq&quot;)
+n_pseudoreps          &lt;- 3
 
 cell_type_subsets_replicates &lt;- assign_pseudoreplicates_batch(
   cell_type_subsets,
   pseudobulk_conditions = pseudobulk_conditions,
   n_pseudoreps = n_pseudoreps
-)</code></pre></div>
-    <figure class="wide"><img src="assets/cap2_pseudo_replicate_cell_counts.png" alt="Cells assigned to each pseudo-replicate for retained cell types."><figcaption>Cells assigned to each pseudo-replicate for retained cell types.</figcaption></figure>
+)
+
+
+table(cell_type_subsets_replicates$Mesophyll$condition)
+table(cell_type_subsets_replicates$Mesophyll$replicate)
+table(cell_type_subsets_replicates$Mesophyll$orig.ident)
+
+
+
+message(&quot;\n✓ SECTION 14 COMPLETE: Pseudo-replicates assigned&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Step 5 - Pseudobulk tables and DESeq2</h1>
+    <h1>Section 15 - Pseudobulk Tables and DESeq2</h1>
     <p>
-      Counts are aggregated by pseudo-replicate for each direct celltype label.
-      DESeq2 is then run with <code>WT</code> as the reference and
-      <code>pifq</code> as the treatment, so positive log2FC values indicate
-      higher expression in pifq.
+      The contrast is <code>WT_vs_pifq</code>. Positive log2FC values correspond
+      to higher expression in pifq relative to WT.
     </p>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>comparisons &lt;- list(
   list(conds = c(&quot;WT&quot;, &quot;pifq&quot;), tag = &quot;WT_vs_pifq&quot;)
 )
 
+cell_types_to_analyze &lt;- NULL
+
+output_dir &lt;- dir_06
+
 deseq2_results &lt;- run_pseudobulk_deseq2_analysis(
   cell_type_subsets_replicates = cell_type_subsets_replicates,
   comparisons = comparisons,
-  output_dir = dir_06,
-  cell_types = NULL,
-  pseudobulk_dir = file.path(dir_objects,
-                             &quot;pseudobulk_replicas_celltype&quot;)
-)</code></pre></div>
-    <p>
-      This run produced one DESeq2 result file for each of the 10 retained
-      direct celltype labels under
-      <code>resultados_wt/06_de_results/WT_vs_pifq/</code>.
-    </p>
+  output_dir = output_dir,
+  cell_types = cell_types_to_analyze,
+  pseudobulk_dir = file.path(dir_objects, &quot;pseudobulk_replicas&quot;)
+)
+
+
+
+message(&quot;\n✓ SECTION 15 COMPLETE: Pseudobulk aggregation and DESeq2 complete&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Step 6 - Volcano plots</h1>
-    <p>
-      Volcano plots are rendered per cell type with adjusted p-value threshold
-      0.05 and absolute log2FC threshold 1. The examples below show Mesophyll
-      and Epidermis Hypocotyl.1.
-    </p>
+    <h1>Section 16 - Volcano Plots</h1>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>volcano_tag &lt;- &quot;WT_vs_pifq&quot;
-padj_cut &lt;- 0.05
-lfc_cut &lt;- 1
+padj_cut    &lt;- 0.05
+lfc_cut     &lt;- 1
 
 render_volcano_plots(
   results_dir = file.path(dir_06, volcano_tag),
@@ -343,69 +300,140 @@ render_volcano_plots(
   pdf_name    = paste0(&quot;VolcanoPlots_&quot;, volcano_tag, &quot;.pdf&quot;),
   padj_cut    = padj_cut,
   lfc_cut     = lfc_cut
-)</code></pre></div>
+)
+
+
+
+message(&quot;\n✓ SECTION 16 COMPLETE: Volcano plots saved&quot;)</code></pre></div>
     <div class="two-col">
-      <figure class=""><img src="assets/cap2_volcano_mesophyll_WT_vs_pifq.png" alt="Representative volcano plot: Mesophyll."><figcaption>Representative volcano plot: Mesophyll.</figcaption></figure>
-      <figure class=""><img src="assets/cap2_volcano_epidermis_hypocotyl_1_WT_vs_pifq.png" alt="Representative volcano plot: Epidermis Hypocotyl.1."><figcaption>Representative volcano plot: Epidermis Hypocotyl.1.</figcaption></figure>
+      <figure class=""><img src="assets/cap2_volcano_mesophyll_WT_vs_pifq.png" alt="Representative volcano output: Mesophyll."><figcaption>Representative volcano output: Mesophyll.</figcaption></figure>
+      <figure class=""><img src="assets/cap2_volcano_epidermis_hypocotyl_1_WT_vs_pifq.png" alt="Representative volcano output: Epidermis Hypocotyl.1."><figcaption>Representative volcano output: Epidermis Hypocotyl.1.</figcaption></figure>
     </div>
   </section>
 
   <section class="page-section">
-    <h1>Step 7 - Differential tables and log2FC heatmap</h1>
-    <p>
-      Per-cell-type DESeq2 outputs are combined into a differential-gene matrix
-      and a log2FC matrix. The heatmap uses the same staircase logic as the
-      helper function: genes are ordered by the cell type where the absolute
-      log2FC is largest. The current WT/pifq draft includes 8,440 genes after
-      filtering with adjusted p-value 0.05 and absolute log2FC 1.
-    </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>diff_tables &lt;- build_differential_tables(
+    <h1>Section 17 - Differential Gene Tables</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>diff_prefix &lt;- paste0(&quot;diff_table_&quot;, volcano_tag)
+
+diff_tables &lt;- build_differential_tables(
   results_dir = file.path(dir_06, volcano_tag),
   output_dir  = file.path(dir_06, volcano_tag),
   padj_cut    = padj_cut,
   lfc_cut     = lfc_cut,
-  prefix      = paste0(&quot;diff_table_&quot;, volcano_tag)
+  prefix      = diff_prefix
 )
+
+
+
+message(&quot;\n✓ SECTION 17 COMPLETE: Differential gene tables saved&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 18 - GO Enrichment</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>go_space    &lt;- &quot;BP&quot;
+go_orgdb    &lt;- org.At.tair.db
+go_keytype  &lt;- &quot;TAIR&quot;
+padj_cutoff &lt;- 0.05
+
+go_results &lt;- run_go_enrichment_for_contrast(
+  results_dir  = file.path(dir_06, volcano_tag),
+  output_dir   = file.path(dir_07, volcano_tag),
+  orgdb        = go_orgdb,
+  keytype      = go_keytype,
+  go_space     = go_space,
+  padj_cutoff  = padj_cutoff,
+  contrast_tag = volcano_tag
+)
+
+
+message(&quot;\n✓ SECTION 18 COMPLETE: GO enrichment complete&quot;)</code></pre></div>
+    <figure class="wide"><img src="assets/cap2_go_mesophyll_bp.png" alt="Representative GO biological-process bubble plot for Mesophyll."><figcaption>Representative GO biological-process bubble plot for Mesophyll.</figcaption></figure>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 19 - Log2FC Heatmap</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>heatmap_limits &lt;- c(-5, 5)
 
 build_logfc_heatmap(
   logfc_table  = diff_tables$logfc,
   contrast_tag = volcano_tag,
   output_dir   = file.path(dir_06, volcano_tag),
-  limits       = c(-5, 5)
-)</code></pre></div>
-    <figure class="tall"><img src="assets/cap2_heatmap_WT_vs_pifq.png" alt="Combined log2FC heatmap across retained direct celltype labels."><figcaption>Combined log2FC heatmap across retained direct celltype labels.</figcaption></figure>
+  limits       = heatmap_limits
+)
+
+
+
+message(&quot;\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved&quot;)</code></pre></div>
+    <figure class="tall"><img src="assets/cap2_heatmap_WT_vs_pifq.png" alt="log2FC heatmap produced by Section 19."><figcaption>log2FC heatmap produced by Section 19.</figcaption></figure>
   </section>
 
   <section class="page-section">
-    <h1>Step 8 - GO enrichment</h1>
+    <h1>Section 20 - Coexpression Network</h1>
     <p>
-      GO enrichment is run per retained cell type from significant genes in the
-      WT vs pifq DESeq2 outputs. The Arabidopsis OrgDb annotation is used with
-      TAIR gene identifiers and biological process ontology.
+      The hdWGCNA section is preserved from the original Chapter 2 structure.
+      It uses the significant-gene table generated in Section 19.
     </p>
-    <div class="code-wrap"><div class="code-label">R</div><pre><code>go_results &lt;- run_go_enrichment_for_contrast(
-  results_dir  = file.path(dir_06, volcano_tag),
-  output_dir   = file.path(dir_07, volcano_tag),
-  orgdb        = org.At.tair.db,
-  keytype      = &quot;TAIR&quot;,
-  go_space     = &quot;BP&quot;,
-  padj_cutoff  = 0.05,
-  contrast_tag = volcano_tag
-)</code></pre></div>
-    <figure class="wide"><img src="assets/cap2_go_mesophyll_bp.png" alt="Representative GO biological-process bubble plot for Mesophyll."><figcaption>Representative GO biological-process bubble plot for Mesophyll.</figcaption></figure>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>wgcna_name  &lt;- &quot;unified&quot;
+n_metacells     &lt;- 50
+soft_power      &lt;- NULL
+min_module_size &lt;- 20
+deep_split      &lt;- 2
+
+run_unified_hdwgcna(
+  seurat_obj      = pbmc_harmony,
+  de_table_path   = file.path(dir_06, volcano_tag, &quot;tabla_log2FC_fc1_padj_005.tsv&quot;),
+  output_dir      = dir_08,
+  annot_col       = pseudobulk_annot_col,
+  sample_col      = &quot;orig.ident&quot;,
+  wgcna_name      = wgcna_name,
+  n_metacells     = n_metacells,
+  soft_power      = soft_power,
+  min_module_size = min_module_size,
+  deep_split      = deep_split
+)
+
+message(&quot;\n\u2713 SECTION 20 COMPLETE: hdWGCNA co-expression networks saved&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Outputs and next decisions</h1>
-    <p>
-      The tested Chapter 2 script is
-      <code>workflow/capitulo2_wt_pifq.R</code>. Main outputs are written under
-      <code>resultados_wt/06_de_results/WT_vs_pifq/</code> and
-      <code>resultados_wt/07_go/WT_vs_pifq/</code>. The next decision is
-      whether the final methods paper should stop at DESeq2/GO for this dataset
-      or continue into the optional hdWGCNA/network sections after the
-      pseudo-replicate limitation is addressed in the text.
-    </p>
+    <h1>Section 21 - Network Export and Visualization</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold &lt;- 0.2
+n_hub_label   &lt;- 5
+
+plot_hdwgcna_network(
+  hdwgcna_dir   = dir_08,
+  output_dir    = dir_08,
+  tom_threshold = tom_threshold,
+  n_hub_label   = n_hub_label
+)
+
+message(&quot;\n✓ SECTION 21 COMPLETE: Network files and plots saved&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 21b - TF Coexpression Network</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold_tf &lt;- 0.2
+n_hub_label_tf   &lt;- 15
+
+edges_all &lt;- read.table(file.path(dir_08, &quot;edges_unified.tsv&quot;),
+                        header=TRUE, sep=&quot;\t&quot;)
+tfs       &lt;- trimws(readLines(file.path(DATA_DIR, &quot;SingleCell&quot;, &quot;data&quot;, &quot;AtTFDB_loci.txt&quot;)))
+de_mat    &lt;- read.table(
+  file.path(dir_06, volcano_tag, &quot;tabla_log2FC_fc1_padj_005.tsv&quot;),
+  header=TRUE, sep=&quot;\t&quot;, row.names=1, check.names=FALSE)
+
+edges_tf &lt;- edges_all[edges_all$weight &gt;= tom_threshold_tf, ]
+net_tf   &lt;- build_tf_network(edges_tf, tfs, de_mat)
+plot_tf_de_network(net_tf,
+                   output_dir    = dir_08,
+                   layout        = &quot;graphopt&quot;,
+                   n_hub_label   = n_hub_label_tf,
+                   contrast_tag  = volcano_tag,
+                   output_pdf    = &quot;network_tf_DE_direction.pdf&quot;,
+                   output_width  = 22,
+                   output_height = 22)
+
+message(&quot;\n✓ SECTION 21b COMPLETE: TF network saved to network_tf_DE_direction.pdf&quot;)</code></pre></div>
   </section>
 </body>
 </html>
