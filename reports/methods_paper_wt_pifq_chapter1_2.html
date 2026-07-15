@@ -1,0 +1,1364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WT pifq Methods Paper - Chapters 1 and 2</title>
+  <style>
+
+    @page {
+      size: Letter;
+      margin: 0.72in 0.78in;
+      @bottom-center {
+        content: counter(page);
+        color: #6b7280;
+        font-size: 8.5pt;
+      }
+    }
+
+    body {
+      color: #1f2933;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 10.8pt;
+      line-height: 1.43;
+    }
+
+    .title-page {
+      margin-top: 0.5in;
+    }
+
+    .title {
+      color: #123f5a;
+      font-size: 23pt;
+      font-weight: 700;
+      line-height: 1.12;
+      margin: 0 0 0.2em;
+      text-align: center;
+    }
+
+    .title em {
+      display: block;
+      font-size: 20pt;
+    }
+
+    .subtitle {
+      color: #2f6b49;
+      font-size: 13.2pt;
+      font-style: italic;
+      margin: 1.25em 0 1.15em;
+    }
+
+    .meta {
+      color: #374151;
+      margin: 0.2em 0;
+    }
+
+    .rule {
+      border-top: 2px solid #7ba7c0;
+      margin: 1.05em 0 1.65em;
+    }
+
+    h1, h2, h3 {
+      color: #123f5a;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      line-height: 1.16;
+      page-break-after: avoid;
+    }
+
+    h1 {
+      font-size: 17pt;
+      margin: 1.2em 0 0.75em;
+    }
+
+    .page-section > h1 {
+      border-bottom: 1.6px solid #a9c5d6;
+      padding-bottom: 0.22em;
+    }
+
+    h2 {
+      border-bottom: 1px solid #b8ccd9;
+      font-size: 13.3pt;
+      margin: 1.05em 0 0.55em;
+      padding-bottom: 0.15em;
+    }
+
+    h3 {
+      color: #2f6b49;
+      font-size: 11.5pt;
+      font-style: italic;
+      margin: 0.9em 0 0.35em;
+    }
+
+    p {
+      margin: 0.42em 0 0.62em;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin: 0.35em 0 0.75em 1.35em;
+      padding: 0;
+    }
+
+    li {
+      margin: 0.2em 0;
+    }
+
+    .compact-list {
+      columns: 2;
+      column-gap: 0.35in;
+      font-size: 9.4pt;
+      margin-top: 0.35em;
+    }
+
+    code {
+      color: #174a67;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 9.4pt;
+    }
+
+    .code-wrap {
+      border: 1px solid #b7b7b7;
+      margin: 0.62em 0 1.05em;
+      page-break-inside: auto;
+      position: relative;
+    }
+
+    .code-label {
+      background: white;
+      color: #2f6b49;
+      font-size: 8.2pt;
+      font-style: italic;
+      left: 1.1em;
+      padding: 0 0.35em;
+      position: absolute;
+      top: -0.68em;
+    }
+
+    pre {
+      color: #174a67;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 9.2pt;
+      line-height: 1.33;
+      margin: 0;
+      overflow-wrap: break-word;
+      padding: 0.72em 0.85em;
+      white-space: pre-wrap;
+    }
+
+    .compact {
+      font-size: 7.2pt;
+      line-height: 1.18;
+    }
+
+    .small-note {
+      color: #4b5563;
+      font-size: 9.4pt;
+    }
+
+    .page-section {
+      break-before: auto;
+    }
+
+    .versions-section {
+      break-before: page;
+    }
+
+    .step-section {
+      break-before: page;
+    }
+
+    .output-section {
+      break-before: page;
+    }
+
+    figure {
+      margin: 0.45em auto 0.75em;
+      page-break-inside: avoid;
+      text-align: center;
+    }
+
+    figure img {
+      display: block;
+      height: auto;
+      margin: 0 auto;
+      max-height: 3.2in;
+      max-width: 46%;
+    }
+
+    figure.wide img {
+      max-height: 3.45in;
+      max-width: 58%;
+    }
+
+    figcaption {
+      color: #4b5563;
+      font-size: 8.9pt;
+      margin-top: 0.35em;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 0.35in;
+      grid-template-columns: 1fr 1fr;
+      page-break-inside: avoid;
+    }
+
+    .two-col figure img {
+      max-height: 2.8in;
+      max-width: 90%;
+    }
+  
+
+/* Chapter 2 additions */
+
+    @page {
+      size: Letter;
+      margin: 0.72in 0.78in;
+      @bottom-center {
+        content: counter(page);
+        color: #6b7280;
+        font-size: 8.5pt;
+      }
+    }
+
+    body {
+      color: #1f2933;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 10.8pt;
+      line-height: 1.43;
+    }
+
+    .title-page {
+      margin-top: 0.55in;
+    }
+
+    .title {
+      color: #123f5a;
+      font-size: 23pt;
+      font-weight: 700;
+      line-height: 1.12;
+      margin: 0 0 0.2em;
+      text-align: center;
+    }
+
+    .title em {
+      display: block;
+      font-size: 20pt;
+    }
+
+    .subtitle {
+      color: #2f6b49;
+      font-size: 13.2pt;
+      font-style: italic;
+      margin: 1.25em 0 1.15em;
+    }
+
+    .meta {
+      color: #374151;
+      margin: 0.2em 0;
+    }
+
+    .rule {
+      border-top: 2px solid #7ba7c0;
+      margin: 1.05em 0 1.65em;
+    }
+
+    h1, h2 {
+      color: #123f5a;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      line-height: 1.16;
+      page-break-after: avoid;
+    }
+
+    h1 {
+      border-bottom: 1.6px solid #a9c5d6;
+      font-size: 17pt;
+      margin: 1.2em 0 0.75em;
+      padding-bottom: 0.22em;
+    }
+
+    h2 {
+      border-bottom: 1px solid #b8ccd9;
+      font-size: 13.3pt;
+      margin: 1.05em 0 0.55em;
+      padding-bottom: 0.15em;
+    }
+
+    p {
+      margin: 0.42em 0 0.62em;
+      text-align: justify;
+    }
+
+    code {
+      color: #174a67;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 9.4pt;
+    }
+
+    .code-wrap {
+      border: 1px solid #b7b7b7;
+      margin: 0.62em 0 1.05em;
+      page-break-inside: auto;
+      position: relative;
+    }
+
+    .code-label {
+      background: white;
+      color: #2f6b49;
+      font-size: 8.2pt;
+      font-style: italic;
+      left: 1.1em;
+      padding: 0 0.35em;
+      position: absolute;
+      top: -0.68em;
+    }
+
+    pre {
+      color: #174a67;
+      font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 9.2pt;
+      line-height: 1.33;
+      margin: 0;
+      overflow-wrap: break-word;
+      padding: 0.72em 0.85em;
+      white-space: pre-wrap;
+    }
+
+    .page-section {
+      break-before: page;
+    }
+
+    .small-note {
+      color: #4b5563;
+      font-size: 9.4pt;
+    }
+
+    figure {
+      margin: 0.45em auto 0.75em;
+      page-break-inside: avoid;
+      text-align: center;
+    }
+
+    figure img {
+      display: block;
+      height: auto;
+      margin: 0 auto;
+      max-height: 3.25in;
+      max-width: 50%;
+    }
+
+    figure.wide img {
+      max-height: 3.5in;
+      max-width: 64%;
+    }
+
+    figure.tall img {
+      max-height: 4.6in;
+      max-width: 64%;
+    }
+
+    .two-col {
+      display: grid;
+      gap: 0.35in;
+      grid-template-columns: 1fr 1fr;
+      page-break-inside: avoid;
+    }
+
+    .two-col figure img {
+      max-height: 2.85in;
+      max-width: 94%;
+    }
+
+    figcaption {
+      color: #4b5563;
+      font-size: 8.9pt;
+      margin-top: 0.35em;
+    }
+  
+  </style>
+</head>
+<body>
+<section class="title-page">
+    <h1 class="title">Computational Methods for Single-Cell RNA-Seq Analysis of<br><em>Arabidopsis thaliana</em></h1>
+    <p class="subtitle">Chapter 1 - WT vs pifq tutorial: data download, Cell Ranger processing, and Seurat analysis</p>
+    <p class="meta">SingleCell Pipeline</p>
+    <p class="meta">2026-07-15</p>
+    <div class="rule"></div>
+
+    <h1>Materials and Methods</h1>
+    <h2>Purpose of this document</h2>
+    <p>
+      This document rewrites Chapter 1 as a practical tutorial for the
+      WT/pifq dataset. It starts by cloning the repository and then treats that
+      clone as the project root for every later command. Raw reads, reference
+      files, Cell Ranger outputs, Docker execution, and Chapter 1 results are
+      all placed under that same Git working directory. The document stops at
+      Chapter 1.
+    </p>
+  </section>
+
+  <section class="page-section no-break">
+    <h2>Working directory and repository</h2>
+    <p>
+      The first step is to clone the SingleCell repository. After entering the
+      clone, <code>PROJECT_DIR="$(pwd)"</code> becomes the root used by the
+      rest of the tutorial. This keeps each dataset self-contained: data,
+      references, Cell Ranger output, marker files, and downstream results are
+      stored inside the cloned repository folder, while Git tracks only the
+      code and documentation.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>git clone https://github.com/cliford2001/SingleCell.git
+cd SingleCell
+
+PROJECT_DIR=&quot;$(pwd)&quot;
+mkdir -p data/raw references cellranger
+export PATH=&quot;$PROJECT_DIR/tools/cellranger:$PATH&quot;
+
+git status</code></pre></div>
+    <p>
+      In this layout, <code>PROJECT_DIR</code> is the cloned
+      <code>SingleCell</code> folder. The adapted Chapter 1 script is
+      <code>workflow/capitulo1_wt_pifq.R</code>. The output folder
+      <code>resultados_wt/</code> is created automatically by the R pipeline,
+      so it does not need to be created manually before running the workflow.
+      The repository also includes a lightweight Cell Ranger launcher at
+      <code>tools/cellranger/cellranger</code>; adding that folder to
+      <code>PATH</code> lets users type <code>cellranger</code> directly.
+    </p>
+
+    <h2>Docker quick start</h2>
+    <p>
+      The downstream R/Python environment is provided by
+      <code>matigara/scrnaseq:latest</code>. The repository root is mounted as
+      <code>/workspace</code>, so the same relative paths used on the host are
+      visible inside R. Cell Ranger is used before Docker, from the host/server
+      command line. The repository provides a launcher for convenience, while
+      the licensed Cell Ranger binary itself is supplied by the server
+      installation or by placing an official extracted Cell Ranger folder under
+      <code>tools/cellranger/</code>.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>docker pull matigara/scrnaseq:latest
+
+docker run -it --rm \
+  -v &quot;$PROJECT_DIR:/workspace&quot; \
+  -w /workspace \
+  matigara/scrnaseq:latest /bin/bash</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Raw data download</h1>
+    <p>
+      The raw reads for this WT/pifq test were staged from GSA accession
+      <code>CRA010863</code>. The two runs used here were
+      <code>CRR775297</code> and <code>CRR775298</code>. The original files
+      were downloaded by FTP and then symlinked into the Illumina-style naming
+      expected by Cell Ranger.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR&quot;
+mkdir -p data/raw/CRA010863
+
+cat &gt; data/raw/CRA010863/CRA010863_CRR775297_298_urls.txt &lt;&lt;&#x27;EOF&#x27;
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775297/CRR775297_f1.fastq.gz
+  out=CRR775297_f1.fastq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775297/CRR775297_r2.fastq.gz
+  out=CRR775297_r2.fastq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775298/CRR775298_f1.fastq.gz
+  out=CRR775298_f1.fastq.gz
+ftp://download.big.ac.cn/gsa2/CRA010863/CRR775298/CRR775298_r2.fastq.gz
+  out=CRR775298_r2.fastq.gz
+EOF
+
+aria2c -c -x 8 -s 8 -j 4 \
+  -d data/raw/CRA010863 \
+  -i data/raw/CRA010863/CRA010863_CRR775297_298_urls.txt</code></pre></div>
+    <p>
+      After download, the server contained four compressed FASTQ files totaling
+      approximately 65 GB. Cell Ranger uses the <code>--sample</code> argument
+      to select files by prefix, so the downloaded CRR files were symlinked to
+      sample names that match the <code>cellranger count</code> commands.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR/data/raw/CRA010863&quot;
+
+ln -sf CRR775297_f1.fastq.gz Scpifq_S1_L001_R1_001.fastq.gz
+ln -sf CRR775297_r2.fastq.gz Scpifq_S1_L001_R2_001.fastq.gz
+
+ln -sf CRR775298_f1.fastq.gz ScWT_S1_L001_R1_001.fastq.gz
+ln -sf CRR775298_r2.fastq.gz ScWT_S1_L001_R2_001.fastq.gz</code></pre></div>
+    <p class="small-note">
+      Sample mapping used here: <code>ScWT</code> comes from
+      <code>CRR775298</code>, and <code>Scpifq</code> comes from
+      <code>CRR775297</code>.
+    </p>
+  </section>
+
+  <section class="page-section">
+    <h1>Reference preparation for Cell Ranger</h1>
+    <p>
+      Cell Ranger requires an indexed transcriptome reference generated with
+      <code>cellranger mkref</code>. In this server run, the reference was
+      is hosted as a raw directory on VirtualPlant and can be downloaded into
+      the repository under <code>references/</code>. Its metadata reports
+      <code>Arabi.fasta</code> and <code>Arabi.gtf</code> as source inputs,
+      genome name <code>Ara</code>, Araport11 gene annotation, and
+      <code>cellranger-9.0.1</code> as the mkref version.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR&quot;
+
+cd references
+wget -r -np -nH --cut-dirs=2 -R &quot;index.html*&quot; \
+  http://virtualplant.bio.puc.cl/share/singlecell/Arabidopsis_thaliana_Araport11_CellRanger_reference/
+
+cd &quot;$PROJECT_DIR&quot;
+REF=&quot;$PROJECT_DIR/references/Arabidopsis_thaliana_Araport11_CellRanger_reference&quot;
+
+find &quot;$REF&quot; -maxdepth 2 -type f | sort
+cat &quot;$REF/reference.json&quot;</code></pre></div>
+    <p>
+      If the reference needs to be rebuilt from FASTA and GTF files, stage the
+      genome FASTA and annotation GTF in a reference source folder and run
+      <code>cellranger mkref</code>. The exact FASTA/GTF download source should
+      be recorded with the project because it defines the gene model used for
+      all later counts.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>mkdir -p reference_source
+cd reference_source
+
+# Cell Ranger must be available in PATH.
+cellranger --version
+
+# Place the Arabidopsis genome FASTA and Araport11 GTF here.
+# Example expected local names:
+#   Arabi.fasta
+#   Arabi.gtf
+
+cellranger mkref \
+  --ref-version=Araport11 \
+  --genome=Ara \
+  --fasta=Arabi.fasta \
+  --genes=Arabi.gtf \
+  --nthreads=16 \
+  --memgb=64</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Cell Ranger count generation</h1>
+    <p>
+      Cell Ranger is not executed inside the R/Python Docker container. Install
+      it once from 10x Genomics, load it from the server environment, or place
+      the extracted official folder under <code>tools/cellranger/</code>. The
+      repository launcher then makes the command <code>cellranger</code>
+      available without writing a machine-specific path in the tutorial. The
+      server run used Cell Ranger <code>7.1.0</code> for read alignment and
+      count matrix generation. Both WT and pifq were processed with
+      <code>--localcores=80</code> and <code>--no-bam</code>. The
+      <code>--no-bam</code> flag reduces disk use by skipping BAM output.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR&quot;
+
+REF=&quot;$PROJECT_DIR/references/Arabidopsis_thaliana_Araport11_CellRanger_reference&quot;
+FASTQS=&quot;$PROJECT_DIR/data/raw/CRA010863&quot;
+
+export PATH=&quot;$PROJECT_DIR/tools/cellranger:$PATH&quot;
+cellranger --version
+bash workflow/run_cellranger_wt_pifq.sh</code></pre></div>
+    <p>
+      The helper script above keeps the Cell Ranger command short and
+      reproducible. Internally, it verifies that <code>cellranger</code> is
+      available, checks that the reference and FASTQs exist, writes output under
+      <code>cellranger/</code>, and skips a sample if
+      <code>outs/metrics_summary.csv</code> already exists.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cellranger count \
+  --localcores=80 \
+  --id=Scpifq \
+  --fastqs=&quot;$FASTQS&quot; \
+  --sample=Scpifq \
+  --transcriptome=&quot;$REF&quot; \
+  --no-bam
+
+cellranger count \
+  --localcores=80 \
+  --id=ScWT \
+  --fastqs=&quot;$FASTQS&quot; \
+  --sample=ScWT \
+  --transcriptome=&quot;$REF&quot; \
+  --no-bam</code></pre></div>
+    <p>
+      Chapter 1 uses the standard filtered matrices:
+      <code>cellranger/ScWT/outs/filtered_feature_bc_matrix</code> and
+      <code>cellranger/Scpifq/outs/filtered_feature_bc_matrix</code>. The
+      Cell Ranger summaries reported 4,067 estimated WT cells and 7,006
+      estimated pifq cells before the downstream Seurat filtering step.
+    </p>
+  </section>
+
+  <section class="page-section">
+    <h1>Chapter 1 in R</h1>
+    <h2>Bibliography marker file</h2>
+    <p>
+      Before launching Chapter 1, place a bibliography marker table in the
+      repository root. The workflow expects a plain text, tab-separated file
+      named <code>biblio_marks_custom.txt</code>. The file can be created in
+      any text editor, Excel/Numbers exported as TSV, or directly in the
+      terminal. It is not restricted to the markers shown here: any
+      bibliography-supported marker set can be used as long as the file keeps
+      the two required columns, <code>cell types</code> and <code>gene</code>.
+      The row order is preserved in the marker dotplot.
+    </p>
+    <p>
+      Required text-file format:
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cell types	gene
+Mesophyll	AT4G12970
+ENDO1	AT4G34970
+ENDO2	AT2G36100
+Epidermis Cotyledon	AT4G21750
+guard cell	AT3G24140
+PARENCHYMA	AT5G23660
+PHLOEM	AT1G79430
+PHLOEM AND SIEVE ELEMENT	AT3G01680
+XYLEM	AT4G36160
+PROCAMBIUM	AT3G09070
+XYLEM PARENCHYMA	AT3G58990
+SAM	AT1G62360
+Epidermis Hypocotyl	AT4G20260
+Epidermis Hypocotyl	AT3G48970
+Epidermis Hypocotyl	AT4G34769
+C1	AT1G62510
+C2	AT4G15920
+C3	AT3G12700</code></pre></div>
+    <p>
+      One possible way to create that file from the terminal is:
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR&quot;
+
+nano biblio_marks_custom.txt</code></pre></div>
+    <p class="small-note">
+      Save the file as tab-separated text. Repeated cell-type names are allowed
+      when several genes support the same annotation, for example multiple
+      <code>Epidermis Hypocotyl</code> markers.
+    </p>
+
+    <h2>Start the R session</h2>
+    <p>
+      Once the Cell Ranger matrices and marker file exist, start the Docker
+      container and open R. The next blocks are meant to be copied and pasted
+      section by section inside that R session. This keeps Chapter 1
+      inspectable instead of running the whole workflow as one automatic script.
+    </p>
+    <div class="code-wrap"><div class="code-label">bash</div><pre><code>cd &quot;$PROJECT_DIR&quot;
+
+docker run -it --rm \
+  -v &quot;$PROJECT_DIR:/workspace&quot; \
+  -w /workspace \
+  matigara/scrnaseq:latest /bin/bash
+
+R</code></pre></div>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Step 1 - Initialization</h1>
+    <p>
+      The R workflow loads the package set, plotting helpers, and core Seurat
+      functions from the cloned repository. The output root for this dataset is
+      <code>resultados_wt/</code>.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>PIPELINE_DIR &lt;- &quot;/workspace/workflow&quot;
+DATA_DIR     &lt;- &quot;/workspace&quot;
+base_dir     &lt;- file.path(DATA_DIR, &quot;resultados_wt&quot;)
+
+source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))
+
+set.seed(1807)
+options(Seurat.allow.s4 = FALSE)
+setwd(DATA_DIR)
+
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
+output_dir &lt;- base_dir</code></pre></div>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Step 2 - Sample manifest</h1>
+    <p>
+      Only these two sample entries need to be changed when adapting the chapter
+      to another pair or set of Cell Ranger matrices.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>samples &lt;- list(
+  list(file = &quot;cellranger/ScWT/outs/filtered_feature_bc_matrix&quot;,
+       label = &quot;WT&quot;, condition = &quot;WT&quot;),
+  list(file = &quot;cellranger/Scpifq/outs/filtered_feature_bc_matrix&quot;,
+       label = &quot;pifq&quot;, condition = &quot;pifq&quot;)
+)
+
+colors &lt;- c(WT = &quot;#66c2a5&quot;, pifq = &quot;#fc8d62&quot;)
+mt_pattern &lt;- &quot;^ATMG&quot;
+cp_pattern &lt;- &quot;^ATCG&quot;</code></pre></div>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 1 - Data loading and pre-filter QC</h1>
+    <p>
+      The first R section loads each Cell Ranger matrix into a Seurat object,
+      calculates mitochondrial and chloroplast fractions using Arabidopsis gene
+      prefixes, and saves the pre-filter QC panel. This plot is inspected
+      before choosing filtering thresholds.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_01
+
+seurat_list_raw &lt;- load_seurat_samples(
+  samples = samples,
+  DATA_DIR = DATA_DIR,
+  mt_pattern = mt_pattern,
+  cp_pattern = cp_pattern
+)
+
+plot_qc_batch(seurat_list_raw, colors, &quot;qc_prefilter.pdf&quot;)
+saveRDS(seurat_list_raw, file.path(dir_objects, &quot;seurat_list_raw.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/qc_prefilter.png" alt="Pre-filter QC panel produced before cell filtering."><figcaption>Pre-filter QC panel produced before cell filtering.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 2 - Cell filtering and doublet detection</h1>
+    <p>
+      The filtering step keeps cells with at least 200 detected features and
+      less than 5% mitochondrial signal. DoubletFinder is then run sample by
+      sample inside <code>filter_seurat_samples()</code>. The post-filter QC
+      panel is saved after low-quality cells and putative doublets are removed.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_01
+
+seurat_list &lt;- filter_seurat_samples(
+  seurat_list_raw,
+  min_features = 200,
+  max_mt = 5
+)
+
+plot_qc_batch(seurat_list, colors, &quot;qc_postfilter.pdf&quot;)
+saveRDS(seurat_list, file.path(dir_objects, &quot;seurat_list_postfilter.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/qc_postfilter.png" alt="Post-filter QC panel after cell filtering and doublet removal."><figcaption>Post-filter QC panel after cell filtering and doublet removal.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 3 - Merge and initial preprocessing</h1>
+    <p>
+      Filtered samples are merged, normalized, scaled, reduced by PCA, and
+      projected with UMAP. This pre-Harmony UMAP is used to inspect sample
+      structure before integration.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_01
+
+pbmc_harmony &lt;- reduce(seurat_list, merge) |&gt;
+  NormalizeData(verbose = FALSE) |&gt;
+  FindVariableFeatures(selection.method = &quot;vst&quot;, nfeatures = 2000,
+                       verbose = FALSE) |&gt;
+  ScaleData(verbose = FALSE) |&gt;
+  RunPCA(npcs = 30, verbose = FALSE) |&gt;
+  RunUMAP(reduction = &quot;pca&quot;, dims = 1:30, verbose = FALSE)
+
+save_pdf(DimPlot(pbmc_harmony, group.by = &quot;orig.ident&quot;, cols = colors),
+         &quot;umap_preharmony.pdf&quot;)
+saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_preharmony.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/umap_preharmony.png" alt="UMAP before Harmony integration, colored by sample."><figcaption>UMAP before Harmony integration, colored by sample.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 4 - Harmony batch correction</h1>
+    <p>
+      Harmony is applied using <code>orig.ident</code> as the integration
+      variable, and a second UMAP is generated from the Harmony reduction.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_01
+
+pbmc_harmony &lt;- pbmc_harmony |&gt;
+  RunHarmony(&quot;orig.ident&quot;, plot_convergence = FALSE) |&gt;
+  RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE)
+
+save_pdf(DimPlot(pbmc_harmony, group.by = &quot;orig.ident&quot;, cols = colors),
+         &quot;umap_postharmony.pdf&quot;)
+saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_postharmony.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/umap_postharmony.png" alt="UMAP after Harmony integration, colored by sample."><figcaption>UMAP after Harmony integration, colored by sample.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 5 - Resolution optimization</h1>
+    <p>
+      The resolution optimization section first generates a small elbow plot
+      and then runs the clustree resolution sweep. These outputs are inspected
+      before choosing the final clustering resolution.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>resolutions_test &lt;- c(0.15, 0.35, 0.45, 0.55, 1.0)
+output_dir &lt;- dir_02
+
+k_range &lt;- 1:31
+pca_data &lt;- Embeddings(pbmc_harmony, &quot;pca&quot;)[, 1:30]
+wss &lt;- sapply(k_range, function(k) {
+  kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
+})
+
+elbow_plot &lt;- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
+  geom_line() +
+  geom_point() +
+  labs(x = &quot;Number of clusters (k)&quot;,
+       y = &quot;Within-cluster sum of squares&quot;) +
+  theme_minimal()
+
+save_pdf(elbow_plot, &quot;elbow_plot.pdf&quot;, w = 18, h = 18)</code></pre></div>
+    <figure class=""><img src="assets/elbow_plot.png" alt="Elbow plot generated during resolution optimization."><figcaption>Elbow plot generated during resolution optimization.</figcaption></figure>
+
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>clu &lt;- pbmc_harmony |&gt;
+  RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE) |&gt;
+  FindNeighbors(reduction = &quot;harmony&quot;, dims = 1:30,
+                k.param = 20, verbose = FALSE)
+
+for (res in resolutions_test) {
+  clu &lt;- FindClusters(clu, resolution = res,
+                      algorithm = 4, verbose = FALSE)
+}
+
+save_pdf(clustree(clu, prefix = &quot;RNA_snn_res.&quot;),
+         &quot;clustree2.pdf&quot;, w = 18, h = 18)
+saveRDS(clu, file.path(dir_objects, &quot;resolution_sweep_clu.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/clustree2.png" alt="Clustree resolution sweep."><figcaption>Clustree resolution sweep.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 6 - Final clustering</h1>
+    <p>
+      The final Leiden resolution is set after inspecting the clustree output.
+      A cluster-labeled UMAP is saved as the first final clustering diagnostic.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>cluster_resolution &lt;- 0.35
+output_dir &lt;- dir_02
+
+pbmc_harmony &lt;- pbmc_harmony |&gt;
+  RunUMAP(reduction = &quot;harmony&quot;, dims = 1:30, verbose = FALSE) |&gt;
+  FindNeighbors(reduction = &quot;harmony&quot;, dims = 1:30,
+                k.param = 20, verbose = FALSE) |&gt;
+  FindClusters(resolution = cluster_resolution,
+               algorithm = 4, verbose = FALSE)
+
+Idents(pbmc_harmony) &lt;- &quot;seurat_clusters&quot;
+save_pdf(DimPlot(pbmc_harmony, group.by = &quot;seurat_clusters&quot;, label = TRUE),
+         &quot;umap_seuratclusters.pdf&quot;)
+saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_clusters.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/umap_seuratclusters.png" alt="Final Leiden clusters at resolution 0.35."><figcaption>Final Leiden clusters at resolution 0.35.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 7 - Bibliography marker annotation</h1>
+    <p>
+      Annotation uses a marker table with two columns:
+      <code>cell types</code> and <code>gene</code>. Marker order in this file
+      controls the Y-axis order of the dotplot, and the X-axis follows the
+      matching cell-type order. Numeric suffixes such as
+      <code>Epidermis Hypocotyl.1</code> and
+      <code>Epidermis Hypocotyl.2</code> remain adjacent to their parent marker
+      category.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>biblio_marks_file &lt;- file.path(DATA_DIR, &quot;biblio_marks_custom.txt&quot;)
+marker_table &lt;- read.table(biblio_marks_file, header = TRUE,
+                           sep = &quot;\t&quot;, quote = &quot;&quot;)
+
+markers &lt;- find_markers(
+  pbmc_harmony,
+  output_file = file.path(output_dir, &quot;FindAllMarkers.tsv&quot;)
+)
+
+pbmc_harmony &lt;- annotate_by_markers(
+    pbmc_harmony,
+  markers,
+  reference_file = biblio_marks_file
+)</code></pre></div>
+
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>save_pdf(
+  DimPlot(pbmc_harmony, group.by = &quot;celltype&quot;,
+          label = TRUE, repel = TRUE, raster = FALSE),
+  &quot;umap_annotation_biblio.pdf&quot;
+)
+saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_annotated.rds&quot;))</code></pre></div>
+    <figure class="wide"><img src="assets/umap_annotation_biblio.png" alt="UMAP labeled by bibliography marker annotation."><figcaption>UMAP labeled by bibliography marker annotation.</figcaption></figure>
+
+    <div class="output-section">
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>plot_marker_dotplot(
+  pbmc_harmony,
+  marker_table,
+  annot_col = &quot;celltype&quot;,
+  outfile = file.path(output_dir,
+                      &quot;dotplot_marker_table_annotation_biblio.pdf&quot;),
+  width = 18,
+  height = 18
+)</code></pre></div>
+    <figure class="wide"><img src="assets/dotplot_marker_table_annotation_biblio.png" alt="Marker dotplot ordered by the bibliography marker file."><figcaption>Marker dotplot ordered by the bibliography marker file.</figcaption></figure>
+    </div>
+
+    <p class="small-note">
+      Numeric labels were intentionally retained when no bibliography marker
+      match was detected for that cluster.
+    </p>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 8 - Annotated clustree</h1>
+    <p>
+      This block reuses the resolution sweep object from Section 5. It does not
+      recalculate neighbors or clusters. The final bibliography-based
+      annotation is copied into the sweep object and summarized on each node by
+      the most frequent cell type.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_03
+
+Mode &lt;- function(x) {
+  x &lt;- as.character(x)
+  x &lt;- x[!is.na(x) &amp; nzchar(x)]
+  if (length(x) == 0) return(NA_character_)
+  names(sort(table(x), decreasing = TRUE))[1]
+}
+
+stopifnot(exists(&quot;clu&quot;))
+stopifnot(&quot;celltype&quot; %in% colnames(pbmc_harmony@meta.data))
+
+celltype_label &lt;- as.character(pbmc_harmony$celltype)
+names(celltype_label) &lt;- Cells(pbmc_harmony)
+clu$celltype_label &lt;- celltype_label[Cells(clu)]
+
+print(table(clu$celltype_label, useNA = &quot;ifany&quot;))
+
+save_pdf(
+  clustree(clu, prefix = &quot;RNA_snn_res.&quot;,
+           node_label = &quot;celltype_label&quot;, node_label_aggr = &quot;Mode&quot;),
+  &quot;clustree_annotated.pdf&quot;, w = 14, h = 14
+)</code></pre></div>
+    <figure class="wide"><img src="assets/clustree_annotated.png" alt="Clustree nodes labeled with the dominant bibliography annotation."><figcaption>Clustree nodes labeled with the dominant bibliography annotation.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 9 - Gene expression visualization</h1>
+    <p>
+      The expression block is intentionally simple: one gene, one global UMAP
+      FeaturePlot, and one global violin plot. No cell-type-specific zoom or
+      two-gene comparison is included by default.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>gene &lt;- &quot;AT5G26000&quot;
+output_dir &lt;- dir_04
+
+pbmc_harmony &lt;- JoinLayers(pbmc_harmony)
+Idents(pbmc_harmony) &lt;- &quot;celltype&quot;
+
+save_pdf(FeaturePlot(pbmc_harmony, features = gene),
+         &quot;feature_gene_all.pdf&quot;)
+save_vln(VlnPlot(pbmc_harmony, features = gene),
+         &quot;vln_gene_all.pdf&quot;)</code></pre></div>
+    <div class="two-col">
+      <figure class=""><img src="assets/feature_gene_all.png" alt="Global FeaturePlot for AT5G26000."><figcaption>Global FeaturePlot for AT5G26000.</figcaption></figure>
+      <figure class=""><img src="assets/vln_gene_all.png" alt="Global violin plot for AT5G26000."><figcaption>Global violin plot for AT5G26000.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 10 - Cell-type grouping [optional]</h1>
+    <p>
+      Fine-grained labels can be collapsed into broader categories for later
+      analyses. For the current WT/pifq test, no grouping is applied, so
+      <code>celltype_grouped</code> is a direct copy of <code>celltype</code>.
+      The executed default remains empty. The commented example shows how to
+      merge two Hypocotyl epidermis labels into one broader label if that is
+      needed later.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code># Example only. Leave commented unless you want to merge these labels:
+# grouping &lt;- c(
+#   &quot;Epidermis Hypocotyl.1&quot; = &quot;Epidermis Hypocotyl&quot;,
+#   &quot;Epidermis Hypocotyl.2&quot; = &quot;Epidermis Hypocotyl&quot;
+# )
+
+grouping &lt;- c()
+output_dir &lt;- dir_05
+
+if (length(grouping) &gt; 0) {
+  pbmc_harmony$celltype_grouped &lt;- recode(pbmc_harmony$celltype, !!!grouping)
+} else {
+  pbmc_harmony$celltype_grouped &lt;- pbmc_harmony$celltype
+}
+
+save_pdf(
+  DimPlot(pbmc_harmony, group.by = &quot;celltype_grouped&quot;,
+          label = TRUE, repel = TRUE, raster = FALSE),
+  &quot;umap_grouped.pdf&quot;
+)</code></pre></div>
+    <figure class="wide"><img src="assets/umap_grouped.png" alt="Grouping output with no labels merged in the current run."><figcaption>Grouping output with no labels merged in the current run.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 11 - Interactive cell-type inspection [optional]</h1>
+    <p>
+      This section is intentionally manual. The user chooses one annotated cell
+      type, runs the inspection, opens the figures, and then decides whether any
+      reassignment is biologically justified. The example below was tested only
+      for <code>Epidermis Hypocotyl.1</code>. It does not modify
+      <code>pbmc_harmony</code> and does not create a curated annotation by
+      itself.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>output_dir &lt;- dir_05
+
+print(table(pbmc_harmony$celltype, useNA = &quot;ifany&quot;))
+
+epi_hypo1_inspection &lt;- inspect_subcluster_markers(
+  pbmc_harmony,
+  tipo = &quot;Epidermis Hypocotyl.1&quot;,
+  marker_table = marker_table,
+  output_dir = output_dir,
+  annot_col = &quot;celltype&quot;,
+  resolution = 0.3,
+  dims = 1:20,
+  prefix = &quot;Epidermis_Hypocotyl_1&quot;
+)
+
+epi_hypo1 &lt;- epi_hypo1_inspection$object
+print(table(epi_hypo1$cluster_subtipo, useNA = &quot;ifany&quot;))
+epi_hypo1_inspection$files</code></pre></div>
+    <p>
+      The inspection produces three files for review: the original UMAP
+      coordinates subsetted to the inspected cells and colored by the new
+      subclusters, a dotplot using all bibliography markers available in the
+      object, and a small FeaturePlot panel for those markers.
+    </p>
+    <div class="two-col">
+      <figure class=""><img src="assets/umap_original_subclusters_Epidermis_Hypocotyl_1.png" alt="Original UMAP subset colored by Epidermis Hypocotyl.1 subclusters."><figcaption>Original UMAP subset colored by Epidermis Hypocotyl.1 subclusters.</figcaption></figure>
+      <figure class=""><img src="assets/dotplot_bibliomarks_subclusters_Epidermis_Hypocotyl_1.png" alt="Bibliography-marker dotplot across Epidermis Hypocotyl.1 subclusters."><figcaption>Bibliography-marker dotplot across Epidermis Hypocotyl.1 subclusters.</figcaption></figure>
+    </div>
+    <figure class="wide"><img src="assets/featureplots_bibliomarks_Epidermis_Hypocotyl_1.png" alt="Small FeaturePlot panel for bibliography markers in Epidermis Hypocotyl.1."><figcaption>Small FeaturePlot panel for bibliography markers in Epidermis Hypocotyl.1.</figcaption></figure>
+  </section>
+
+  <section class="page-section step-section">
+    <h1>Section 12 - Export to h5ad</h1>
+    <p>
+      The final object can be exported for Python workflows. If manual curation
+      was skipped, <code>celltype_grouped</code> is copied to
+      <code>celltype_curated</code> before export.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>if (!&quot;celltype_curated&quot; %in% colnames(pbmc_harmony@meta.data)) {
+  message(&quot;celltype_curated not found; using celltype_grouped for export.&quot;)
+  pbmc_harmony$celltype_curated &lt;- pbmc_harmony$celltype_grouped
+  saveRDS(pbmc_harmony, file.path(dir_objects, &quot;pbmc_harmony_curated.rds&quot;))
+}
+
+export_to_scanpy(
+  pbmc_harmony,
+  file.path(dir_objects, &quot;pbmc_harmony_curated.h5ad&quot;)
+)</code></pre></div>
+    <p>
+      The Chapter 1 run finished with 23,657 genes and 8,005 cells after
+      filtering and doublet removal: 2,545 WT cells and 5,460 pifq cells. The
+      main exported files are
+      <code>resultados_wt/objects/pbmc_harmony_curated.rds</code>,
+      <code>resultados_wt/objects/pbmc_harmony_curated.h5ad</code>,
+      <code>resultados_wt/03_annotation/FindAllMarkers.tsv</code>, and
+      <code>resultados_wt/sessionInfo.txt</code>.
+    </p>
+  </section>
+
+  
+<section class="page-section versions-section">
+  <h1>Software versions</h1>
+  <p>
+    The downstream R and Python environment comes from
+    <code>matigara/scrnaseq:latest</code>. Cell Ranger is not installed inside
+    this Docker image; it was run externally on the server. Full TSV exports are
+    stored with the report assets, while this appendix keeps only the versions
+    needed to reproduce Chapter 1 without filling the PDF with long tables.
+  </p>
+
+  <h2>Command-line programs</h2>
+  <p>
+    <code>R</code> 4.5.3 (2026-03-11) -- &quot;Reassured Reassurer&quot;;
+    <code>python3</code> Python 3.12.3;
+    <code>pip</code> pip 26.1.2 from /opt/venv/lib/python3.12/site-packages/pip (python 3.12);
+    <code>pandoc</code> pandoc 3.1.3.
+    Cell Ranger <code>7.1.0</code> was used for <code>count</code>, and
+    Cell Ranger <code>9.0.1</code> was recorded in the hosted mkref reference.
+  </p>
+
+  <h2>Key R packages in Docker</h2>
+  <ul class="compact-list"><li><code>Seurat</code> 5.5.0</li>
+<li><code>SeuratObject</code> 5.4.0</li>
+<li><code>DoubletFinder</code> 2.0.6</li>
+<li><code>harmony</code> 2.0.3</li>
+<li><code>clustree</code> 0.5.1</li>
+<li><code>ggplot2</code> 4.0.3</li>
+<li><code>dplyr</code> 1.2.1</li>
+<li><code>Matrix</code> 1.7-5</li>
+<li><code>SingleCellExperiment</code> 1.32.0</li>
+<li><code>zellkonverter</code> 1.20.1</li>
+<li><code>anndataR</code> 1.0.2</li></ul>
+
+  <h2>Key Python packages in Docker</h2>
+  <ul class="compact-list"><li><code>scanpy</code> 1.12.1</li>
+<li><code>anndata</code> 0.12.16</li>
+<li><code>scFates</code> 1.2.4</li>
+<li><code>palantir</code> 1.4.4</li>
+<li><code>cellbender</code> 0.3.2</li>
+<li><code>numpy</code> 2.4.6</li>
+<li><code>pandas</code> 2.3.3</li>
+<li><code>scipy</code> 1.17.1</li>
+<li><code>h5py</code> 3.16.0</li>
+<li><code>matplotlib</code> 3.10.9</li>
+<li><code>seaborn</code> 0.13.2</li>
+<li><code>leidenalg</code> 0.12.0</li>
+<li><code>python-igraph</code> 1.0.0</li></ul>
+</section>
+
+  <section class="page-section step-section">
+    <h1>Chapter 2 - Pseudobulk DE and GO enrichment</h1>
+    <p>
+      The following sections continue directly from Chapter 1 and preserve the
+      structure of <code>workflow/capitulo2_pseudobulk_de.R</code>. The WT/pifq
+      adaptation uses <code>pbmc_harmony_annotated.rds</code>, direct
+      <code>celltype</code> labels, and the <code>WT_vs_pifq</code> contrast.
+    </p>
+  </section>
+
+<section class="page-section">
+    <h1>Configuration</h1>
+    <p>
+      Configuration mirrors the original Chapter 2 script, with the WT/pifq
+      result directory and the same function sources.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>PIPELINE_DIR &lt;- &quot;/workspace/SingleCell/workflow&quot;
+DATA_DIR     &lt;- &quot;/workspace/.&quot;
+base_dir     &lt;- file.path(DATA_DIR, &quot;resultados_wt&quot;)
+
+source(file.path(PIPELINE_DIR, &quot;load_libraries.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;custom_seurat.R&quot;))
+source(file.path(PIPELINE_DIR, &quot;ScRNA_Analysis_Functions.R&quot;))
+
+list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)  # creates output folders and loads their paths as variables
+
+set.seed(1807)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Load - Annotated Object From Part 1</h1>
+    <p>
+      The input is the Chapter 1 bibliography-annotated object. The active
+      annotation column for Chapter 2 is <code>celltype</code>.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pbmc_harmony &lt;- readRDS(file.path(dir_objects, &quot;pbmc_harmony_annotated.rds&quot;))</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 13 - Cell-Type Subsets</h1>
+    <p>
+      One Seurat subset is created per direct <code>celltype</code> label.
+      Object names are sanitized only for list names and filenames.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pseudobulk_annot_col &lt;- &quot;celltype&quot;
+
+cell_type_subsets &lt;- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobulk_annot_col)
+
+
+
+message(&quot;\n✓ SECTION 13 COMPLETE: Cell-type subsets created&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 14 - Pseudo-Replicate Assignment</h1>
+    <p>
+      The same pseudo-replicate assignment structure is retained. The QC check
+      uses <code>Mesophyll</code> as an existing label in the WT/pifq dataset.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>pseudobulk_conditions &lt;- c(&quot;WT&quot;, &quot;pifq&quot;)
+n_pseudoreps          &lt;- 3
+
+cell_type_subsets_replicates &lt;- assign_pseudoreplicates_batch(
+  cell_type_subsets,
+  pseudobulk_conditions = pseudobulk_conditions,
+  n_pseudoreps = n_pseudoreps
+)
+
+
+table(cell_type_subsets_replicates$Mesophyll$condition)
+table(cell_type_subsets_replicates$Mesophyll$replicate)
+table(cell_type_subsets_replicates$Mesophyll$orig.ident)
+
+
+
+message(&quot;\n✓ SECTION 14 COMPLETE: Pseudo-replicates assigned&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 15 - Pseudobulk Tables and DESeq2</h1>
+    <p>
+      The contrast is <code>WT_vs_pifq</code>. Positive log2FC values correspond
+      to higher expression in pifq relative to WT.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>comparisons &lt;- list(
+  list(conds = c(&quot;WT&quot;, &quot;pifq&quot;), tag = &quot;WT_vs_pifq&quot;)
+)
+
+cell_types_to_analyze &lt;- NULL
+
+output_dir &lt;- dir_06
+
+deseq2_results &lt;- run_pseudobulk_deseq2_analysis(
+  cell_type_subsets_replicates = cell_type_subsets_replicates,
+  comparisons = comparisons,
+  output_dir = output_dir,
+  cell_types = cell_types_to_analyze,
+  pseudobulk_dir = file.path(dir_objects, &quot;pseudobulk_replicas&quot;)
+)
+
+
+
+message(&quot;\n✓ SECTION 15 COMPLETE: Pseudobulk aggregation and DESeq2 complete&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 16 - Volcano Plots</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>volcano_tag &lt;- &quot;WT_vs_pifq&quot;
+padj_cut    &lt;- 0.05
+lfc_cut     &lt;- 1
+
+render_volcano_plots(
+  results_dir = file.path(dir_06, volcano_tag),
+  output_dir  = file.path(dir_06, volcano_tag, &quot;volcano&quot;),
+  pdf_name    = paste0(&quot;VolcanoPlots_&quot;, volcano_tag, &quot;.pdf&quot;),
+  padj_cut    = padj_cut,
+  lfc_cut     = lfc_cut
+)
+
+
+
+message(&quot;\n✓ SECTION 16 COMPLETE: Volcano plots saved&quot;)</code></pre></div>
+    <div class="two-col">
+      <figure class=""><img src="assets/cap2_volcano_mesophyll_WT_vs_pifq.png" alt="Representative volcano output: Mesophyll."><figcaption>Representative volcano output: Mesophyll.</figcaption></figure>
+      <figure class=""><img src="assets/cap2_volcano_epidermis_hypocotyl_1_WT_vs_pifq.png" alt="Representative volcano output: Epidermis Hypocotyl.1."><figcaption>Representative volcano output: Epidermis Hypocotyl.1.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 17 - Differential Gene Tables</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>diff_prefix &lt;- paste0(&quot;diff_table_&quot;, volcano_tag)
+
+diff_tables &lt;- build_differential_tables(
+  results_dir = file.path(dir_06, volcano_tag),
+  output_dir  = file.path(dir_06, volcano_tag),
+  padj_cut    = padj_cut,
+  lfc_cut     = lfc_cut,
+  prefix      = diff_prefix
+)
+
+
+
+message(&quot;\n✓ SECTION 17 COMPLETE: Differential gene tables saved&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 18 - GO Enrichment</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>go_space    &lt;- &quot;BP&quot;
+go_orgdb    &lt;- org.At.tair.db
+go_keytype  &lt;- &quot;TAIR&quot;
+padj_cutoff &lt;- 0.05
+
+go_results &lt;- run_go_enrichment_for_contrast(
+  results_dir  = file.path(dir_06, volcano_tag),
+  output_dir   = file.path(dir_07, volcano_tag),
+  orgdb        = go_orgdb,
+  keytype      = go_keytype,
+  go_space     = go_space,
+  padj_cutoff  = padj_cutoff,
+  contrast_tag = volcano_tag
+)
+
+
+message(&quot;\n✓ SECTION 18 COMPLETE: GO enrichment complete&quot;)</code></pre></div>
+    <figure class="wide"><img src="assets/cap2_go_mesophyll_bp.png" alt="Representative GO biological-process bubble plot for Mesophyll."><figcaption>Representative GO biological-process bubble plot for Mesophyll.</figcaption></figure>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 19 - Log2FC Heatmap</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>heatmap_limits &lt;- c(-5, 5)
+
+build_logfc_heatmap(
+  logfc_table  = diff_tables$logfc,
+  contrast_tag = volcano_tag,
+  output_dir   = file.path(dir_06, volcano_tag),
+  limits       = heatmap_limits
+)
+
+
+
+message(&quot;\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved&quot;)</code></pre></div>
+    <figure class="tall"><img src="assets/cap2_heatmap_WT_vs_pifq.png" alt="log2FC heatmap produced by Section 19."><figcaption>log2FC heatmap produced by Section 19.</figcaption></figure>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 20 - Coexpression Network</h1>
+    <p>
+      The hdWGCNA section is preserved from the original Chapter 2 structure.
+      It uses the significant-gene table generated in Section 19.
+    </p>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>wgcna_name  &lt;- &quot;unified&quot;
+n_metacells     &lt;- 50
+soft_power      &lt;- NULL
+min_module_size &lt;- 20
+deep_split      &lt;- 2
+
+run_unified_hdwgcna(
+  seurat_obj      = pbmc_harmony,
+  de_table_path   = file.path(dir_06, volcano_tag, &quot;tabla_log2FC_fc1_padj_005.tsv&quot;),
+  output_dir      = dir_08,
+  annot_col       = pseudobulk_annot_col,
+  sample_col      = &quot;orig.ident&quot;,
+  wgcna_name      = wgcna_name,
+  n_metacells     = n_metacells,
+  soft_power      = soft_power,
+  min_module_size = min_module_size,
+  deep_split      = deep_split
+)
+
+message(&quot;\n\u2713 SECTION 20 COMPLETE: hdWGCNA co-expression networks saved&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 21 - Network Export and Visualization</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold &lt;- 0.2
+n_hub_label   &lt;- 5
+
+plot_hdwgcna_network(
+  hdwgcna_dir   = dir_08,
+  output_dir    = dir_08,
+  tom_threshold = tom_threshold,
+  n_hub_label   = n_hub_label
+)
+
+message(&quot;\n✓ SECTION 21 COMPLETE: Network files and plots saved&quot;)</code></pre></div>
+  </section>
+
+  <section class="page-section">
+    <h1>Section 21b - TF Coexpression Network</h1>
+    <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold_tf &lt;- 0.2
+n_hub_label_tf   &lt;- 15
+
+edges_all &lt;- read.table(file.path(dir_08, &quot;edges_unified.tsv&quot;),
+                        header=TRUE, sep=&quot;\t&quot;)
+tfs       &lt;- trimws(readLines(file.path(DATA_DIR, &quot;SingleCell&quot;, &quot;data&quot;, &quot;AtTFDB_loci.txt&quot;)))
+de_mat    &lt;- read.table(
+  file.path(dir_06, volcano_tag, &quot;tabla_log2FC_fc1_padj_005.tsv&quot;),
+  header=TRUE, sep=&quot;\t&quot;, row.names=1, check.names=FALSE)
+
+edges_tf &lt;- edges_all[edges_all$weight &gt;= tom_threshold_tf, ]
+net_tf   &lt;- build_tf_network(edges_tf, tfs, de_mat)
+plot_tf_de_network(net_tf,
+                   output_dir    = dir_08,
+                   layout        = &quot;graphopt&quot;,
+                   n_hub_label   = n_hub_label_tf,
+                   contrast_tag  = volcano_tag,
+                   output_pdf    = &quot;network_tf_DE_direction.pdf&quot;,
+                   output_width  = 22,
+                   output_height = 22)
+
+message(&quot;\n✓ SECTION 21b COMPLETE: TF network saved to network_tf_DE_direction.pdf&quot;)</code></pre></div>
+  </section>
+</body>
+</html>

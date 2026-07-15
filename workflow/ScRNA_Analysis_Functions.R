@@ -3189,10 +3189,8 @@ run_go_enrichment_for_contrast <- function(results_dir,
 # build_logfc_heatmap
 # =============================================================================
 # Builds a log2FC heatmap per cell type.
-# Genes are ordered in a "staircase": each gene is grouped under the cell
-# type where it has the largest |log2FC| (its peak), and genes are ordered
-# to match the column order, so up/down-regulated blocks fall diagonally
-# instead of following a hierarchical clustering dendrogram.
+# Genes and cell types are clustered hierarchically so the output includes
+# dendrograms, matching the Chapter 2 methods text.
 build_logfc_heatmap <- function(logfc_table,
                                 contrast_tag,
                                 output_dir,
@@ -3205,19 +3203,13 @@ build_logfc_heatmap <- function(logfc_table,
   colnames(mat) <- gsub(paste0("_", contrast_tag, "$"), "", colnames(mat))
   mat[is.na(mat)] <- 0
 
-  # ── Staircase row order ────────────────────────────────────────────────────
-  peak_col  <- colnames(mat)[max.col(abs(mat), ties.method = "first")]
-  row_order <- unlist(lapply(colnames(mat), function(ct) rownames(mat)[peak_col == ct]),
-                      use.names = FALSE)
-  mat <- mat[row_order, , drop = FALSE]
-
   ht <- ComplexHeatmap::Heatmap(
     mat,
     name = "log2FC",
     col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
 
-    cluster_rows    = FALSE,
-    cluster_columns = FALSE,
+    cluster_rows    = TRUE,
+    cluster_columns = TRUE,
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
