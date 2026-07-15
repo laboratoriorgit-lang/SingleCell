@@ -1,10 +1,14 @@
 # =============================================================================
 # Chapter 1 - WT vs pifq single-cell workflow
-# Project: /home/mvergara/projects2/Sc_DB_test
-# Output:  /home/mvergara/projects2/Sc_DB_test/resultados_wt
+# Project root is the mounted repository at /workspace
+# Output: /workspace/resultados_wt
 # =============================================================================
 
-PIPELINE_DIR <- "/workspace/SingleCell/workflow"
+PIPELINE_DIR <- if (dir.exists("/workspace/workflow")) {
+  "/workspace/workflow"
+} else {
+  "/workspace/SingleCell/workflow"
+}
 DATA_DIR     <- "/workspace"
 base_dir     <- file.path(DATA_DIR, "resultados_wt")
 
@@ -29,16 +33,33 @@ log_msg("Starting Chapter 1 WT/pifq run")
 dir_00 <- file.path(base_dir, "00_cellranger")
 dir.create(dir_00, recursive = TRUE, showWarnings = FALSE)
 
+cellranger_base <- if (
+  dir.exists(file.path(DATA_DIR, "cellranger", "ScWT")) &&
+    dir.exists(file.path(DATA_DIR, "cellranger", "Scpifq"))
+) {
+  "cellranger"
+} else {
+  "."
+}
+
+matrix_path <- function(sample_id) {
+  file.path(cellranger_base, sample_id, "outs", "filtered_feature_bc_matrix")
+}
+
+metrics_path <- function(sample_id) {
+  file.path(cellranger_base, sample_id, "outs", "metrics_summary.csv")
+}
+
 cellranger_inputs <- data.frame(
   sample = c("WT", "pifq"),
   cellranger_id = c("ScWT", "Scpifq"),
   matrix_dir = c(
-    "ScWT/outs/filtered_feature_bc_matrix",
-    "Scpifq/outs/filtered_feature_bc_matrix"
+    matrix_path("ScWT"),
+    matrix_path("Scpifq")
   ),
   metrics_summary = c(
-    "ScWT/outs/metrics_summary.csv",
-    "Scpifq/outs/metrics_summary.csv"
+    metrics_path("ScWT"),
+    metrics_path("Scpifq")
   ),
   condition = c("WT", "pifq"),
   stringsAsFactors = FALSE
@@ -50,9 +71,10 @@ write.table(
   sep = "\t", quote = FALSE, row.names = FALSE
 )
 
-for (metrics in cellranger_inputs$metrics_summary) {
+for (i in seq_len(nrow(cellranger_inputs))) {
+  metrics <- cellranger_inputs$metrics_summary[[i]]
   if (!file.exists(metrics)) stop("Missing Cell Ranger metrics file: ", metrics)
-  file.copy(metrics, file.path(dir_00, paste0(dirname(dirname(metrics)), "_metrics_summary.csv")),
+  file.copy(metrics, file.path(dir_00, paste0(cellranger_inputs$cellranger_id[[i]], "_metrics_summary.csv")),
             overwrite = TRUE)
 }
 
@@ -62,15 +84,15 @@ writeLines(c(
   "  cell_CRA010863_ensure_ScWT.sh",
   "",
   "Observed command pattern:",
-  "  cellranger count --localcores=80 --id=<ScWT|Scpifq> --fastqs=/home/mvergara/projects2/Sc_DB_test/CRA010863 --sample=<ScWT|Scpifq> --transcriptome=/home/mvergara/projects2/eleo/ftp1.cruk.cam.ac.uk/Seba/Ara --no-bam"
+  "  cellranger count --localcores=80 --id=<ScWT|Scpifq> --fastqs=${PROJECT_DIR}/data/raw/CRA010863 --sample=<ScWT|Scpifq> --transcriptome=${PROJECT_DIR}/references/Ara --no-bam"
 ), file.path(dir_00, "cellranger_processing_notes.txt"))
 
 # Section 1 - Data loading and pre-filter QC ----------------------------------
 output_dir <- dir_01
 
 samples <- list(
-  list(file = "ScWT/outs/filtered_feature_bc_matrix",   label = "WT",   condition = "WT"),
-  list(file = "Scpifq/outs/filtered_feature_bc_matrix", label = "pifq", condition = "pifq")
+  list(file = matrix_path("ScWT"),   label = "WT",   condition = "WT"),
+  list(file = matrix_path("Scpifq"), label = "pifq", condition = "pifq")
 )
 
 colors <- c(WT = "#66c2a5", pifq = "#fc8d62")
