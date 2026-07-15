@@ -3248,7 +3248,9 @@ run_go_enrichment_for_contrast <- function(results_dir,
 build_logfc_heatmap <- function(logfc_table,
                                 contrast_tag,
                                 output_dir,
-                                limits = c(-5, 5)) {
+                                limits = c(-5, 5),
+                                marker_file = NULL,
+                                column_order = NULL) {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -3257,17 +3259,55 @@ build_logfc_heatmap <- function(logfc_table,
   colnames(mat) <- gsub(paste0("_", contrast_tag, "$"), "", colnames(mat))
   mat[is.na(mat)] <- 0
 
+  normalize_celltype_label <- function(x) {
+    x <- gsub("_", " ", as.character(x))
+    sub(" ([0-9]+)$", ".\\1", x)
+  }
+
+  order_by_marker_table <- function(cols, marker_file) {
+    marks <- read.table(marker_file, header = TRUE, sep = "\t",
+                        quote = "", check.names = TRUE,
+                        stringsAsFactors = FALSE)
+    cell_col <- intersect(c("cell.types", "cell_type", "celltype"), colnames(marks))[1]
+    if (is.na(cell_col)) {
+      stop("Marker file must contain a cell-type column, e.g. 'cell types'.")
+    }
+
+    marker_order <- unique(as.character(marks[[cell_col]]))
+    pretty_cols  <- normalize_celltype_label(cols)
+    base_cols    <- sub("\\.[0-9]+$", "", pretty_cols)
+
+    ordered <- unlist(
+      lapply(marker_order, function(ct) {
+        hits <- cols[base_cols == ct | pretty_cols == ct]
+        if (length(hits) <= 1) return(hits)
+        suffix <- suppressWarnings(as.integer(sub("^.*\\.([0-9]+)$", "\\1",
+                                                  normalize_celltype_label(hits))))
+        suffix[is.na(suffix)] <- 0L
+        hits[order(suffix)]
+      }),
+      use.names = FALSE
+    )
+    unique(c(ordered, setdiff(cols, ordered)))
+  }
+
+  if (!is.null(column_order)) {
+    ordered_cols <- intersect(column_order, colnames(mat))
+    ordered_cols <- c(ordered_cols, setdiff(colnames(mat), ordered_cols))
+    mat <- mat[, ordered_cols, drop = FALSE]
+  } else if (!is.null(marker_file) && file.exists(marker_file)) {
+    mat <- mat[, order_by_marker_table(colnames(mat), marker_file), drop = FALSE]
+  }
+
   ht <- ComplexHeatmap::Heatmap(
     mat,
     name = "log2FC",
     col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
 
     cluster_rows    = TRUE,
-    cluster_columns = TRUE,
+    cluster_columns = FALSE,
     row_dend_gp     = grid::gpar(col = "black", lwd = 1.4),
-    column_dend_gp  = grid::gpar(col = "black", lwd = 1.4),
     row_dend_width  = grid::unit(18, "mm"),
-    column_dend_height = grid::unit(18, "mm"),
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
@@ -3296,8 +3336,9 @@ build_logfc_heatmap <- function(logfc_table,
 # =============================================================================
 # run_unified_hdwgcna
 # =============================================================================
-# Builds one hdWGCNA network from the genes in the log2FC heatmap table.
-# Saves modules, hub genes, the hdWGCNA object and three 18 x 18 plots.
+# Builds one hdWGCNA TOM network from the genes in the log2FC heatmap table.
+# Internal grouping diagnostics are intentionally not exported; downstream
+# figures use differential-expression direction.
 run_unified_hdwgcna <- function(seurat_obj,
                                 de_table_path,
                                 output_dir,
@@ -3357,82 +3398,75 @@ run_unified_hdwgcna <- function(seurat_obj,
     overwrite_tom = TRUE,
     wgcna_name    = wgcna_name
   )
-  obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = wgcna_name)
-  obj <- hdWGCNA::ModuleConnectivity(obj, group.by = "all_group",
-                                     group_name = "all",
-                                     wgcna_name = wgcna_name)
-
-  modules   <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)
-  hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = wgcna_name)
-  n_modules <- length(unique(modules$module[modules$module != "grey"]))
-
-  write.table(modules, file.path(output_dir, "modules_unified.tsv"),
-              sep = "\t", quote = FALSE, row.names = FALSE)
-  write.table(hub_genes, file.path(output_dir, "hubgenes_unified.tsv"),
-              sep = "\t", quote = FALSE, row.names = FALSE)
   write.table(data.frame(
     de_genes = length(de_genes),
-    soft_power = selected_power,
-    modules = n_modules
+    soft_power = selected_power
   ), file.path(output_dir, "hdwgcna_summary.tsv"),
   sep = "\t", quote = FALSE, row.names = FALSE)
   saveRDS(obj, file.path(output_dir, "hdwgcna_unified.rds"))
 
-  plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features = "hMEs",
-                                          order = TRUE,
-                                          wgcna_name = wgcna_name)
-  plot_list <- plot_list[!grepl("grey", names(plot_list), ignore.case = TRUE)]
-  plot_list <- lapply(plot_list, function(p) {
-    p + ggplot2::theme(axis.text = ggplot2::element_blank(),
-                       axis.ticks = ggplot2::element_blank())
-  })
+  invisible(list(de_genes = length(de_genes), soft_power = selected_power))
+}
 
-  pdf(file.path(output_dir, "umap_modules_unified.pdf"), width = 18, height = 18)
-  print(patchwork::wrap_plots(plot_list, ncol = 4) +
-          patchwork::plot_annotation(
-            title = "UMAP modules - unified WGCNA",
-            subtitle = sprintf("%d DEGs | %d modules", length(de_genes), n_modules)
-          ))
-  dev.off()
 
-  module_eigengenes <- hdWGCNA::GetMEs(obj, harmonized = FALSE,
-                                       wgcna_name = wgcna_name)
-  if (!is.null(module_eigengenes) && ncol(module_eigengenes) > 0) {
-    me_cols <- colnames(module_eigengenes)[
-      !grepl("grey|^0$", colnames(module_eigengenes), ignore.case = TRUE)
-    ]
-    if (length(me_cols) > 0) {
-      me_mat <- t(as.matrix(module_eigengenes[, me_cols, drop = FALSE]))
-      mod_col <- sub("^(ME|hME)", "", rownames(me_mat))
+# =============================================================================
+# export_hdwgcna_tom_edges
+# =============================================================================
+# Exports TOM edges from an hdWGCNA object without internal-grouping visual outputs.
+export_hdwgcna_tom_edges <- function(hdwgcna_dir,
+                                     output_dir = hdwgcna_dir,
+                                     tom_threshold = 0.1,
+                                     wgcna_name = "unified") {
 
-      pdf(file.path(output_dir, "eigengene_heatmap_unified.pdf"),
-          width = 18, height = 18)
-      ComplexHeatmap::draw(ComplexHeatmap::Heatmap(
-        me_mat,
-        name = "ME",
-        col = viridis::viridis(100),
-        cluster_rows = TRUE,
-        cluster_columns = TRUE,
-        show_row_names = TRUE,
-        row_labels = mod_col,
-        show_column_names = FALSE,
-        column_title = sprintf("Unified module eigengenes (%d DEGs)",
-                               length(de_genes))
-      ))
-      dev.off()
-    }
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  rds_path <- file.path(hdwgcna_dir, paste0("hdwgcna_", wgcna_name, ".rds"))
+  if (!file.exists(rds_path)) {
+    stop("hdWGCNA object not found: ", rds_path)
   }
 
-  pdf(file.path(output_dir, "dendrogram_unified.pdf"), width = 18, height = 18)
-  hdWGCNA::PlotDendrogram(
-    obj,
-    main = sprintf("Unified dendrogram | %d DEGs | %d modules",
-                   length(de_genes), n_modules),
-    wgcna_name = wgcna_name
-  )
-  dev.off()
+  obj <- readRDS(rds_path)
+  gene_names <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)$gene_name
 
-  invisible(list(modules = modules, hub_genes = hub_genes))
+  tom_files <- list.files(hdwgcna_dir, pattern = "_block\\..*\\.rda$",
+                          full.names = TRUE)
+  tom_file <- if (length(tom_files) > 0) {
+    tom_files[1]
+  } else {
+    file.path(hdwgcna_dir, paste0(wgcna_name, "_TOM.rda"))
+  }
+  if (!file.exists(tom_file)) {
+    stop("TOM file not found in: ", hdwgcna_dir)
+  }
+
+  tom_env <- new.env()
+  load(tom_file, envir = tom_env)
+  TOM <- as.matrix(get(ls(tom_env)[1], envir = tom_env))
+  if (nrow(TOM) == length(gene_names)) {
+    rownames(TOM) <- colnames(TOM) <- gene_names
+  }
+
+  tom_mat <- TOM
+  tom_mat[lower.tri(tom_mat, diag = TRUE)] <- NA
+  edges <- which(!is.na(tom_mat) & tom_mat >= tom_threshold, arr.ind = TRUE)
+  edge_df <- data.frame(
+    source = rownames(tom_mat)[edges[, 1]],
+    target = colnames(tom_mat)[edges[, 2]],
+    weight = tom_mat[edges]
+  )
+
+  node_df <- data.frame(
+    gene = sort(unique(c(edge_df$source, edge_df$target))),
+    stringsAsFactors = FALSE
+  )
+
+  write.table(edge_df, file.path(output_dir, paste0("edges_", wgcna_name, ".tsv")),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(node_df, file.path(output_dir, paste0("nodes_", wgcna_name, ".tsv")),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+
+  message("TOM edges exported: ", nrow(edge_df))
+  invisible(list(edges = edge_df, nodes = node_df))
 }
 
 

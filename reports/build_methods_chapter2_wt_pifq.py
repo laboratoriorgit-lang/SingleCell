@@ -415,23 +415,36 @@ def build() -> str:
   </section>
 
   <section class="page-section">
-    <h1>Section 20 - Coexpression Network</h1>
+    <h1>Section 20 - hdWGCNA TOM Network</h1>
     <p>
-      The hdWGCNA section is preserved from the original Chapter 2 structure.
-      It uses the significant-gene table generated in Section 19.
+      hdWGCNA is used here only to build the TOM co-expression network from
+      significant genes. The report does not include extra hdWGCNA diagnostic
+      plots; the final network is colored only by DE direction.
     </p>
     {code_block("R", s20)}
   </section>
 
   <section class="page-section">
-    <h1>Section 21 - Network Export and Visualization</h1>
+    <h1>Section 21 - TOM Edge Export</h1>
+    <p>
+      The TOM network is exported as an edge table for the DE-direction network
+      in Section 21b. This step only writes edge and node tables.
+    </p>
     {code_block("R", s21)}
-    {img("wgcna_network_generic.png", "Representative hdWGCNA co-expression network exported by Section 21.", "network")}
   </section>
 
   <section class="page-section">
     <h1>Section 21b - TF Coexpression Network</h1>
+    <p>
+      This is the hdWGCNA-derived network visualization used in the report:
+      edges come from the hdWGCNA TOM network, but nodes are colored by
+      differential-expression direction. Red marks
+      genes consistently up-regulated, blue marks consistently down-regulated,
+      and grey marks mixed direction across cell types. TF-containing edges are
+      retained using the AtTFDB locus list.
+    </p>
     {code_block("R", s21b)}
+    {img("wgcna_network_tf_de-1.png", "hdWGCNA TF co-expression network colored by differential-expression direction.", "network")}
   </section>
 </body>
 </html>

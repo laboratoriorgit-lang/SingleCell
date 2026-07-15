@@ -218,26 +218,31 @@ message("\n✓ SECTION 18 COMPLETE: GO enrichment complete")
 # SECTION 19 — LOG2FC HEATMAP
 # =============================================================================
 # Heatmap of log2FC values across all cell types for the selected contrast.
-# Genes are ordered by the internal hierarchical dendrogram (cluster_rows = TRUE).
+# Genes are ordered by the row dendrogram. Cell-type columns are NOT clustered:
+# they follow the same marker-table order used by the Section 7 dotplot.
 #
 # Edit here: color scale range for log2FC values.
 heatmap_limits <- c(-5, 5)
+heatmap_marker_file <- file.path(DATA_DIR, "biblio_marks_custom.txt")
 
 build_logfc_heatmap(
   logfc_table  = diff_tables$logfc,
   contrast_tag = volcano_tag,
   output_dir   = file.path(dir_06, volcano_tag),
-  limits       = heatmap_limits
+  limits       = heatmap_limits,
+  marker_file  = heatmap_marker_file
 )
 
 
 # =============================================================================
 
 message("\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved")
-# SECTION 20 - COEXPRESSION NETWORK (hdWGCNA) ON SIGNIFICANT GENES
+# SECTION 20 - COEXPRESSION TOM NETWORK (hdWGCNA) ON SIGNIFICANT GENES
 # =============================================================================
-# Builds one hdWGCNA network using the complete significant-gene subset from the
-# log2FC heatmap table created in Section 19.
+# Builds one hdWGCNA TOM network using the complete significant-gene subset
+# from the log2FC heatmap table created in Section 19. Internal grouping
+# diagnostics are intentionally not exported; the final visualization uses DE direction
+# (up/down/mixed) in Section 21b.
 #
 # Edit here:
 #   n_metacells = metacells per celltype x sample
@@ -245,8 +250,6 @@ message("\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved")
 wgcna_name  <- "unified"
 n_metacells     <- 50
 soft_power      <- NULL
-min_module_size <- 20
-deep_split      <- 2
 
 run_unified_hdwgcna(
   seurat_obj      = pbmc_harmony,
@@ -256,34 +259,30 @@ run_unified_hdwgcna(
   sample_col      = "orig.ident",
   wgcna_name      = wgcna_name,
   n_metacells     = n_metacells,
-  soft_power      = soft_power,
-  min_module_size = min_module_size,
-  deep_split      = deep_split
+  soft_power      = soft_power
 )
 
-message("\n\u2713 SECTION 20 COMPLETE: hdWGCNA co-expression networks saved")
+message("\n\u2713 SECTION 20 COMPLETE: hdWGCNA TOM network saved")
 
 
 # =============================================================================
-# SECTION 21 — NETWORK EXPORT & VISUALIZATION
+# SECTION 21 — TOM EDGE EXPORT
 # =============================================================================
-# Reads the unified hdWGCNA object from Section 20 and saves:
-#   edges, nodes and a co-expression network PDF.
+# Reads the unified hdWGCNA object from Section 20 and saves TOM edges for the
+# DE-direction network in Section 21b. No internal-grouping network figure is made.
 #
 # Edit here:
 #   tom_threshold = lower gives more edges; higher gives simpler networks
-#   n_hub_label = number of hub genes labelled in the plot
 tom_threshold <- 0.2
-n_hub_label   <- 5
 
-plot_hdwgcna_network(
+export_hdwgcna_tom_edges(
   hdwgcna_dir   = dir_08,
   output_dir    = dir_08,
   tom_threshold = tom_threshold,
-  n_hub_label   = n_hub_label
+  wgcna_name    = wgcna_name
 )
 
-message("\n✓ SECTION 21 COMPLETE: Network files and plots saved")
+message("\n✓ SECTION 21 COMPLETE: TOM edge table saved")
 
 # =============================================================================
 # SECTION 21b — TF CO-EXPRESSION NETWORK (DE-direction coloring)

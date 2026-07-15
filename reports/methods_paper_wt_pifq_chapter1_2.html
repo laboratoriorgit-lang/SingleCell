@@ -1258,12 +1258,14 @@ message(&quot;\n✓ SECTION 18 COMPLETE: GO enrichment complete&quot;)</code></p
   <section class="page-section">
     <h1>Section 19 - Log2FC Heatmap</h1>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>heatmap_limits &lt;- c(-5, 5)
+heatmap_marker_file &lt;- file.path(DATA_DIR, &quot;biblio_marks_custom.txt&quot;)
 
 build_logfc_heatmap(
   logfc_table  = diff_tables$logfc,
   contrast_tag = volcano_tag,
   output_dir   = file.path(dir_06, volcano_tag),
-  limits       = heatmap_limits
+  limits       = heatmap_limits,
+  marker_file  = heatmap_marker_file
 )
 
 
@@ -1273,16 +1275,15 @@ message(&quot;\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved&quot;)</code></pre
   </section>
 
   <section class="page-section">
-    <h1>Section 20 - Coexpression Network</h1>
+    <h1>Section 20 - hdWGCNA TOM Network</h1>
     <p>
-      The hdWGCNA section is preserved from the original pseudobulk workflow structure.
-      It uses the significant-gene table generated in Section 19.
+      hdWGCNA is used here only to build the TOM co-expression network from
+      significant genes. The report does not include extra hdWGCNA diagnostic
+      plots; the final network is colored only by DE direction.
     </p>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>wgcna_name  &lt;- &quot;unified&quot;
 n_metacells     &lt;- 50
 soft_power      &lt;- NULL
-min_module_size &lt;- 20
-deep_split      &lt;- 2
 
 run_unified_hdwgcna(
   seurat_obj      = pbmc_harmony,
@@ -1292,32 +1293,40 @@ run_unified_hdwgcna(
   sample_col      = &quot;orig.ident&quot;,
   wgcna_name      = wgcna_name,
   n_metacells     = n_metacells,
-  soft_power      = soft_power,
-  min_module_size = min_module_size,
-  deep_split      = deep_split
+  soft_power      = soft_power
 )
 
-message(&quot;\n\u2713 SECTION 20 COMPLETE: hdWGCNA co-expression networks saved&quot;)</code></pre></div>
+message(&quot;\n\u2713 SECTION 20 COMPLETE: hdWGCNA TOM network saved&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
-    <h1>Section 21 - Network Export and Visualization</h1>
+    <h1>Section 21 - TOM Edge Export</h1>
+    <p>
+      The TOM network is exported as an edge table for the DE-direction network
+      in Section 21b. This step only writes edge and node tables.
+    </p>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold &lt;- 0.2
-n_hub_label   &lt;- 5
 
-plot_hdwgcna_network(
+export_hdwgcna_tom_edges(
   hdwgcna_dir   = dir_08,
   output_dir    = dir_08,
   tom_threshold = tom_threshold,
-  n_hub_label   = n_hub_label
+  wgcna_name    = wgcna_name
 )
 
-message(&quot;\n✓ SECTION 21 COMPLETE: Network files and plots saved&quot;)</code></pre></div>
-    <figure class="network"><img src="assets/wgcna_network_generic.png" alt="Representative hdWGCNA co-expression network exported by Section 21."><figcaption>Representative hdWGCNA co-expression network exported by Section 21.</figcaption></figure>
+message(&quot;\n✓ SECTION 21 COMPLETE: TOM edge table saved&quot;)</code></pre></div>
   </section>
 
   <section class="page-section">
     <h1>Section 21b - TF Coexpression Network</h1>
+    <p>
+      This is the hdWGCNA-derived network visualization used in the report:
+      edges come from the hdWGCNA TOM network, but nodes are colored by
+      differential-expression direction. Red marks
+      genes consistently up-regulated, blue marks consistently down-regulated,
+      and grey marks mixed direction across cell types. TF-containing edges are
+      retained using the AtTFDB locus list.
+    </p>
     <div class="code-wrap"><div class="code-label">R</div><pre><code>tom_threshold_tf &lt;- 0.2
 n_hub_label_tf   &lt;- 15
 
@@ -1340,6 +1349,7 @@ plot_tf_de_network(net_tf,
                    output_height = 22)
 
 message(&quot;\n✓ SECTION 21b COMPLETE: TF network saved to network_tf_DE_direction.pdf&quot;)</code></pre></div>
+    <figure class="network"><img src="assets/wgcna_network_tf_de-1.png" alt="hdWGCNA TF co-expression network colored by differential-expression direction."><figcaption>hdWGCNA TF co-expression network colored by differential-expression direction.</figcaption></figure>
   </section>
 <section class="page-section versions-section">
   <h1>Supplementary software versions</h1>
