@@ -8,6 +8,19 @@ style1 = re.search(r'<style>(.*?)</style>', cap1, re.S).group(1)
 style2 = re.search(r'<style>(.*?)</style>', cap2, re.S).group(1)
 body1 = re.search(r'<body>(.*?)</body>', cap1, re.S).group(1).strip()
 body2 = re.search(r'<body>(.*?)</body>', cap2, re.S).group(1).strip()
+body1 = body1.replace(
+    'The document stops at Chapter 1.',
+    'Chapter 2 continues immediately after Chapter 1 in this combined document.'
+)
+body1 = re.sub(
+    r'The document stops at\s+Chapter 1\.',
+    'Chapter 2 continues immediately after Chapter 1 in this combined document.',
+    body1
+)
+body1 = body1.replace(
+    'while this appendix keeps only the versions needed to reproduce Chapter 1',
+    'while this appendix keeps the versions needed to reproduce Chapters 1 and 2'
+)
 body2 = re.sub(r'^\s*<section class="title-page">.*?</section>\s*', '', body2, flags=re.S)
 chapter2_intro = '''
   <section class="page-section step-section">
