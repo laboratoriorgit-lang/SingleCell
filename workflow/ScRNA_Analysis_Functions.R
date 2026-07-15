@@ -970,8 +970,9 @@ subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
 #' Inspect Marker Support Within a Subclustered Cell Type
 #'
 #' Runs subclustering for one annotated cell type and saves three compact
-#' inspection outputs: PCA colored by subcluster, bibliography-marker dotplot,
-#' and FeaturePlots for all bibliography markers found in the object.
+#' inspection outputs: original UMAP coordinates colored by the new subclusters,
+#' bibliography-marker dotplot, and FeaturePlots for all bibliography markers
+#' found in the object.
 #'
 #' @param obj        Seurat object.
 #' @param tipo       Cell-type label to inspect.
@@ -1016,18 +1017,39 @@ inspect_subcluster_markers <- function(obj,
     dims       = dims
   )
 
-  p_pca <- DimPlot(
-    sub_obj,
-    reduction = "pca",
-    group.by  = "cluster_subtipo",
-    label     = TRUE,
-    raster    = FALSE
-  ) +
-    ggtitle(paste0(tipo, " subclusters - PCA")) +
+  if (!"umap" %in% Reductions(obj)) {
+    stop("The parent object must contain a 'umap' reduction.")
+  }
+
+  umap_coords <- Embeddings(obj, "umap")[Cells(sub_obj), , drop = FALSE]
+  umap_df <- data.frame(
+    UMAP_1 = umap_coords[, 1],
+    UMAP_2 = umap_coords[, 2],
+    cluster_subtipo = sub_obj$cluster_subtipo,
+    stringsAsFactors = FALSE
+  )
+
+  p_umap <- ggplot(umap_df, aes(UMAP_1, UMAP_2, color = cluster_subtipo)) +
+    geom_point(size = 0.35, alpha = 0.9) +
+    ggrepel::geom_text_repel(
+      data = aggregate(cbind(UMAP_1, UMAP_2) ~ cluster_subtipo, umap_df, median),
+      aes(label = cluster_subtipo),
+      color = "black",
+      size = 4,
+      seed = 1807,
+      show.legend = FALSE
+    ) +
+    ggtitle(paste0(tipo, " subclusters on original UMAP")) +
+    theme_minimal(base_size = 12) +
+    theme(
+      axis.title = element_blank(),
+      legend.position = "right",
+      panel.border = element_rect(color = "black", fill = NA)
+    ) +
     coord_fixed()
 
-  pca_file <- file.path(output_dir, paste0("pca_subclusters_", file_tag, ".pdf"))
-  ggsave(pca_file, p_pca, width = 10, height = 8, dpi = 300)
+  umap_file <- file.path(output_dir, paste0("umap_original_subclusters_", file_tag, ".pdf"))
+  ggsave(umap_file, p_umap, width = 10, height = 8, dpi = 300)
 
   dotplot_file <- file.path(output_dir, paste0("dotplot_bibliomarks_subclusters_", file_tag, ".pdf"))
   p_dot <- plot_marker_dotplot(
@@ -1075,8 +1097,8 @@ inspect_subcluster_markers <- function(obj,
   invisible(list(
     object = sub_obj,
     genes  = genes_use,
-    plots  = list(pca = p_pca, dotplot = p_dot, features = feature_plots),
-    files  = c(pca = pca_file, dotplot = dotplot_file, features = feature_file)
+    plots  = list(umap = p_umap, dotplot = p_dot, features = feature_plots),
+    files  = c(umap = umap_file, dotplot = dotplot_file, features = feature_file)
   ))
 }
 
