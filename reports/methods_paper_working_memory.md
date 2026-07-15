@@ -157,7 +157,9 @@ The source server assets are under:
 
 ## Chapter 2 Direction
 
-Chapter 2 should continue from the Chapter 1 curated object.
+Chapter 2 should continue from the Chapter 1 bibliography-annotated object.
+For the WT/pifq draft, use the direct `celltype` column and do not use
+`celltype_grouped` or `celltype_curated`.
 
 The existing pipeline entry point is:
 
@@ -166,8 +168,8 @@ The existing pipeline entry point is:
 Before drafting the Chapter 2 tutorial, adapt it to the WT/pifq layout:
 
 - Use `base_dir <- file.path(DATA_DIR, "resultados_wt")`.
-- Use the object produced by Chapter 1:
-  `resultados_wt/objects/pbmc_harmony_curated.rds`.
+- Use the object produced before grouping/curation:
+  `resultados_wt/objects/pbmc_harmony_annotated.rds`.
 - Remove `custom_seurat.R` unless a tested function truly requires it.
 - Set the comparison to WT vs pifq using the `condition` column.
 - Confirm that the sample and condition metadata are suitable for pseudobulk.
@@ -177,7 +179,7 @@ Before drafting the Chapter 2 tutorial, adapt it to the WT/pifq layout:
 
 Recommended Chapter 2 sections:
 
-1. Load curated Chapter 1 object.
+1. Load Chapter 1 annotated object.
 2. Inspect metadata columns required for pseudobulk.
 3. Create cell-type subsets.
 4. Assign pseudo-replicates or biological replicates.
@@ -201,4 +203,3 @@ drafting. Future cleanup should either:
 For Chapter 2, prefer starting directly from a tracked document template so the
 next PDF can be regenerated from the repository without relying on temporary
 working files.
-

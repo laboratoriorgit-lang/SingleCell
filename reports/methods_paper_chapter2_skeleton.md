@@ -9,12 +9,13 @@ has been tested end to end.
 
 ## Step 1 - Start From the Chapter 1 Object
 
-Goal: load the curated Seurat object produced by Chapter 1.
+Goal: load the bibliography-annotated Seurat object produced by Chapter 1,
+before grouping or manual curation.
 
 Expected input:
 
 ```text
-resultados_wt/objects/pbmc_harmony_curated.rds
+resultados_wt/objects/pbmc_harmony_annotated.rds
 ```
 
 Draft code:
@@ -31,7 +32,7 @@ set.seed(1807)
 setwd(DATA_DIR)
 list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
 
-pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
+pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_annotated.rds"))
 ```
 
 ## Step 2 - Check Metadata Required for Pseudobulk
@@ -43,7 +44,7 @@ Draft code:
 ```r
 table(pbmc_harmony$condition, useNA = "ifany")
 table(pbmc_harmony$orig.ident, useNA = "ifany")
-table(pbmc_harmony$celltype_curated, useNA = "ifany")
+table(pbmc_harmony$celltype, useNA = "ifany")
 ```
 
 Decision needed: confirm that WT and pifq have enough biological or technical
@@ -53,12 +54,12 @@ overstating biological replication.
 
 ## Step 3 - Create Cell-Type Subsets
 
-Goal: split the curated object by final cell-type annotation.
+Goal: split the annotated object by direct bibliography cell-type annotation.
 
 Draft code:
 
 ```r
-pseudobulk_annot_col <- "celltype_curated"
+pseudobulk_annot_col <- "celltype"
 
 cell_type_subsets <- create_cell_type_subsets(
   pbmc_harmony,
@@ -234,4 +235,3 @@ Use small reference images, following the Chapter 1 style:
 - Decide whether Chapter 2 should stop at DESeq2/GO or include hdWGCNA.
 - Test the full WT vs pifq run before rendering final figures.
 - Keep the final PDF free of large tables; use text and compact figures.
-
