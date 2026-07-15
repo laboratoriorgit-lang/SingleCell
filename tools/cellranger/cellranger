@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SELF="$(readlink -f "$0" 2>/dev/null || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$0")"
+TOOL_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+candidates=()
+
+if [ -n "${CELLRANGER_BIN:-}" ]; then
+  candidates+=("$CELLRANGER_BIN")
+fi
+
+if [ -n "${CELLRANGER_HOME:-}" ]; then
+  candidates+=("$CELLRANGER_HOME/cellranger")
+fi
+
+for bundled in "$TOOL_DIR"/cellranger-*/cellranger; do
+  [ -e "$bundled" ] && candidates+=("$bundled")
+done
+
+candidates+=("/home/projects3/jm/sc/cellranger-7.1.0/cellranger")
+
+if command -v cellranger >/dev/null 2>&1; then
+  cmd_path="$(command -v cellranger)"
+  cmd_real="$(readlink -f "$cmd_path" 2>/dev/null || python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$cmd_path")"
+  if [ "$cmd_real" != "$SELF" ]; then
+    candidates+=("$cmd_path")
+  fi
+fi
+
+for candidate in "${candidates[@]}"; do
+  if [ -x "$candidate" ]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+cat >&2 <<'MSG'
+ERROR: Cell Ranger binary was not found.
+
+Use one of these options:
+  1. Place an extracted official Cell Ranger folder here:
+       tools/cellranger/cellranger-<version>/cellranger
+
+  2. Set CELLRANGER_BIN to the executable path:
+       export CELLRANGER_BIN=/path/to/cellranger
+
+  3. Load/install Cell Ranger on the server so `cellranger` is in PATH.
+
+Cell Ranger is distributed separately by 10x Genomics, so this repository keeps
+only this launcher and not the licensed binary itself.
+MSG
+exit 127
