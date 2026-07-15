@@ -1,0 +1,231 @@
+---
+title: "Chapter 1 - WT vs pifq"
+subtitle: "Single-cell RNA-seq processing for Sc_DB_test"
+author: "SingleCell pipeline"
+date: "2026-07-15"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+# Overview
+
+This chapter documents the WT vs pifq single-cell workflow prepared in:
+
+```text
+/home/mvergara/projects2/Sc_DB_test
+```
+
+All outputs are written to:
+
+```text
+/home/mvergara/projects2/Sc_DB_test/resultados_wt
+```
+
+The executable workflow is:
+
+```text
+SingleCell/workflow/capitulo1_wt_pifq.R
+```
+
+To rerun the analysis:
+
+```bash
+cd /home/mvergara/projects2/Sc_DB_test
+bash run_cap1_wt_pifq.sh
+```
+
+# Cell Ranger input
+
+The downstream analysis starts from existing Cell Ranger filtered matrices.
+
+| sample | condition | Cell Ranger ID | matrix |
+| --- | --- | --- | --- |
+| WT | WT | `ScWT` | `ScWT/outs/filtered_feature_bc_matrix` |
+| pifq | pifq | `Scpifq` | `Scpifq/outs/filtered_feature_bc_matrix` |
+
+Cell Ranger processing is documented in:
+
+- `cell_CRA010863_runs.sh`
+- `cell_CRA010863_ensure_ScWT.sh`
+
+The command pattern used by those scripts was:
+
+```bash
+cellranger count \
+  --localcores=80 \
+  --id=<ScWT|Scpifq> \
+  --fastqs=/home/mvergara/projects2/Sc_DB_test/CRA010863 \
+  --sample=<ScWT|Scpifq> \
+  --transcriptome=/home/mvergara/projects2/eleo/ftp1.cruk.cam.ac.uk/Seba/Ara \
+  --no-bam
+```
+
+| sample | estimated cells | mean reads/cell | median genes/cell | reads mapped to transcriptome | total genes detected | median UMI/cell |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| WT | 4,067 | 91,809 | 1,119 | 88.4% | 24,769 | 2,766 |
+| pifq | 7,006 | 57,449 | 1,192 | 86.3% | 25,380 | 2,824 |
+
+# Minimum computing requirements
+
+The downstream Seurat/R workflow was executed in Docker using `matigara/scrnaseq:latest`.
+
+| component | minimum practical requirement |
+| --- | --- |
+| CPU | 8 cores |
+| RAM | 64 GB |
+| disk | 50 GB free for matrices, objects, PDFs and h5ad export |
+| runtime | Docker with access to the project folder |
+
+For Cell Ranger processing from raw FASTQ files, use a server or external cluster. The local project scripts use `--localcores=80`, which is more appropriate for a high-memory server than a personal laptop.
+
+# Workflow parameters
+
+| step | parameter |
+| --- | --- |
+| QC filter | `min_features = 200`, `max_mt = 5` |
+| mitochondrial pattern | `^ATMG` |
+| chloroplast pattern | `^ATCG` |
+| PCA/UMAP dimensions | `1:30` |
+| batch correction | Harmony by `orig.ident` |
+| resolution sweep | `0.15, 0.35, 0.45, 0.55, 1.0` |
+| final resolution | `0.35` |
+| clustering | Leiden, `algorithm = 4`, `k.param = 20` |
+| annotation | `biblio_marks_custom.txt` |
+| expression example | `AT5G26000` |
+
+# Quality control
+
+```{r, out.width="80%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/qc_prefilter.png")
+```
+
+```{r, out.width="80%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/qc_postfilter.png")
+```
+
+# Harmony integration
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/umap_preharmony.png")
+```
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/umap_postharmony.png")
+```
+
+# Resolution optimization
+
+```{r, out.width="55%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/elbow_plot.png")
+```
+
+```{r, out.width="82%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/clustree2.png")
+```
+
+# Final clustering
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/umap_seuratclusters.png")
+```
+
+# Bibliography marker annotation
+
+The marker file used for annotation is:
+
+```text
+biblio_marks_custom.txt
+```
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/umap_annotation_biblio.png")
+```
+
+```{r, out.width="82%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/dotplot_marker_table_annotation_biblio.png")
+```
+
+```{r, out.width="82%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/clustree_annotated.png")
+```
+
+Clusters with bibliography marker support were assigned to:
+
+- `Epidermis Hypocotyl.1`
+- `Epidermis Cotyledon`
+- `Mesophyll`
+- `Epidermis Hypocotyl.2`
+- `PHLOEM`
+- `ENDO1`
+- `C2`
+- `guard cell`
+
+The labels `2`, `4`, `5`, and `7` remained numeric because those clusters did not match the bibliography marker table in this run.
+
+# Gene expression example
+
+The simple expression block uses one gene: `AT5G26000`.
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/feature_gene_all.png")
+```
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/vln_gene_all.png")
+```
+
+# Grouping and optional curation
+
+The current run keeps `celltype_grouped` as a pass-through of `celltype`. Optional manual curation can start from:
+
+```text
+resultados_wt/05_curacion/section_11_subcluster_inspection_template.R
+```
+
+```{r, out.width="72%", fig.align="center"}
+knitr::include_graphics("../../resultados_wt/report_assets/umap_grouped.png")
+```
+
+# Final objects
+
+| file | description |
+| --- | --- |
+| `resultados_wt/objects/pbmc_harmony_curated.rds` | final Seurat object |
+| `resultados_wt/objects/pbmc_harmony_curated.h5ad` | exported object for Python/Scanpy |
+| `resultados_wt/03_annotation/FindAllMarkers.tsv` | marker table |
+| `resultados_wt/sessionInfo.txt` | complete R session information |
+
+Final dimensions:
+
+| metric | value |
+| --- | ---: |
+| genes | 23,657 |
+| cells | 8,005 |
+| WT cells | 2,545 |
+| pifq cells | 5,460 |
+
+# Software versions
+
+| software/package | version |
+| --- | --- |
+| R | 4.5.3 |
+| Seurat | 5.5.0 |
+| SeuratObject | 5.4.0 |
+| DoubletFinder | 2.0.6 |
+| harmony | 2.0.3 |
+| clustree | 0.5.1 |
+| ggplot2 | 4.0.3 |
+| dplyr | 1.2.1 |
+| Matrix | 1.7-5 |
+| SingleCellExperiment | 1.32.0 |
+| zellkonverter | 1.20.1 |
+| anndataR | 1.0.2 |
+
+Full package versions are recorded in `resultados_wt/sessionInfo.txt`.
