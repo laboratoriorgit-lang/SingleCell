@@ -967,6 +967,120 @@ subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
 }
 
 
+#' Inspect Marker Support Within a Subclustered Cell Type
+#'
+#' Runs subclustering for one annotated cell type and saves three compact
+#' inspection outputs: PCA colored by subcluster, bibliography-marker dotplot,
+#' and FeaturePlots for all bibliography markers found in the object.
+#'
+#' @param obj        Seurat object.
+#' @param tipo       Cell-type label to inspect.
+#' @param marker_table Data frame with `gene` and `cell.types` columns.
+#' @param output_dir Directory where PDFs are saved.
+#' @param annot_col  Metadata column holding cell-type labels.
+#' @param resolution Subclustering resolution.
+#' @param dims       Dimensions for subclustering.
+#' @param prefix     Optional filename prefix. If NULL, derived from `tipo`.
+#' @param n_feature_cols Number of columns for FeaturePlot grid.
+#' @return List with the subclustered object, plots, genes, and output files.
+#' @export
+inspect_subcluster_markers <- function(obj,
+                                       tipo,
+                                       marker_table,
+                                       output_dir,
+                                       annot_col       = "celltype",
+                                       resolution      = 0.3,
+                                       dims            = 1:20,
+                                       prefix          = NULL,
+                                       n_feature_cols  = 4) {
+
+  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+  if (!annot_col %in% colnames(obj@meta.data)) {
+    stop("Metadata column not found: ", annot_col)
+  }
+  if (!all(c("gene", "cell.types") %in% colnames(marker_table))) {
+    stop("marker_table must contain 'gene' and 'cell.types' columns.")
+  }
+
+  file_tag <- if (is.null(prefix)) {
+    gsub("[^A-Za-z0-9]+", "_", tipo)
+  } else {
+    gsub("[^A-Za-z0-9]+", "_", prefix)
+  }
+
+  sub_obj <- subcluster_cell_type(
+    obj,
+    tipo       = tipo,
+    annot_col  = annot_col,
+    resolution = resolution,
+    dims       = dims
+  )
+
+  p_pca <- DimPlot(
+    sub_obj,
+    reduction = "pca",
+    group.by  = "cluster_subtipo",
+    label     = TRUE,
+    raster    = FALSE
+  ) +
+    ggtitle(paste0(tipo, " subclusters - PCA")) +
+    coord_fixed()
+
+  pca_file <- file.path(output_dir, paste0("pca_subclusters_", file_tag, ".pdf"))
+  ggsave(pca_file, p_pca, width = 10, height = 8, dpi = 300)
+
+  dotplot_file <- file.path(output_dir, paste0("dotplot_bibliomarks_subclusters_", file_tag, ".pdf"))
+  p_dot <- plot_marker_dotplot(
+    sub_obj,
+    marker_table,
+    annot_col = "cluster_subtipo",
+    outfile   = dotplot_file,
+    width     = 12,
+    height    = 10,
+    dot_scale = 8,
+    base_size = 11
+  )
+
+  genes_use <- unique(intersect(marker_table$gene, rownames(sub_obj)))
+  if (length(genes_use) == 0) {
+    stop("No bibliography marker genes found in the subclustered object.")
+  }
+
+  feature_plots <- FeaturePlot(
+    sub_obj,
+    features = genes_use,
+    combine  = FALSE,
+    order    = TRUE,
+    raster   = FALSE
+  )
+
+  feature_titles <- marker_table$cell.types[match(genes_use, marker_table$gene)]
+  feature_plots <- Map(function(plot, gene, cell_type) {
+    plot +
+      ggtitle(paste0(gene, "\n", cell_type)) +
+      theme(plot.title = element_text(size = 8))
+  }, feature_plots, genes_use, feature_titles)
+
+  feature_file <- file.path(output_dir, paste0("featureplots_bibliomarks_", file_tag, ".pdf"))
+  n_rows <- ceiling(length(feature_plots) / n_feature_cols)
+  ggsave(
+    feature_file,
+    wrap_plots(feature_plots, ncol = n_feature_cols),
+    width = 12,
+    height = max(6, 2.6 * n_rows),
+    dpi = 300,
+    limitsize = FALSE
+  )
+
+  invisible(list(
+    object = sub_obj,
+    genes  = genes_use,
+    plots  = list(pca = p_pca, dotplot = p_dot, features = feature_plots),
+    files  = c(pca = pca_file, dotplot = dotplot_file, features = feature_file)
+  ))
+}
+
+
 #' Generate Marker Gene Feature Plots for Subset
 #'
 #' Creates a list of FeaturePlots for genes in a marker table on a subset object.

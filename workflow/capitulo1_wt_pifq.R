@@ -13,7 +13,6 @@ DATA_DIR     <- "/workspace"
 base_dir     <- file.path(DATA_DIR, "resultados_wt")
 
 source(file.path(PIPELINE_DIR, "load_libraries.R"))
-source(file.path(PIPELINE_DIR, "custom_seurat.R"))
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))
 
 set.seed(1807)
@@ -257,6 +256,11 @@ save_pdf(FeaturePlot(pbmc_harmony, features = gene), "feature_gene_all.pdf")
 log_msg("Section 9 complete")
 
 # Section 10 - Grouping pass-through ------------------------------------------
+# Example only. Leave commented unless you want to merge these labels:
+# grouping <- c(
+#   "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
+#   "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl"
+# )
 grouping <- c()
 output_dir <- dir_05
 
@@ -281,23 +285,19 @@ inspection_note <- file.path(output_dir, "section_11_subcluster_inspection_templ
 writeLines(c(
   "output_dir <- dir_05",
   "curation_col <- \"celltype\"",
-  "Idents(pbmc_harmony) <- curation_col",
-  "print(table(pbmc_harmony[[curation_col]], useNA = \"ifany\"))",
-  "types_to_inspect <- c(\"Epidermis Hypocotyl.1\")",
-  "subcluster_resolution <- 0.3",
-  "subcluster_dims <- 1:20",
-  "subcluster_list <- list()",
-  "inspection_entries <- list()",
-  "for (ct in types_to_inspect) {",
-  "  safe_name <- make.names(ct)",
-  "  file_tag <- gsub(\"[^A-Za-z0-9]+\", \"_\", ct)",
-  "  sub_obj <- subcluster_cell_type(pbmc_harmony, tipo = ct, annot_col = curation_col, resolution = subcluster_resolution, dims = subcluster_dims)",
-  "  subcluster_list[[safe_name]] <- sub_obj",
-  "  p_dim <- plot_subcluster_umap(sub_obj, ct, output_dir)",
-  "  plot_marker_dotplot(sub_obj, marker_table, annot_col = \"cluster_subtipo\", outfile = file.path(output_dir, paste0(\"dotplot_markers_subclusters_\", file_tag, \".pdf\")), width = 18, height = 18)",
-  "  inspection_entries[[safe_name]] <- list(umap_plot = p_dim, obj = sub_obj)",
-  "}",
-  "save_subcluster_composite(inspection_entries, marker_table, output_dir, filename = \"subclustering_marker_inspection.pdf\")"
+  "epi_hypo1_inspection <- inspect_subcluster_markers(",
+  "  pbmc_harmony,",
+  "  tipo = \"Epidermis Hypocotyl.1\",",
+  "  marker_table = marker_table,",
+  "  output_dir = output_dir,",
+  "  annot_col = curation_col,",
+  "  resolution = 0.3,",
+  "  dims = 1:20,",
+  "  prefix = \"Epidermis_Hypocotyl_1\"",
+  ")",
+  "epi_hypo1 <- epi_hypo1_inspection$object",
+  "print(table(epi_hypo1$cluster_subtipo, useNA = \"ifany\"))",
+  "epi_hypo1_inspection$files"
 ), inspection_note)
 log_msg("Section 11 template written")
 
