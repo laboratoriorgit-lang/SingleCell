@@ -35,7 +35,7 @@ pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
 
 
 # =============================================================================
-# SECTION 14 — CELL-TYPE SUBSETS
+# SECTION 13 — CELL-TYPE SUBSETS
 # =============================================================================
 # Creates one Seurat subset per curated cell type for downstream pseudobulk
 # analysis. Object names are sanitised so they can be used safely as list names
@@ -50,8 +50,8 @@ cell_type_subsets <- create_cell_type_subsets(pbmc_harmony, annot_col = pseudobu
 
 # =============================================================================
 
-message("\n✓ SECTION 14 COMPLETE: Cell-type subsets created")
-# SECTION 15 — PSEUDO-REPLICATE ASSIGNMENT
+message("\n✓ SECTION 13 COMPLETE: Cell-type subsets created")
+# SECTION 14 — PSEUDO-REPLICATE ASSIGNMENT
 # =============================================================================
 # Assigns random pseudo-replicates within each condition for every cell type.
 # Only subsets containing at least two conditions are kept for Part 2.
@@ -83,8 +83,8 @@ table(cell_type_subsets_replicates$Pavement_Cell$orig.ident)
 
 # =============================================================================
 
-message("\n✓ SECTION 15 COMPLETE: Pseudo-replicates assigned")
-# SECTION 16 — PSEUDOBULK TABLES AND DESEQ2
+message("\n✓ SECTION 14 COMPLETE: Pseudo-replicates assigned")
+# SECTION 15 — PSEUDOBULK TABLES AND DESEQ2
 # =============================================================================
 # Aggregates counts by pseudo-replicate for each cell type, saves the resulting
 # count tables, and runs DESeq2 for the user-defined pairwise contrasts.
@@ -121,8 +121,8 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
 
 # =============================================================================
 
-message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
-# SECTION 17 — VOLCANO PLOTS
+message("\n✓ SECTION 15 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
+# SECTION 16 — VOLCANO PLOTS
 # =============================================================================
 # Renders one PNG volcano plot per cell type for a selected contrast and also
 # combines them into a single PDF.
@@ -132,7 +132,7 @@ message("\n✓ SECTION 16 COMPLETE: Pseudobulk aggregation and DESeq2 complete")
 #   It is not a condition name, not an orig.ident name, and not a replicate name.
 #
 #   Example:
-#     If Section 16 has:
+#     If Section 15 has:
 #       list(conds = c("0N", "5N"), tag = "0N_vs_5N")
 #     then use:
 #       volcano_tag <- "0N_vs_5N"
@@ -154,8 +154,8 @@ render_volcano_plots(
 
 # =============================================================================
 
-message("\n✓ SECTION 17 COMPLETE: Volcano plots saved")
-# SECTION 18 — DIFFERENTIAL GENE TABLES
+message("\n✓ SECTION 16 COMPLETE: Volcano plots saved")
+# SECTION 17 — DIFFERENTIAL GENE TABLES
 # =============================================================================
 # Builds combined differential-expression summary tables for one selected
 # contrast across all cell types.
@@ -176,8 +176,8 @@ diff_tables <- build_differential_tables(
 
 # =============================================================================
 
-message("\n✓ SECTION 18 COMPLETE: Differential gene tables saved")
-# SECTION 19 — GO ENRICHMENT (SIMPLE)
+message("\n✓ SECTION 17 COMPLETE: Differential gene tables saved")
+# SECTION 18 — GO ENRICHMENT (SIMPLE)
 # =============================================================================
 # Gene Ontology enrichment per cell type for the selected contrast.
 
@@ -201,8 +201,8 @@ go_results <- run_go_enrichment_for_contrast(
 
 # =============================================================================
 
-message("\n✓ SECTION 19 COMPLETE: GO enrichment complete")
-# SECTION 20 — LOG2FC HEATMAP
+message("\n✓ SECTION 18 COMPLETE: GO enrichment complete")
+# SECTION 19 — LOG2FC HEATMAP
 # =============================================================================
 # Heatmap of log2FC values across all cell types for the selected contrast.
 # Genes are ordered by the internal hierarchical dendrogram (cluster_rows = TRUE).
@@ -220,11 +220,11 @@ build_logfc_heatmap(
 
 # =============================================================================
 
-message("\n✓ SECTION 20 COMPLETE: Log2FC heatmap saved")
-# SECTION 21 - COEXPRESSION NETWORK (hdWGCNA) ON SIGNIFICANT GENES
+message("\n✓ SECTION 19 COMPLETE: Log2FC heatmap saved")
+# SECTION 20 - COEXPRESSION NETWORK (hdWGCNA) ON SIGNIFICANT GENES
 # =============================================================================
 # Builds one hdWGCNA network using the complete significant-gene subset from the
-# log2FC heatmap table created in Section 20.
+# log2FC heatmap table created in Section 19.
 #
 # Edit here:
 #   n_metacells = metacells per celltype x sample
@@ -248,13 +248,13 @@ run_unified_hdwgcna(
   deep_split      = deep_split
 )
 
-message("\n\u2713 SECTION 21 COMPLETE: hdWGCNA co-expression networks saved")
+message("\n\u2713 SECTION 20 COMPLETE: hdWGCNA co-expression networks saved")
 
 
 # =============================================================================
-# SECTION 22 — NETWORK EXPORT & VISUALIZATION
+# SECTION 21 — NETWORK EXPORT & VISUALIZATION
 # =============================================================================
-# Reads the unified hdWGCNA object from Section 21 and saves:
+# Reads the unified hdWGCNA object from Section 20 and saves:
 #   edges, nodes and a co-expression network PDF.
 #
 # Edit here:
@@ -270,10 +270,10 @@ plot_hdwgcna_network(
   n_hub_label   = n_hub_label
 )
 
-message("\n✓ SECTION 22 COMPLETE: Network files and plots saved")
+message("\n✓ SECTION 21 COMPLETE: Network files and plots saved")
 
 # =============================================================================
-# SECTION 22b — TF CO-EXPRESSION NETWORK (DE-direction coloring)
+# SECTION 21b — TF CO-EXPRESSION NETWORK (DE-direction coloring)
 # =============================================================================
 # Filters the hdWGCNA edges to TF-containing pairs using AtTFDB locus list
 # (downloaded from https://agris-knowledgebase.org/AtTFDB/download_csv).
@@ -304,4 +304,4 @@ plot_tf_de_network(net_tf,
                    output_width  = 22,
                    output_height = 22)
 
-message("\n✓ SECTION 22b COMPLETE: TF network saved to network_tf_DE_direction.pdf")
+message("\n✓ SECTION 21b COMPLETE: TF network saved to network_tf_DE_direction.pdf")

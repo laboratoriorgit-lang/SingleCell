@@ -12,14 +12,14 @@
 
 # %%
 # =============================================================================
-# SECTION 24 - SETUP
+# SECTION 23 - SETUP
 # =============================================================================
 # Sets paths and loads Python libraries/functions.
 # Change PIPELINE_DIR and DATA_DIR only if your folder structure is different.
 
 import os
 
-PIPELINE_DIR = "/workspace/workflow_nuevo"
+PIPELINE_DIR = "/workspace/SingleCell/workflow"
 DATA_DIR     = "/workspace/."
 base_dir     = os.path.join(DATA_DIR, "resultados")
 
@@ -29,19 +29,19 @@ exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), g
 dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
 os.makedirs(dir_pseudotime, exist_ok=True)
 
-print("SECTION 24 COMPLETE: Setup done")
+print("SECTION 23 COMPLETE: Setup done")
 
 
 # %%
 # =============================================================================
-# SECTION 25 - LOAD CURATED OBJECT
+# SECTION 24 - LOAD CURATED OBJECT
 # =============================================================================
 # Loads the AnnData object exported from capitulo1.
 #
 # What this section does:
 #   1. Reads the .h5ad object with cells, genes and metadata.
 #   2. Converts Seurat-style UMAP/PCA/HARMONY coordinates to scanpy names.
-#   3. Prints available cell types for Section 26.
+#   3. Prints available cell types for Section 25.
 #   4. Saves overview UMAP plots.
 #
 # Edit here:
@@ -63,14 +63,14 @@ adata, N_JOBS = load_curated_object(
 
 # %%
 # =============================================================================
-# SECTION 26 - CELL TYPE SELECTION
+# SECTION 25 - CELL TYPE SELECTION
 # =============================================================================
 # Selects the cell types used to build the trajectory.
 #
 # Edit here:
-#   Copy names exactly from the Section 25 list.
+#   Copy names exactly from the Section 24 list.
 
-TRAJECTORY_CLUSTERS = ["Pavement Cell", "Stomatal Line"]
+TRAJECTORY_CLUSTERS = ["epidermis", "guard cell"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -82,7 +82,7 @@ adata_sub = preview_trajectory_selection(
 
 # %%
 # =============================================================================
-# SECTION 27 - TRAJECTORY INFERENCE
+# SECTION 26 - TRAJECTORY INFERENCE
 # =============================================================================
 # Builds one or more trajectory runs using the selected cell types.
 #
@@ -97,10 +97,10 @@ adata_sub = preview_trajectory_selection(
 #   eigs         = diffusion-map dimensions used for trajectory geometry
 #   seed         = reproducibility
 
-ROOT_CLUSTER = "Stomatal Line"
+ROOT_CLUSTER = "epidermis"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=100, sigma=0.1, lambda_value=200, eigs=8, seed=3),
+    trajectory_run(nodes=50, sigma=0.1, lambda_value=200, eigs=8, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -115,7 +115,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 
 # %%
 # =============================================================================
-# SECTION 28 - PLOT GENES ON TRAJECTORY
+# SECTION 27 - PLOT GENES ON TRAJECTORY
 # =============================================================================
 # Plots the selected genes on the trajectory layout.
 #
@@ -142,12 +142,12 @@ save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.png"))
 save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
 plt.close(fig)
 
-print("SECTION 28 COMPLETE: Gene trajectory plots saved")
+print("SECTION 27 COMPLETE: Gene trajectory plots saved")
 
 
 # %%
 # =============================================================================
-# SECTION 29 - GENE TRENDS
+# SECTION 28 - GENE TRENDS
 # =============================================================================
 # Saves two heatmaps:
 #   1. Top variable genes along the trajectory.
@@ -163,7 +163,7 @@ HIGHLIGHT_GENES = ["AT1G22690", "AT4G04890", "AT1G80070"]
 ORDERING        = "max"
 # Lower this (e.g. 3) if you hit "fewer unique covariate combinations than
 # specified maximum degrees of freedom" during test_association.
-SPLINE_DF       = 5
+SPLINE_DF       = 3
 
 top_path, highlight_path = run_step29_gene_trends(
     adata        = adata_traj,
@@ -176,7 +176,7 @@ top_path, highlight_path = run_step29_gene_trends(
     spline_df    = SPLINE_DF,
 )
 
-print("SECTION 29 COMPLETE: Gene trend plots saved")
+print("SECTION 28 COMPLETE: Gene trend plots saved")
 
 
 # %%

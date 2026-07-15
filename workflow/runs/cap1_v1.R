@@ -16,7 +16,7 @@
 #     Part 1 — QC, integration, clustering, annotation, and export
 #     Part 2 — Pseudobulk differential expression and GO enrichment
 #
-# Helper scripts (fully documented at https://github.com/cliford2001/ScRNASeq-Docker):
+# Helper scripts (fully documented at https://github.com/cliford2001/SingleCell):
 #   load_libraries.R           — loads all required R packages
 #   ScRNA_Analysis_Functions.R — core functions (QC, clustering, annotation, DE, GO)
 #   custom_seurat.R            — custom Seurat plot utilities (cluster bar charts)
@@ -39,7 +39,7 @@
 # =============================================================================
 
 # Directory containing the pipeline helper scripts.
-# Inside the Docker container this is typically /workspace/ScRNASeq-Docker
+# Inside the Docker container this is typically /workspace/SingleCell
 PIPELINE_DIR <- "/workspace/SingleCell/workflow"
 
 # Root directory for your project data and results.
@@ -52,7 +52,7 @@ base_dir   <- file.path(DATA_DIR, "resultados_v1")
 # =============================================================================
 
 # ── Load helper scripts ────────────────────────────────────────────────────────
-# Each file is fully documented at https://github.com/cliford2001/ScRNASeq-Docker
+# Each file is fully documented at https://github.com/cliford2001/SingleCell
 source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
 source(file.path(PIPELINE_DIR, "custom_seurat.R"))           # plot_integrated_clusters()
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions

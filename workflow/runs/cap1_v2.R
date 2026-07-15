@@ -16,7 +16,7 @@
 #     Part 1 — QC, integration, clustering, annotation, and export
 #     Part 2 — Pseudobulk differential expression and GO enrichment
 #
-# Helper scripts (fully documented at https://github.com/cliford2001/ScRNASeq-Docker):
+# Helper scripts (fully documented at https://github.com/cliford2001/SingleCell):
 #   load_libraries.R           — loads all required R packages
 #   ScRNA_Analysis_Functions.R — core functions (QC, clustering, annotation, DE, GO)
 #   custom_seurat.R            — custom Seurat plot utilities (cluster bar charts)
@@ -39,7 +39,7 @@
 # =============================================================================
 
 # Directory containing the pipeline helper scripts.
-# Inside the Docker container this is typically /workspace/ScRNASeq-Docker
+# Inside the Docker container this is typically /workspace/SingleCell
 PIPELINE_DIR <- "/workspace/SingleCell/workflow"
 
 # Root directory for your project data and results.
@@ -52,7 +52,7 @@ base_dir   <- file.path(DATA_DIR, "resultados_v2")
 # =============================================================================
 
 # ── Load helper scripts ────────────────────────────────────────────────────────
-# Each file is fully documented at https://github.com/cliford2001/ScRNASeq-Docker
+# Each file is fully documented at https://github.com/cliford2001/SingleCell
 source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
 source(file.path(PIPELINE_DIR, "custom_seurat.R"))           # plot_integrated_clusters()
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
@@ -197,17 +197,35 @@ saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
 message("\n✓ SECTION 4 COMPLETE: Harmony integration complete")
 # SECTION 5 — RESOLUTION OPTIMIZATION
 # =============================================================================
-# Clustree tracks how Leiden communities split or merge across candidate
-# resolutions. Choose the lowest resolution where clusters stabilize.
+# Two diagnostics guide the choice of clustering resolution:
+#   (a) Elbow plot — k-means within-cluster sum of squares across k values.
+#       The inflection point suggests the number of major cell types.
+#   (b) Clustree  — tracks cluster stability across Leiden resolutions.
+#       Choose the lowest resolution where clusters stop merging.
 #
 # ┌─ PARAMETERS ────────────────────────────────────────────────────────────────
+#   k_range          : k values tested in the elbow plot
 #   resolutions_test : Leiden resolutions swept by clustree
-#   → Inspect clustree.pdf before setting cluster_resolution in Section 6.
+#   → Inspect elbow_plot.pdf and clustree.pdf before setting cluster_resolution
+#     in Section 6.
 # └─────────────────────────────────────────────────────────────────────────────
+k_range          <- 1:31
 resolutions_test <- c(0.15, 0.30, 0.50, 0.8, 1.0)
 
 output_dir <- dir_02
 
+# ── 5a. Elbow plot ────────────────────────────────────────────────────────────
+pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
+wss      <- sapply(k_range, function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss)
+
+elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
+  geom_line() + geom_point() +
+  labs(x = "Number of clusters (k)", y = "Within-cluster sum of squares") +
+  theme_minimal()
+
+save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
+
+# ── 5b. Clustree ──────────────────────────────────────────────────────────────
 clu <- pbmc_harmony %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(reduction = "harmony", dims = 1:30,
@@ -221,7 +239,7 @@ save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree.pdf", w = 18, h = 18)
 
 # =============================================================================
 
-message("\n✓ SECTION 5 COMPLETE: Clustree saved — inspect clustree.pdf before setting resolution")
+message("\n✓ SECTION 5 COMPLETE: Resolution diagnostics saved — inspect elbow_plot.pdf and clustree.pdf")
 # SECTION 6 — FINAL CLUSTERING
 # =============================================================================
 # Apply the selected resolution for the final cluster assignment.
@@ -249,7 +267,32 @@ save_pdf(DimPlot(pbmc_harmony, group.by = "seurat_clusters", label = TRUE),
 # =============================================================================
 
 message("\n✓ SECTION 6 COMPLETE: Final clustering complete")
-# SECTION 7 — CELL-TYPE ANNOTATION
+# SECTION 7 — DOTPLOT: MARKER GENES BY CLUSTER (pre-annotation guide)
+# =============================================================================
+# Before assigning cell-type labels, this plot helps you identify which
+# numbered Seurat cluster corresponds to which cell type by showing the
+# expression of bibliography-derived marker genes across all clusters.
+# Clusters that strongly express a known marker (e.g., AT5G26000 for Guard
+# Cell) should be labelled as that cell type in Section 8.
+# Dot size = fraction of expressing cells; color = mean expression level.
+output_dir <- dir_03
+
+biblio_marks_file <- file.path(DATA_DIR, "biblio_marks.txt")
+marker_table      <- read.table(biblio_marks_file, header = TRUE, sep = "\t", quote = "")
+
+plot_marker_dotplot(
+  pbmc_harmony,
+  marker_table,
+  annot_col = "seurat_clusters",
+  outfile   = file.path(output_dir, "dotplot_marker_table_preannotation.pdf"),
+  width = 18, height = 18
+)
+
+
+# =============================================================================
+
+message("\n✓ SECTION 7 COMPLETE: Pre-annotation dotplot saved")
+# SECTION 8 — CELL-TYPE ANNOTATION
 # =============================================================================
 # Two strategies assign cell-type labels to clusters:
 #
@@ -306,7 +349,7 @@ save_pdf(DimPlot(pbmc_harmony, group.by = "celltype_reference",
 
 # =============================================================================
 
-message("\n✓ SECTION 7 COMPLETE: Cell-type annotation complete")
+message("\n✓ SECTION 8 COMPLETE: Cell-type annotation complete")
 # SECTION 9 — ANNOTATED CLUSTREE
 # =============================================================================
 # Re-runs the resolution sweep with cell-type labels overlaid on each node.

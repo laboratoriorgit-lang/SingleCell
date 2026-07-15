@@ -16,13 +16,13 @@
 #     Part 1 — QC, integration, clustering, annotation, and export
 #     Part 2 — Pseudobulk differential expression and GO enrichment
 #
-# Helper scripts (fully documented at https://github.com/cliford2001/ScRNASeq-Docker):
+# Helper scripts (fully documented at https://github.com/cliford2001/SingleCell):
 #   load_libraries.R           — loads all required R packages
 #   ScRNA_Analysis_Functions.R — core functions (QC, clustering, annotation, DE, GO)
 #   custom_seurat.R            — custom Seurat plot utilities (cluster bar charts)
 #
 # Usage:
-#   Run sections sequentially. Section 12 (Cell-Type Curation) must be
+#   Run sections sequentially. Section 11 (Cell-Type Curation) must be
 #   run interactively — do NOT source the entire script with it active.
 #
 # Organism:
@@ -39,8 +39,8 @@
 # =============================================================================
 
 # Directory containing the pipeline helper scripts.
-# Inside the Docker container this is typically /workspace/ScRNASeq-Docker
-PIPELINE_DIR <- "/workspace/ScRNASeq-Docker/workflow"
+# Inside the Docker container this is typically /workspace/SingleCell
+PIPELINE_DIR <- "/workspace/SingleCell/workflow"
 
 # Root directory for your project data and results.
 # All result files will be written to DATA_DIR/resultados/<step>/
@@ -52,7 +52,7 @@ base_dir   <- file.path(DATA_DIR, "resultados")
 # =============================================================================
 
 # ── Load helper scripts ────────────────────────────────────────────────────────
-# Each file is fully documented at https://github.com/cliford2001/ScRNASeq-Docker
+# Each file is fully documented at https://github.com/cliford2001/SingleCell
 source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
 source(file.path(PIPELINE_DIR, "custom_seurat.R"))           # plot_integrated_clusters()
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
@@ -249,19 +249,22 @@ save_pdf(DimPlot(pbmc_harmony, group.by = "seurat_clusters", label = TRUE),
 message("\n✓ SECTION 6 COMPLETE: Final clustering complete")
 # SECTION 7 — CELL-TYPE ANNOTATION
 # =============================================================================
-# Two strategies assign cell-type labels to clusters:
+# Cell-type labels are assigned via bibliography-based markers
+# (biblio_marks.txt): the marker table read above is crossed with
+# cluster-level differential genes to assign initial labels automatically.
+# Result stored in pbmc_harmony$celltype.
 #
-#   (a) Bibliography-based markers (biblio_marks.txt) — the same marker table
-#       read above is crossed with cluster-level differential genes to assign
-#       initial labels automatically.
-#
-#   (b) Reference transfer — labels are projected from a published Seurat
-#       object (Arabidopsis leaf atlas, GSE273033) using FindTransferAnchors
-#       and TransferData. Result stored in pbmc_harmony$celltype_reference.
+# A second strategy — reference transfer from a published Seurat object
+# (e.g. an Arabidopsis leaf atlas) via FindTransferAnchors/TransferData — is
+# not run by default. The full block, plus the downstream sections wired to
+# it, is preserved in capitulo1_single_cell_reference_backup.R.
 
 output_dir <- dir_03
 
-# ── 8a. Bibliography-based annotation ─────────────────────────────────────────
+biblio_marks_file <- file.path(DATA_DIR, "biblio_marks.txt")
+marker_table      <- read.table(biblio_marks_file, header = TRUE, sep = "\t", quote = "")
+
+# ── Bibliography-based annotation ─────────────────────────────────────────────
 markers <- find_markers(pbmc_harmony,
                         output_file = file.path(output_dir, "FindAllMarkers.tsv"))
 
@@ -281,31 +284,11 @@ save_pdf(DimPlot(pbmc_harmony, group.by = "celltype",
                  label = TRUE, repel = TRUE, raster = FALSE),
          "umap_annotation_biblio.pdf")
 
-# ── 8b. Reference-based annotation ────────────────────────────────────────────
-reference_obj <- readRDS(file.path(DATA_DIR, "GSE273033_seuratObj_for_publication.rds"))
-pbmc_harmony <- annotate_by_reference(pbmc_harmony,
-                                      reference_obj = reference_obj,
-                                      reference_col = "annotation")
-
-plot_marker_dotplot(
-  pbmc_harmony,
-  marker_table,
-  annot_col = "celltype_reference", # uses the newly assigned annotation column
-  outfile   = file.path(output_dir, "dotplot_marker_table_annotation_reference.pdf"),
-  width = 18, height = 18
-)
-
-save_pdf(DimPlot(pbmc_harmony, group.by = "celltype_reference",
-                 label = TRUE, repel = TRUE, raster = FALSE),
-         "umap_annotation_reference.pdf")
-
-# Annotation stored in: pbmc_harmony$celltype_reference
-
 
 # =============================================================================
 
 message("\n✓ SECTION 7 COMPLETE: Cell-type annotation complete")
-# SECTION 9 — ANNOTATED CLUSTREE
+# SECTION 8 — ANNOTATED CLUSTREE
 # =============================================================================
 # Re-runs the resolution sweep with cell-type labels overlaid on each node.
 # Confirms that the chosen resolution cleanly separates known cell types.
@@ -325,15 +308,15 @@ for (res in resolutions_test)
 
 save_pdf(
   clustree(clu, prefix = "RNA_snn_res.",
-           node_label = "celltype_reference", node_label_aggr = "Mode"),
+           node_label = "celltype", node_label_aggr = "Mode"),
   "clustree_annotated.pdf", w = 18, h = 18
 )
 
 
 # =============================================================================
 
-message("\n✓ SECTION 9 COMPLETE: Annotated clustree saved")
-# SECTION 10 — GENE EXPRESSION VISUALIZATION
+message("\n✓ SECTION 8 COMPLETE: Annotated clustree saved")
+# SECTION 9 — GENE EXPRESSION VISUALIZATION
 # =============================================================================
 # Violin and feature plots for individual genes or gene sets, generated both
 # across all cell types and within a specific cell type of interest.
@@ -342,17 +325,17 @@ message("\n✓ SECTION 9 COMPLETE: Annotated clustree saved")
 # ┌─ SET YOUR GENES AND CELL TYPE OF INTEREST ──────────────────────────────────
 #   gene              : single gene to inspect
 #   genes_of_interest : gene set to inspect together
-#   celltype          : cell type to zoom into (must match celltype_reference)
+#   celltype          : cell type to zoom into (must match celltype)
 # └─────────────────────────────────────────────────────────────────────────────
 gene              <- "AT5G26000"
 genes_of_interest <- c("AT5G26000", "AT5G54250")
-celltype          <- "Guard Cell"
+celltype          <- "guard cell"
 
 output_dir <- dir_04
 
 # JoinLayers is required in Seurat 5 before subsetting after merge
 pbmc_harmony <- JoinLayers(pbmc_harmony)
-Idents(pbmc_harmony) <- "celltype_reference"
+Idents(pbmc_harmony) <- "celltype"
 
 n_genes <- length(genes_of_interest)
 
@@ -373,8 +356,8 @@ save_pdf(FeaturePlot(sub_obj, features = genes_of_interest), "feature_geneset_ce
 
 # =============================================================================
 
-message("\n✓ SECTION 10 COMPLETE: Expression visualization saved")
-# SECTION 11 — CELL-TYPE GROUPING  [OPTIONAL]
+message("\n✓ SECTION 9 COMPLETE: Expression visualization saved")
+# SECTION 10 — CELL-TYPE GROUPING  [OPTIONAL]
 # =============================================================================
 # Fine-grained labels are collapsed into broader categories for downstream
 # analyses. Cell types NOT listed in 'grouping' keep their original label.
@@ -384,19 +367,21 @@ message("\n✓ SECTION 10 COMPLETE: Expression visualization saved")
 #   Left side  : original label (must match exactly)
 #   Right side : new broader label to assign
 # └─────────────────────────────────────────────────────────────────────────────
-grouping <- c(
-  "Companion Cell"    = "Vascular Cell",
-  "Cambium"           = "Vascular Cell",
-  "Phloem Parenchyma" = "Vascular Cell",
-  "Xylem"             = "Vascular Cell",
-  "Sieve Element"     = "Vascular Cell",
-  "Meristemoid"       = "Stomatal Line"
-)
+# Empty here: the bibliography annotation for this dataset (Section 7) didn't
+# produce multiple fine-grained labels that share an obvious broader category,
+# so celltype_grouped is a straight pass-through of celltype.
+grouping <- c()
 
 output_dir <- dir_05
 
 # !!! unpacks the grouping vector as named arguments to recode()
-pbmc_harmony$celltype_grouped <- recode(pbmc_harmony$celltype_reference, !!!grouping)
+# recode() errors on an empty replacement list, so an empty `grouping` (no
+# merging needed) falls back to a straight pass-through instead.
+if (length(grouping) > 0) {
+  pbmc_harmony$celltype_grouped <- recode(pbmc_harmony$celltype, !!!grouping)
+} else {
+  pbmc_harmony$celltype_grouped <- pbmc_harmony$celltype
+}
 
 save_pdf(
   DimPlot(pbmc_harmony, group.by = "celltype_grouped",  # grouped broad cell types
@@ -407,12 +392,12 @@ save_pdf(
 
 # =============================================================================
 
-message("\n✓ SECTION 11 COMPLETE: Cell-type grouping complete")
-# SECTION 12 — INTERACTIVE CELL-TYPE CURATION  [OPTIONAL]
+message("\n✓ SECTION 10 COMPLETE: Cell-type grouping complete")
+# SECTION 11 — INTERACTIVE CELL-TYPE CURATION  [OPTIONAL]
 # =============================================================================
 # !!! WARNING: Run this section interactively, step by step.
 # !!! Do NOT source the entire script with this section active.
-# Skip this section if you are satisfied with the annotation from Section 8.
+# Skip this section if you are satisfied with the annotation from Section 7.
 #
 # Purpose: subcluster populations that appear heterogeneous in the UMAP,
 # inspect them, and reassign cells to the correct cell type manually.
@@ -428,23 +413,22 @@ Idents(pbmc_harmony) <- curation_col
 table(pbmc_harmony[[curation_col]])
 
 # ── Step 1. Subcluster ────────────────────────────────────────────
-mesophyll_umap     <- subcluster_cell_type(pbmc_harmony, "Mesophyll",     annot_col = curation_col)
-pavement_cell_umap <- subcluster_cell_type(pbmc_harmony, "Pavement Cell", annot_col = curation_col)
+# "mesophyll" is the only population from Section 7 large enough to be worth
+# inspecting here; the others (epidermis, root procambium.1/.2, endodermis,
+# companion cell, guard cell) are left as-is.
+mesophyll_umap <- subcluster_cell_type(pbmc_harmony, "mesophyll", annot_col = curation_col)
 
-# Check how many subclusters each type produced:
+# Check how many subclusters this type produced:
 # table(mesophyll_umap$cluster_subtipo)
-# table(pavement_cell_umap$cluster_subtipo)
 
 # ── Step 2. Inspection figures ────────────────────────────────────
 # Each call creates the DimPlot, saves it as PDF, and returns it for the composite
-p_meso_dim <- plot_subcluster_umap(mesophyll_umap,     "Mesophyll",     output_dir)
-p_pave_dim <- plot_subcluster_umap(pavement_cell_umap, "Pavement Cell", output_dir)
+p_meso_dim <- plot_subcluster_umap(mesophyll_umap, "mesophyll", output_dir)
 
 # Composite: each row = [ UMAP | marker genes ] for one cell type
 save_subcluster_composite(
   subcluster_list = list(
-    list(umap_plot = p_meso_dim, obj = mesophyll_umap),
-    list(umap_plot = p_pave_dim, obj = pavement_cell_umap)
+    list(umap_plot = p_meso_dim, obj = mesophyll_umap)
   ),
   marker_table = marker_table,
   output_dir   = output_dir
@@ -456,25 +440,16 @@ save_subcluster_composite(
 # Names must match the variable names used in Step 1 exactly.
 reassign <- list(
   mesophyll_umap = c(
-    "0"      = "Mesophyll",
-    "1"      = "Mesophyll",
-    "2"      = "Mesophyll",
-    "others" = "Mesophyll"
-  ),
-  pavement_cell_umap = c(
-    "0"      = "Pavement Cell",
-    "1"      = "Pavement Cell",
-    "2"      = "Pavement Cell",
-    "3"      = "Pavement Cell",
-    "4"      = "Pavement Cell",
-    "others" = "Pavement Cell"
+    "0"      = "mesophyll",
+    "1"      = "mesophyll",
+    "2"      = "mesophyll",
+    "others" = "mesophyll"
   )
 )
 
 # ── Step 4. Apply corrections ───────────────────────────────────────────────
 subcluster_list <- list(
-  mesophyll_umap     = mesophyll_umap,
-  pavement_cell_umap = pavement_cell_umap
+  mesophyll_umap = mesophyll_umap
 )
 
 pbmc_harmony <- apply_subcluster_reassignment(
@@ -496,8 +471,8 @@ saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_curated.rds"))
 
 # =============================================================================
 
-message("\n✓ SECTION 12 COMPLETE: Curation complete — curated object saved")
-# SECTION 13 — EXPORT TO H5AD (Scanpy / Python)
+message("\n✓ SECTION 11 COMPLETE: Curation complete — curated object saved")
+# SECTION 12 — EXPORT TO H5AD (Scanpy / Python)
 # =============================================================================
 # Exports the curated object to AnnData h5ad format for Python-based
 # trajectory and velocity analyses (Scanpy, scFates, Palantir — all
@@ -515,4 +490,4 @@ export_to_scanpy(pbmc_harmony,
 
 # =============================================================================
 
-message("\n✓ SECTION 13 COMPLETE: Export to h5ad complete")
+message("\n✓ SECTION 12 COMPLETE: Export to h5ad complete")

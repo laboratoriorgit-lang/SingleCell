@@ -935,9 +935,10 @@ annotate_by_reference <- function(seurat_obj,
 #' @export
 plot_subcluster_umap <- function(obj, label, output_dir) {
   p <- DimPlot(obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
-    ggtitle(paste0(label, " — subclusters"))
+    ggtitle(paste0(label, " — subclusters")) +
+    coord_fixed()
   filename <- paste0("subcluster_", tolower(gsub(" ", "_", label)), ".pdf")
-  ggsave(file.path(output_dir, filename), p, width = 18, height = 18, dpi = 300)
+  ggsave(file.path(output_dir, filename), p, width = 18, height = 12, dpi = 300)
   invisible(p)
 }
 
@@ -1011,8 +1012,9 @@ save_subcluster_composite <- function(subcluster_list, marker_table, output_dir,
 
   # For each cell type: UMAP page → markers page
   for (x in subcluster_list) {
-    # Center the UMAP on the wide page so it doesn't stretch
-    print(plot_spacer() | x$umap_plot | plot_spacer())
+    # Keep the UMAP wide enough to preserve the same visual proportions as the
+    # individual subcluster PDF.
+    print(x$umap_plot)
     markers <- plot_markers_for_subset(x$obj, marker_table)
     print(wrap_plots(markers, ncol = n_marker_cols))
   }
@@ -1548,17 +1550,22 @@ plot_heatmap <- function(matriz,
 }
 
 
-#' Marker Gene DotPlot with Custom Cell-Type Order
+#' Marker Gene DotPlot with Diagonal ("Staircase") Cell-Type Order
 #'
-#' Builds a DotPlot where cell types (Y-axis) and marker genes (X-axis, coord-
-#' flipped) follow user-defined orders, producing a near-diagonal expression
-#' pattern useful for cell-type validation figures.
+#' Builds a DotPlot where cell types (X-axis) and marker genes (Y-axis, coord-
+#' flipped) are ordered together: each marker gene is grouped under the cell
+#' type it marks (per `marks$cell.types`), and cell types are ordered to match,
+#' so significant dots fall in diagonal blocks instead of being scattered —
+#' useful for cell-type validation figures. This staircase order is automatic
+#' whenever `cell_order` is left NULL; pass `cell_order` to override it with a
+#' manual cell-type order (genes are grouped to match that order too).
 #'
 #' @param seurat_obj        Seurat object with annotations in `annot_col`.
 #' @param marks             Data frame with columns `gene` and `cell.types`.
 #' @param annot_col         Metadata column holding cell-type labels.
-#' @param cell_order        Character vector: desired order of cell types
-#'                          (top to bottom). Types not listed appear at the end.
+#' @param cell_order        Character vector: manual order of cell types,
+#'                          overriding the automatic staircase order. Types
+#'                          not listed appear at the end.
 #' @param clusters_remove   Cell-type labels to exclude (default NULL).
 #' @param rename_map        Named character vector for renaming cell types before
 #'                          plotting, e.g. c("Meristemoid" = "Stomatal lineage").
@@ -1600,24 +1607,38 @@ plot_marker_dotplot <- function(seurat_obj,
     obj <- subset(obj, subset = !!sym(annot_col) %in% clusters_remove, invert = TRUE)
   }
 
+  # ── Filter genes present in the object ───────────────────────────────────────
+  # unique(intersect(...)) preserves marks$gene row order, so genes_use is
+  # already grouped by the order cell types first appear in the marker table.
+  genes_use <- unique(intersect(marks$gene, rownames(obj)))
+  if (length(genes_use) == 0) stop("No marker genes found in the Seurat object.")
+
   # ── Build ordered factor ──────────────────────────────────────────────────────
-  all_types <- unique(obj@meta.data[[annot_col]])
-  if (is.null(cell_order)) {
-    ordered_levels <- all_types
-  } else {
-    remaining      <- setdiff(all_types, cell_order)
-    ordered_levels <- c(cell_order, remaining)
-  }
+  # Default (cell_order = NULL): "staircase" order. Labels with numeric suffixes
+  # added during annotation (e.g. Epidermis Hypocotyl.1/.2/.3) are ordered by
+  # their base marker-table name and kept adjacent instead of being sent to the
+  # end as unmatched labels.
+  strip_suffix <- function(x) sub("\\.[0-9]+$", "", as.character(x))
+
+  all_types  <- unique(as.character(obj@meta.data[[annot_col]]))
+  base_types <- strip_suffix(all_types)
+  gene_types <- as.character(marks$cell.types[match(genes_use, marks$gene)])
+
+  type_order <- if (is.null(cell_order)) unique(gene_types) else as.character(cell_order)
+  ordered_levels <- unlist(
+    lapply(type_order, function(ct) all_types[base_types == ct | all_types == ct]),
+    use.names = FALSE
+  )
+  ordered_levels <- unique(c(ordered_levels, setdiff(all_types, ordered_levels)))
+
+  # Do not reorder genes_use: marker-table row order controls the Y axis.
+  # Only annotation_orden controls the X axis ordering.
 
   obj@meta.data[["annotation_orden"]] <- factor(
     obj@meta.data[[annot_col]],
     levels = ordered_levels
   )
   Idents(obj) <- "annotation_orden"
-
-  # ── Filter genes present in the object ───────────────────────────────────────
-  genes_use <- unique(intersect(marks$gene, rownames(obj)))
-  if (length(genes_use) == 0) stop("No marker genes found in the Seurat object.")
 
   # ── Build DotPlot ─────────────────────────────────────────────────────────────
   figure <- DotPlot(
@@ -3032,8 +3053,10 @@ run_go_enrichment_for_contrast <- function(results_dir,
 # build_logfc_heatmap
 # =============================================================================
 # Builds a log2FC heatmap per cell type.
-# Genes are ordered by the internal hierarchical clustering dendrogram
-# (cluster_rows = TRUE) — no manual clustering or cluster assignment.
+# Genes are ordered in a "staircase": each gene is grouped under the cell
+# type where it has the largest |log2FC| (its peak), and genes are ordered
+# to match the column order, so up/down-regulated blocks fall diagonally
+# instead of following a hierarchical clustering dendrogram.
 build_logfc_heatmap <- function(logfc_table,
                                 contrast_tag,
                                 output_dir,
@@ -3046,12 +3069,18 @@ build_logfc_heatmap <- function(logfc_table,
   colnames(mat) <- gsub(paste0("_", contrast_tag, "$"), "", colnames(mat))
   mat[is.na(mat)] <- 0
 
+  # ── Staircase row order ────────────────────────────────────────────────────
+  peak_col  <- colnames(mat)[max.col(abs(mat), ties.method = "first")]
+  row_order <- unlist(lapply(colnames(mat), function(ct) rownames(mat)[peak_col == ct]),
+                      use.names = FALSE)
+  mat <- mat[row_order, , drop = FALSE]
+
   ht <- ComplexHeatmap::Heatmap(
     mat,
     name = "log2FC",
     col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
 
-    cluster_rows    = TRUE,
+    cluster_rows    = FALSE,
     cluster_columns = FALSE,
 
     show_row_names    = FALSE,
@@ -5027,4 +5056,3 @@ plot_tf_de_network <- function(net, output_dir,
   message("Network saved to ", out_file)
   invisible(p)
 }
-
