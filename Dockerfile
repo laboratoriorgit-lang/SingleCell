@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libhdf5-dev \
     libv8-dev \
     libgit2-dev libssh2-1-dev cmake make git wget curl patch \
-    python3 python3-pip python3-venv \
+    python3 python3-pip python3-venv python3-dev \
     libglpk-dev libfftw3-dev libgsl-dev \
     libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
     libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
@@ -24,6 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     scFates \
     palantir \
     fa2-modified \
+    rpy2 \
     pandas \
     numpy \
     scipy \
