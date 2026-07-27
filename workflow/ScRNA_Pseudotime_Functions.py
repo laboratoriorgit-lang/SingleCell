@@ -21,6 +21,16 @@ def save_plot_18x18(fig, path):
     return path
 
 
+# scanpy/scFates gene-colored plots read expression from .X, but trajectory
+# objects often carry the normalized matrix in a layer ("logcounts") with .X
+# left empty. Call this before any gene plot so it never fails with a
+# "'NoneType' object is not subscriptable" error.
+def ensure_expression_in_X(adata, layer="logcounts"):
+    if adata.X is None and layer in adata.layers:
+        adata.X = adata.layers[layer]
+    return adata
+
+
 # Notebook wrapper for Step 25. Loads the full curated object, fixes Seurat-style
 # coordinate names, plots the overview UMAP, and prints available cell types.
 def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
@@ -65,7 +75,6 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
     )
 
     fig.subplots_adjust(right=0.78)
-    save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_overview.png"))
     save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_overview.pdf"))
     plt.close(fig)
 
@@ -122,7 +131,6 @@ def preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime
     )
 
     fig.subplots_adjust(right=0.78)
-    save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_selection.png"))
     save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_selection.pdf"))
     plt.close(fig)
 
@@ -257,8 +265,7 @@ def plot_trajectory_graphs(
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False)
     ax.set_title(f"{ax.get_title()}{title_suffix}")
-    for ext in ["pdf", "png"]:
-        fig.savefig(os.path.join(output_dir, f"{name}_annotation.{ext}"), dpi=PLOT_DPI, facecolor="white")
+    fig.savefig(os.path.join(output_dir, f"{name}_annotation.pdf"), dpi=PLOT_DPI, facecolor="white")
 
     plt.close(fig)
 
@@ -311,7 +318,6 @@ def plot_pseudotime_trajectory(
     if param_label:
         title += f"\n{param_label}"
     ax.set_title(title)
-    save_plot_18x18(fig, os.path.join(output_dir, f"{name}_pseudotime_trajectory.png"))
     save_plot_18x18(fig, os.path.join(output_dir, f"{name}_pseudotime_trajectory.pdf"))
 
     if show_inline:
@@ -354,9 +360,8 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)
         show               = False,
         return_fig         = True,
     )
-    out_file = os.path.join(output_dir, f"{name}_root_cell.png")
+    out_file = os.path.join(output_dir, f"{name}_root_cell.pdf")
     save_plot_18x18(fig, out_file)
-    save_plot_18x18(fig, os.path.join(output_dir, f"{name}_root_cell.pdf"))
 
     if show_inline:
         pass
@@ -500,15 +505,13 @@ def strip_segment_frames(ax):
 # Trends plots get their own canvas (24x18, wider than tall) instead of the
 # generic PLOT_FIGSIZE (18x18) used by other plot types — the dendrogram
 # panel looks cramped at a square 18x18 once the tree is a single segment.
-def save_trends_plot(axes_list, png_path, pdf_path):
+def save_trends_plot(axes_list, pdf_path):
     for ax in axes_list:
         strip_segment_frames(ax)
     fig = axes_list[0].get_figure()
     fig.set_size_inches(24, 18, forward=True)
     fig.subplots_adjust(left=0.04, right=0.85, bottom=0.06, top=0.92)
-    fig.savefig(png_path, dpi=PLOT_DPI, facecolor="white")
     fig.savefig(pdf_path, dpi=PLOT_DPI, facecolor="white")
-    plt.close(fig)
     plt.close(fig)
 
 
@@ -527,8 +530,7 @@ def run_step29_gene_trends(
     output_dir = os.path.join(run_dir, "gene_trends")
     os.makedirs(output_dir, exist_ok=True)
 
-    if adata.X is None and "logcounts" in adata.layers:
-        adata.X = adata.layers["logcounts"]
+    ensure_expression_in_X(adata)
 
     # spline_df: degrees of freedom of the per-segment GAM smoothing spline
     # used by test_association. Lower it (e.g. 3) if you hit "A term has
@@ -574,12 +576,11 @@ def run_step29_gene_trends(
         show                = False,
         title               = f"{name} — top {top_n} variable genes",
     )
-    top_png = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.png")
     top_pdf = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.pdf")
-    save_trends_plot(axes_list, top_png, top_pdf)
-    print(f"✓ Top-{top_n} gene trends saved: {top_png}")
+    save_trends_plot(axes_list, top_pdf)
+    print(f"✓ Top-{top_n} gene trends saved: {top_pdf}")
 
-    custom_png = None
+    custom_pdf = None
     if genes_present:
         axes_list = scf.pl.trends(
             adata_fitted,
@@ -593,10 +594,9 @@ def run_step29_gene_trends(
             show                = False,
             title               = f"{name} — custom selection",
         )
-        custom_png = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.png")
         custom_pdf = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.pdf")
-        save_trends_plot(axes_list, custom_png, custom_pdf)
-        print(f"✓ Custom selection gene trends saved: {custom_png}")
+        save_trends_plot(axes_list, custom_pdf)
+        print(f"✓ Custom selection gene trends saved: {custom_pdf}")
 
     print("STEP 29 COMPLETE: gene trends saved")
-    return top_png, custom_png
+    return top_pdf, custom_pdf

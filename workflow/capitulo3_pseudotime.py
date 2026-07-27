@@ -125,8 +125,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 GENES = ["AT1G22690", "AT4G04890", "AT1G80070"]
 name  = os.path.basename(selected_trajectory_dir)
 
-if adata_traj.X is None and "logcounts" in adata_traj.layers:
-    adata_traj.X = adata_traj.layers["logcounts"]
+ensure_expression_in_X(adata_traj)
 
 gene_plots_dir = os.path.join(selected_trajectory_dir, "gene_plots")
 os.makedirs(gene_plots_dir, exist_ok=True)
@@ -138,7 +137,6 @@ fig = sc.pl.draw_graph(
     show       = False,
     return_fig = True,
 )
-save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.png"))
 save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
 plt.close(fig)
 
