@@ -459,7 +459,11 @@ def run_trajectory_runs(
     print(f"Selected run: {selected_run}")
     print(f"Selected folder: {selected['output_dir']}")
 
-    return selected["adata"], selected["output_dir"], trajectory_runs
+    adata_out = selected["adata"]
+    if adata_out.X is None and "logcounts" in adata_out.layers:
+        adata_out.X = adata_out.layers["logcounts"]
+
+    return adata_out, selected["output_dir"], trajectory_runs
 
 
 # =============================================================================

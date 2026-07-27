@@ -967,142 +967,6 @@ subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
 }
 
 
-#' Inspect Marker Support Within a Subclustered Cell Type
-#'
-#' Runs subclustering for one annotated cell type and saves three compact
-#' inspection outputs: original UMAP coordinates colored by the new subclusters,
-#' bibliography-marker dotplot, and FeaturePlots for all bibliography markers
-#' found in the object.
-#'
-#' @param obj        Seurat object.
-#' @param tipo       Cell-type label to inspect.
-#' @param marker_table Data frame with `gene` and `cell.types` columns.
-#' @param output_dir Directory where PDFs are saved.
-#' @param annot_col  Metadata column holding cell-type labels.
-#' @param resolution Subclustering resolution.
-#' @param dims       Dimensions for subclustering.
-#' @param prefix     Optional filename prefix. If NULL, derived from `tipo`.
-#' @param n_feature_cols Number of columns for FeaturePlot grid.
-#' @return List with the subclustered object, plots, genes, and output files.
-#' @export
-inspect_subcluster_markers <- function(obj,
-                                       tipo,
-                                       marker_table,
-                                       output_dir,
-                                       annot_col       = "celltype",
-                                       resolution      = 0.3,
-                                       dims            = 1:20,
-                                       prefix          = NULL,
-                                       n_feature_cols  = 4) {
-
-  if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
-  if (!annot_col %in% colnames(obj@meta.data)) {
-    stop("Metadata column not found: ", annot_col)
-  }
-  if (!all(c("gene", "cell.types") %in% colnames(marker_table))) {
-    stop("marker_table must contain 'gene' and 'cell.types' columns.")
-  }
-
-  file_tag <- if (is.null(prefix)) {
-    gsub("[^A-Za-z0-9]+", "_", tipo)
-  } else {
-    gsub("[^A-Za-z0-9]+", "_", prefix)
-  }
-
-  sub_obj <- subcluster_cell_type(
-    obj,
-    tipo       = tipo,
-    annot_col  = annot_col,
-    resolution = resolution,
-    dims       = dims
-  )
-
-  if (!"umap" %in% Reductions(obj)) {
-    stop("The parent object must contain a 'umap' reduction.")
-  }
-
-  umap_coords <- Embeddings(obj, "umap")[Cells(sub_obj), , drop = FALSE]
-  umap_df <- data.frame(
-    UMAP_1 = umap_coords[, 1],
-    UMAP_2 = umap_coords[, 2],
-    cluster_subtipo = sub_obj$cluster_subtipo,
-    stringsAsFactors = FALSE
-  )
-
-  p_umap <- ggplot(umap_df, aes(UMAP_1, UMAP_2, color = cluster_subtipo)) +
-    geom_point(size = 0.35, alpha = 0.9) +
-    ggrepel::geom_text_repel(
-      data = aggregate(cbind(UMAP_1, UMAP_2) ~ cluster_subtipo, umap_df, median),
-      aes(label = cluster_subtipo),
-      color = "black",
-      size = 4,
-      seed = 1807,
-      show.legend = FALSE
-    ) +
-    ggtitle(paste0(tipo, " subclusters on original UMAP")) +
-    theme_minimal(base_size = 12) +
-    theme(
-      axis.title = element_blank(),
-      legend.position = "right",
-      panel.border = element_rect(color = "black", fill = NA)
-    ) +
-    coord_fixed()
-
-  umap_file <- file.path(output_dir, paste0("umap_original_subclusters_", file_tag, ".pdf"))
-  ggsave(umap_file, p_umap, width = 10, height = 8, dpi = 300)
-
-  dotplot_file <- file.path(output_dir, paste0("dotplot_bibliomarks_subclusters_", file_tag, ".pdf"))
-  p_dot <- plot_marker_dotplot(
-    sub_obj,
-    marker_table,
-    annot_col = "cluster_subtipo",
-    outfile   = dotplot_file,
-    width     = 12,
-    height    = 10,
-    dot_scale = 8,
-    base_size = 11
-  )
-
-  genes_use <- unique(intersect(marker_table$gene, rownames(sub_obj)))
-  if (length(genes_use) == 0) {
-    stop("No bibliography marker genes found in the subclustered object.")
-  }
-
-  feature_plots <- FeaturePlot(
-    sub_obj,
-    features = genes_use,
-    combine  = FALSE,
-    order    = TRUE,
-    raster   = FALSE
-  )
-
-  feature_titles <- marker_table$cell.types[match(genes_use, marker_table$gene)]
-  feature_plots <- Map(function(plot, gene, cell_type) {
-    plot +
-      ggtitle(paste0(gene, "\n", cell_type)) +
-      theme(plot.title = element_text(size = 8))
-  }, feature_plots, genes_use, feature_titles)
-
-  feature_file <- file.path(output_dir, paste0("featureplots_bibliomarks_", file_tag, ".pdf"))
-  n_rows <- ceiling(length(feature_plots) / n_feature_cols)
-  ggsave(
-    feature_file,
-    wrap_plots(feature_plots, ncol = n_feature_cols),
-    width = 12,
-    height = max(6, 2.6 * n_rows),
-    dpi = 300,
-    limitsize = FALSE
-  )
-
-  invisible(list(
-    object = sub_obj,
-    genes  = genes_use,
-    plots  = list(umap = p_umap, dotplot = p_dot, features = feature_plots),
-    files  = c(umap = umap_file, dotplot = dotplot_file, features = feature_file)
-  ))
-}
-
-
 #' Generate Marker Gene Feature Plots for Subset
 #'
 #' Creates a list of FeaturePlots for genes in a marker table on a subset object.
@@ -1157,6 +1021,70 @@ save_subcluster_composite <- function(subcluster_list, marker_table, output_dir,
 
   dev.off()
   message("Saved → ", path)
+}
+
+
+#' Inspect Subcluster Markers (single combined figure)
+#'
+#' Subclusters one annotated cluster/cell type and returns a single combined
+#' figure: the subcluster UMAP and a marker dotplot on top, with a small
+#' FeaturePlot grid (one tiny panel per marker gene) below, for quick visual
+#' inspection of a single cluster at a time.
+#'
+#' @param obj           Seurat object with annot_col already assigned.
+#' @param cluster_id    Single cluster/cell-type label to subcluster.
+#' @param marker_table  Data frame with columns gene and cell.types.
+#' @param annot_col     Metadata column identifying cluster_id (default "celltype").
+#' @param resolution    Subcluster resolution (default 0.3).
+#' @param dims          Dimensions for subcluster UMAP/neighbors (default 1:20).
+#' @param output_dir    Directory to save the combined PDF.
+#' @param filename      Output filename (default derived from cluster_id).
+#' @param n_marker_cols Number of FeaturePlot columns in the marker grid (default 6).
+#' @return List with $plot (combined patchwork ggplot) and $sub_obj (the
+#'   subclustered Seurat object, for later use with
+#'   apply_subcluster_reassignment()), invisibly.
+#' @export
+inspect_subcluster_markers <- function(obj, cluster_id, marker_table,
+                                        annot_col     = "celltype",
+                                        resolution    = 0.3,
+                                        dims          = 1:20,
+                                        output_dir,
+                                        filename      = NULL,
+                                        n_marker_cols = 6) {
+
+  sub_obj <- subcluster_cell_type(
+    obj, tipo = cluster_id, annot_col = annot_col,
+    resolution = resolution, dims = dims
+  )
+
+  p_umap <- DimPlot(sub_obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
+    ggtitle(paste0("Cluster ", cluster_id, " - subclusters")) +
+    coord_fixed()
+
+  p_dot <- plot_marker_dotplot(sub_obj, marker_table, annot_col = "cluster_subtipo") +
+    ggtitle("Marker expression")
+
+  top_row <- p_umap + p_dot
+
+  marker_plots <- plot_markers_for_subset(sub_obj, marker_table)
+  marker_plots <- lapply(marker_plots, function(p) {
+    p + theme_void() +
+      theme(legend.position = "none", plot.title = element_text(size = 6))
+  })
+  marker_grid <- wrap_plots(marker_plots, ncol = n_marker_cols)
+
+  combined <- top_row / marker_grid + plot_layout(heights = c(1.2, 1))
+
+  if (is.null(filename)) {
+    filename <- paste0("subcluster_markers_", gsub("[^A-Za-z0-9]+", "_", cluster_id), ".pdf")
+  }
+  n_marker_rows <- ceiling(length(marker_plots) / n_marker_cols)
+  ggsave(
+    file.path(output_dir, filename), combined,
+    width = 20, height = 10 + 2.5 * n_marker_rows, dpi = 300
+  )
+
+  invisible(list(plot = combined, sub_obj = sub_obj))
 }
 
 
@@ -2984,60 +2912,6 @@ assign_pseudoreplicates_batch <- function(cell_type_subsets,
 }
 
 
-summarize_pseudobulk_celltype_counts <- function(seurat_obj,
-                                                 annot_col,
-                                                 output_file = NULL) {
-  celltype_counts <- as.data.frame(
-    table(seurat_obj@meta.data[[annot_col]]),
-    stringsAsFactors = FALSE
-  )
-  colnames(celltype_counts) <- c("celltype", "n_cells")
-  celltype_counts <- celltype_counts[order(celltype_counts$n_cells, decreasing = TRUE), ]
-
-  print(celltype_counts, row.names = FALSE)
-
-  if (!is.null(output_file)) {
-    write.table(celltype_counts, file = output_file, sep = "\t",
-                quote = FALSE, row.names = FALSE)
-  }
-
-  invisible(celltype_counts)
-}
-
-
-summarize_pseudoreplicate_counts <- function(cell_type_subsets_replicates,
-                                             output_file = NULL) {
-  pseudoreplicate_counts <- do.call(
-    rbind,
-    lapply(names(cell_type_subsets_replicates), function(ct) {
-      md <- cell_type_subsets_replicates[[ct]]@meta.data
-      tab <- as.data.frame(
-        table(condition = md$condition, replicate = md$replicate),
-        stringsAsFactors = FALSE
-      )
-      tab <- tab[tab$Freq > 0, , drop = FALSE]
-      tab$celltype <- ct
-      colnames(tab)[colnames(tab) == "Freq"] <- "n_cells"
-      tab[, c("celltype", "condition", "replicate", "n_cells")]
-    })
-  )
-  pseudoreplicate_counts <- pseudoreplicate_counts[
-    order(pseudoreplicate_counts$celltype,
-          pseudoreplicate_counts$condition,
-          pseudoreplicate_counts$replicate),
-  ]
-
-  print(pseudoreplicate_counts, row.names = FALSE)
-
-  if (!is.null(output_file)) {
-    write.table(pseudoreplicate_counts, file = output_file, sep = "\t",
-                quote = FALSE, row.names = FALSE)
-  }
-
-  invisible(pseudoreplicate_counts)
-}
-
-
 
 # =============================================================================
 # PSEUDOBULK AND DESEQ2 ANALYSIS
@@ -3243,14 +3117,15 @@ run_go_enrichment_for_contrast <- function(results_dir,
 # build_logfc_heatmap
 # =============================================================================
 # Builds a log2FC heatmap per cell type.
-# Genes and cell types are clustered hierarchically so the output includes
-# dendrograms, matching the Chapter 2 methods text.
+# Genes are ordered in a "staircase": each gene is grouped under the cell
+# type where it has the largest |log2FC| (its peak), and genes are ordered
+# to match the column order, so up/down-regulated blocks fall diagonally
+# instead of following a hierarchical clustering dendrogram.
 build_logfc_heatmap <- function(logfc_table,
                                 contrast_tag,
                                 output_dir,
-                                limits = c(-5, 5),
-                                marker_file = NULL,
-                                column_order = NULL) {
+                                limits     = c(-5, 5),
+                                cell_order = NULL) {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -3259,44 +3134,20 @@ build_logfc_heatmap <- function(logfc_table,
   colnames(mat) <- gsub(paste0("_", contrast_tag, "$"), "", colnames(mat))
   mat[is.na(mat)] <- 0
 
-  normalize_celltype_label <- function(x) {
-    x <- gsub("_", " ", as.character(x))
-    sub(" ([0-9]+)$", ".\\1", x)
-  }
-
-  order_by_marker_table <- function(cols, marker_file) {
-    marks <- read.table(marker_file, header = TRUE, sep = "\t",
-                        quote = "", check.names = TRUE,
-                        stringsAsFactors = FALSE)
-    cell_col <- intersect(c("cell.types", "cell_type", "celltype"), colnames(marks))[1]
-    if (is.na(cell_col)) {
-      stop("Marker file must contain a cell-type column, e.g. 'cell types'.")
-    }
-
-    marker_order <- unique(as.character(marks[[cell_col]]))
-    pretty_cols  <- normalize_celltype_label(cols)
-    base_cols    <- sub("\\.[0-9]+$", "", pretty_cols)
-
-    ordered <- unlist(
-      lapply(marker_order, function(ct) {
-        hits <- cols[base_cols == ct | pretty_cols == ct]
-        if (length(hits) <= 1) return(hits)
-        suffix <- suppressWarnings(as.integer(sub("^.*\\.([0-9]+)$", "\\1",
-                                                  normalize_celltype_label(hits))))
-        suffix[is.na(suffix)] <- 0L
-        hits[order(suffix)]
-      }),
+  # ── Column order: follow cell_order (e.g. marker-table order); columns not
+  #    listed there (unannotated clusters) go at the end. Numeric suffixes such
+  #    as Epidermis_Hypocotyl_1/_2 are grouped under their base name. ──────────
+  if (!is.null(cell_order)) {
+    sanitize     <- function(x) gsub("[^[:alnum:]_]", "_", x)
+    strip_suffix <- function(x) sub("_[0-9]+$", "", x)
+    wanted       <- unique(sanitize(cell_order))
+    col_base     <- strip_suffix(colnames(mat))
+    ordered_cols <- unlist(
+      lapply(wanted, function(ct) colnames(mat)[col_base == ct | colnames(mat) == ct]),
       use.names = FALSE
     )
-    unique(c(ordered, setdiff(cols, ordered)))
-  }
-
-  if (!is.null(column_order)) {
-    ordered_cols <- intersect(column_order, colnames(mat))
-    ordered_cols <- c(ordered_cols, setdiff(colnames(mat), ordered_cols))
+    ordered_cols <- unique(c(ordered_cols, setdiff(colnames(mat), ordered_cols)))
     mat <- mat[, ordered_cols, drop = FALSE]
-  } else if (!is.null(marker_file) && file.exists(marker_file)) {
-    mat <- mat[, order_by_marker_table(colnames(mat), marker_file), drop = FALSE]
   }
 
   ht <- ComplexHeatmap::Heatmap(
@@ -3304,17 +3155,17 @@ build_logfc_heatmap <- function(logfc_table,
     name = "log2FC",
     col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
 
-    cluster_rows    = TRUE,
-    cluster_columns = FALSE,
-    row_dend_gp     = grid::gpar(col = "black", lwd = 1.4),
-    row_dend_width  = grid::unit(18, "mm"),
+    cluster_rows    = TRUE,          # hierarchical row ordering
+    show_row_dend   = TRUE,
+    row_dend_width  = grid::unit(4, "cm"),
+    cluster_columns = FALSE,         # keep the marker-table column order
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
     column_names_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
     column_names_rot  = 45,
 
-    column_title    = sprintf("log2FC - %s  (%d genes)", contrast_tag, nrow(mat)),
+    column_title    = sprintf("log2FC — %s  (%d genes)", contrast_tag, nrow(mat)),
     column_title_gp = gpar(fontsize = 15, fontface = "bold"),
 
     heatmap_legend_param = list(
@@ -3336,9 +3187,8 @@ build_logfc_heatmap <- function(logfc_table,
 # =============================================================================
 # run_unified_hdwgcna
 # =============================================================================
-# Builds one hdWGCNA TOM network from the genes in the log2FC heatmap table.
-# Internal grouping diagnostics are intentionally not exported; downstream
-# figures use differential-expression direction.
+# Builds one hdWGCNA network from the genes in the log2FC heatmap table.
+# Saves modules, hub genes, the hdWGCNA object and three 18 x 18 plots.
 run_unified_hdwgcna <- function(seurat_obj,
                                 de_table_path,
                                 output_dir,
@@ -3348,7 +3198,8 @@ run_unified_hdwgcna <- function(seurat_obj,
                                 n_metacells = 25,
                                 soft_power = NULL,
                                 min_module_size = 30,
-                                deep_split = 2) {
+                                deep_split = 2,
+                                make_plots = TRUE) {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -3398,75 +3249,87 @@ run_unified_hdwgcna <- function(seurat_obj,
     overwrite_tom = TRUE,
     wgcna_name    = wgcna_name
   )
+  obj <- hdWGCNA::ModuleEigengenes(obj, wgcna_name = wgcna_name)
+  obj <- hdWGCNA::ModuleConnectivity(obj, group.by = "all_group",
+                                     group_name = "all",
+                                     wgcna_name = wgcna_name)
+
+  modules   <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)
+  hub_genes <- hdWGCNA::GetHubGenes(obj, n_hubs = 20, wgcna_name = wgcna_name)
+  n_modules <- length(unique(modules$module[modules$module != "grey"]))
+
+  write.table(modules, file.path(output_dir, "modules_unified.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(hub_genes, file.path(output_dir, "hubgenes_unified.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
   write.table(data.frame(
     de_genes = length(de_genes),
-    soft_power = selected_power
+    soft_power = selected_power,
+    modules = n_modules
   ), file.path(output_dir, "hdwgcna_summary.tsv"),
   sep = "\t", quote = FALSE, row.names = FALSE)
   saveRDS(obj, file.path(output_dir, "hdwgcna_unified.rds"))
 
-  invisible(list(de_genes = length(de_genes), soft_power = selected_power))
-}
+  # Optional module-visualization plots (UMAP modules, eigengene heatmap,
+  # dendrogram). Skip with make_plots = FALSE if only the gene-gene network
+  # (edges) is needed downstream.
+  if (make_plots) {
+    plot_list <- hdWGCNA::ModuleFeaturePlot(obj, features = "hMEs",
+                                            order = TRUE,
+                                            wgcna_name = wgcna_name)
+    plot_list <- plot_list[!grepl("grey", names(plot_list), ignore.case = TRUE)]
+    plot_list <- lapply(plot_list, function(p) {
+      p + ggplot2::theme(axis.text = ggplot2::element_blank(),
+                         axis.ticks = ggplot2::element_blank())
+    })
 
+    pdf(file.path(output_dir, "umap_modules_unified.pdf"), width = 18, height = 18)
+    print(patchwork::wrap_plots(plot_list, ncol = 4) +
+            patchwork::plot_annotation(
+              title = "UMAP modules - unified WGCNA",
+              subtitle = sprintf("%d DEGs | %d modules", length(de_genes), n_modules)
+            ))
+    dev.off()
 
-# =============================================================================
-# export_hdwgcna_tom_edges
-# =============================================================================
-# Exports TOM edges from an hdWGCNA object without internal-grouping visual outputs.
-export_hdwgcna_tom_edges <- function(hdwgcna_dir,
-                                     output_dir = hdwgcna_dir,
-                                     tom_threshold = 0.1,
-                                     wgcna_name = "unified") {
+    module_eigengenes <- hdWGCNA::GetMEs(obj, harmonized = FALSE,
+                                         wgcna_name = wgcna_name)
+    if (!is.null(module_eigengenes) && ncol(module_eigengenes) > 0) {
+      me_cols <- colnames(module_eigengenes)[
+        !grepl("grey|^0$", colnames(module_eigengenes), ignore.case = TRUE)
+      ]
+      if (length(me_cols) > 0) {
+        me_mat <- t(as.matrix(module_eigengenes[, me_cols, drop = FALSE]))
+        mod_col <- sub("^(ME|hME)", "", rownames(me_mat))
 
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+        pdf(file.path(output_dir, "eigengene_heatmap_unified.pdf"),
+            width = 18, height = 18)
+        ComplexHeatmap::draw(ComplexHeatmap::Heatmap(
+          me_mat,
+          name = "ME",
+          col = viridis::viridis(100),
+          cluster_rows = TRUE,
+          cluster_columns = TRUE,
+          show_row_names = TRUE,
+          row_labels = mod_col,
+          show_column_names = FALSE,
+          column_title = sprintf("Unified module eigengenes (%d DEGs)",
+                                 length(de_genes))
+        ))
+        dev.off()
+      }
+    }
 
-  rds_path <- file.path(hdwgcna_dir, paste0("hdwgcna_", wgcna_name, ".rds"))
-  if (!file.exists(rds_path)) {
-    stop("hdWGCNA object not found: ", rds_path)
+    pdf(file.path(output_dir, "dendrogram_unified.pdf"), width = 18, height = 18)
+    hdWGCNA::PlotDendrogram(
+      obj,
+      main = sprintf("Unified dendrogram | %d DEGs | %d modules",
+                     length(de_genes), n_modules),
+      wgcna_name = wgcna_name
+    )
+    dev.off()
   }
 
-  obj <- readRDS(rds_path)
-  gene_names <- hdWGCNA::GetModules(obj, wgcna_name = wgcna_name)$gene_name
-
-  tom_files <- list.files(hdwgcna_dir, pattern = "_block\\..*\\.rda$",
-                          full.names = TRUE)
-  tom_file <- if (length(tom_files) > 0) {
-    tom_files[1]
-  } else {
-    file.path(hdwgcna_dir, paste0(wgcna_name, "_TOM.rda"))
-  }
-  if (!file.exists(tom_file)) {
-    stop("TOM file not found in: ", hdwgcna_dir)
-  }
-
-  tom_env <- new.env()
-  load(tom_file, envir = tom_env)
-  TOM <- as.matrix(get(ls(tom_env)[1], envir = tom_env))
-  if (nrow(TOM) == length(gene_names)) {
-    rownames(TOM) <- colnames(TOM) <- gene_names
-  }
-
-  tom_mat <- TOM
-  tom_mat[lower.tri(tom_mat, diag = TRUE)] <- NA
-  edges <- which(!is.na(tom_mat) & tom_mat >= tom_threshold, arr.ind = TRUE)
-  edge_df <- data.frame(
-    source = rownames(tom_mat)[edges[, 1]],
-    target = colnames(tom_mat)[edges[, 2]],
-    weight = tom_mat[edges]
-  )
-
-  node_df <- data.frame(
-    gene = sort(unique(c(edge_df$source, edge_df$target))),
-    stringsAsFactors = FALSE
-  )
-
-  write.table(edge_df, file.path(output_dir, paste0("edges_", wgcna_name, ".tsv")),
-              sep = "\t", quote = FALSE, row.names = FALSE)
-  write.table(node_df, file.path(output_dir, paste0("nodes_", wgcna_name, ".tsv")),
-              sep = "\t", quote = FALSE, row.names = FALSE)
-
-  message("TOM edges exported: ", nrow(edge_df))
-  invisible(list(edges = edge_df, nodes = node_df))
+  invisible(list(modules = modules, hub_genes = hub_genes))
 }
 
 
@@ -3682,7 +3545,8 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
                                   tom_threshold = 0.1,
                                   cell_types    = NULL,
                                   n_hub_label   = 5,
-                                  max_modules   = NULL) {
+                                  max_modules   = NULL,
+                                  make_plot     = TRUE) {
 
   rds_files <- list.files(hdwgcna_dir, pattern = "^hdwgcna_.*\\.rds$",
                            full.names = TRUE, recursive = TRUE)
@@ -3754,7 +3618,9 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
                   sep = "\t", quote = FALSE, row.names = FALSE)
 
       # ── Plot (ggraph) ──────────────────────────────────────────────────────
-      if (nrow(edge_df) > 0) {
+      # Edges/nodes are already exported above; skip only the plot when
+      # make_plot = FALSE (e.g. when only the gene-gene edge list is needed).
+      if (make_plot && nrow(edge_df) > 0) {
         edge_df_plot <- if (nrow(edge_df) > 50000) edge_df[order(edge_df$weight, decreasing=TRUE)[seq_len(50000)], ] else edge_df
         nodes_in_plot <- unique(c(edge_df_plot$source, edge_df_plot$target))
         node_df_plot <- node_df[node_df$gene %in% nodes_in_plot, ]
@@ -3768,12 +3634,11 @@ plot_hdwgcna_network <- function(hdwgcna_dir,
 
         p <- ggraph::ggraph(g, layout = "graphopt") +
           ggraph::geom_edge_link(ggplot2::aes(alpha = weight, width = weight),
-                                  color = "grey35", show.legend = FALSE) +
-          ggraph::scale_edge_width(range = c(0.2, 1.8)) +
-          ggraph::scale_edge_alpha(range = c(0.18, 0.65)) +
+                                  color = "grey70", show.legend = FALSE) +
+          ggraph::scale_edge_width(range = c(0.1, 1.2)) +
+          ggraph::scale_edge_alpha(range = c(0.05, 0.4)) +
           ggraph::geom_node_point(ggplot2::aes(size = vdata$kME,
-                                               color = vdata$module),
-                                   alpha = 0.95) +
+                                               color = vdata$module)) +
           ggplot2::scale_color_manual(values = pal, name = "Module") +
           ggplot2::scale_size(range = c(1.5, 6), name = "kME") +
           ggraph::geom_node_label(
@@ -5276,4 +5141,86 @@ plot_tf_de_network <- function(net, output_dir,
   ggplot2::ggsave(out_file, p, width = output_width, height = output_height, device = "pdf")
   message("Network saved to ", out_file)
   invisible(p)
+}
+
+
+#' Gene-gene coexpression + TF network (one-call wrapper)
+#'
+#' Builds the hdWGCNA gene-gene co-expression network from the significant DE
+#' genes, exports the edge list (source | target | weight), then filters to
+#' TF-containing pairs (AtTFDB) and draws the TF network colored by DE
+#' direction. No module-visualization plots are produced; only the gene-gene
+#' network and the TF network figure. Thin wrapper over run_unified_hdwgcna(),
+#' plot_hdwgcna_network() and build/plot_tf_de_network().
+#'
+#' @param seurat_obj     Curated Seurat object.
+#' @param de_table_path  Path to the log2FC DE table (genes x cell types).
+#' @param tf_list_path   Path to the TF locus list (one locus per line).
+#' @param output_dir     Output directory (e.g. dir_08).
+#' @param annot_col      Cell-type annotation column.
+#' @param contrast_tag   Contrast label used in titles/filenames.
+#' @param sample_col     Sample column (default "orig.ident").
+#' @param n_metacells    Metacells per cell type x sample (default 50).
+#' @param min_module_size Minimum module size (default 20).
+#' @param deep_split     deepSplit for module detection (default 2).
+#' @param soft_power     Soft power (NULL = auto).
+#' @param tom_threshold  Minimum TOM weight to keep an edge (default 0.2).
+#' @param n_hub_label    Number of top hub TFs to label (default 15).
+#' @return The TF network object (invisibly).
+#' @export
+run_tf_coexpression_network <- function(seurat_obj,
+                                        de_table_path,
+                                        tf_list_path,
+                                        output_dir,
+                                        annot_col,
+                                        contrast_tag,
+                                        sample_col      = "orig.ident",
+                                        n_metacells     = 50,
+                                        min_module_size = 20,
+                                        deep_split      = 2,
+                                        soft_power      = NULL,
+                                        tom_threshold   = 0.2,
+                                        n_hub_label     = 15) {
+
+  # 1. Build the gene-gene co-expression network (no module plots)
+  run_unified_hdwgcna(
+    seurat_obj      = seurat_obj,
+    de_table_path   = de_table_path,
+    output_dir      = output_dir,
+    annot_col       = annot_col,
+    sample_col      = sample_col,
+    n_metacells     = n_metacells,
+    soft_power      = soft_power,
+    min_module_size = min_module_size,
+    deep_split      = deep_split,
+    make_plots      = FALSE
+  )
+
+  # 2. Export the gene-gene edge list (no module network plot)
+  plot_hdwgcna_network(
+    hdwgcna_dir   = output_dir,
+    output_dir    = output_dir,
+    tom_threshold = tom_threshold,
+    make_plot     = FALSE
+  )
+
+  # 3. Filter to TF-containing pairs and draw the TF network
+  edges_all <- read.table(file.path(output_dir, "edges_unified.tsv"),
+                          header = TRUE, sep = "\t")
+  tfs       <- trimws(readLines(tf_list_path))
+  de_mat    <- read.table(de_table_path, header = TRUE, sep = "\t",
+                          row.names = 1, check.names = FALSE)
+
+  edges_tf <- edges_all[edges_all$weight >= tom_threshold, ]
+  net_tf   <- build_tf_network(edges_tf, tfs, de_mat)
+  plot_tf_de_network(net_tf,
+                     output_dir    = output_dir,
+                     layout        = "graphopt",
+                     n_hub_label   = n_hub_label,
+                     contrast_tag  = contrast_tag,
+                     output_pdf    = "network_tf_DE_direction.pdf",
+                     output_width  = 22,
+                     output_height = 22)
+
+  invisible(net_tf)
 }
