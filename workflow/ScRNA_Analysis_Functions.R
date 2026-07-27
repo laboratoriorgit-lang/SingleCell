@@ -1125,6 +1125,46 @@ apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
 }
 
 
+#' Curate several clusters in one call
+#'
+#' Convenience wrapper: for each cluster named in `reassign`, subclusters it
+#' (saving the inspection figure via inspect_subcluster_markers) and then
+#' reassigns its subclusters to the given labels, all into a single curated
+#' annotation column. `reassign` is a named list keyed by cluster ID; each
+#' value maps subcluster IDs to labels, with "others" catching the rest.
+#'
+#' @param obj          Seurat object with source_col already assigned.
+#' @param reassign     Named list (keys = cluster IDs) of subcluster->label maps.
+#' @param marker_table Marker table passed to inspect_subcluster_markers.
+#' @param output_dir   Directory for the per-cluster inspection figures.
+#' @param source_col   Baseline annotation column (default "celltype").
+#' @param dest_col     Output curated column (default "celltype_curated").
+#' @param resolution   Subcluster resolution (default 0.3).
+#' @param dims         Dims for subclustering (default 1:20).
+#' @return Updated Seurat object with dest_col populated.
+#' @export
+curate_clusters <- function(obj, reassign, marker_table, output_dir,
+                            source_col = "celltype",
+                            dest_col   = "celltype_curated",
+                            resolution = 0.3, dims = 1:20) {
+  sub_objs <- list()
+  for (cl in names(reassign)) {
+    res <- inspect_subcluster_markers(
+      obj, cluster_id = cl, marker_table = marker_table,
+      output_dir = output_dir, resolution = resolution, dims = dims
+    )
+    sub_objs[[cl]] <- res$sub_obj
+  }
+  apply_subcluster_reassignment(
+    obj             = obj,
+    subcluster_list = sub_objs,
+    reassign        = reassign,
+    source_col      = source_col,
+    dest_col        = dest_col
+  )
+}
+
+
 # =============================================================================
 # 6. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
 # =============================================================================
