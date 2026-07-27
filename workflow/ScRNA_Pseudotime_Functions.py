@@ -228,6 +228,20 @@ def build_dendrogram(adata):
     return adata
 
 
+# Returns the draw_graph embedding key actually present in adata. scanpy's
+# sc.tl.draw_graph defaults to the ForceAtlas2 ("fa") layout, but silently falls
+# back to Fruchterman-Reingold ("fr") when the optional 'fa2-modified' package is
+# missing. We pick whichever embedding exists (fa preferred) so downstream plots
+# work regardless of that package being installed.
+def draw_graph_basis(adata):
+    for layout in ("fa", "fr"):
+        if f"X_draw_graph_{layout}" in adata.obsm:
+            return f"draw_graph_{layout}"
+    raise KeyError(
+        "No X_draw_graph_* embedding found in adata.obsm; run sc.tl.draw_graph first."
+    )
+
+
 # Saves the force-directed tree graph colored by cell type.
 def plot_trajectory_graphs(
     adata,
@@ -274,10 +288,11 @@ def plot_pseudotime_trajectory(
 ):
     os.makedirs(output_dir, exist_ok=True)
 
+    basis = draw_graph_basis(adata)
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(
         adata,
-        basis       = "draw_graph_fa",
+        basis       = basis,
         color_cells = annotation_col,
         ax          = ax,
         show        = False,
@@ -285,7 +300,7 @@ def plot_pseudotime_trajectory(
     scf.pl.trajectory(
         adata,
         color_seg  = "t",
-        basis      = "draw_graph_fa",
+        basis      = basis,
         frameon    = False,
         s          = 50,
         scale_path = 0.6,
@@ -329,7 +344,7 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)
 
     fig = sc.pl.embedding(
         plot_data,
-        basis              = "draw_graph_fa",
+        basis              = draw_graph_basis(plot_data),
         color              = "root_cell",
         legend_loc         = "right margin",
         title              = title,
@@ -459,11 +474,7 @@ def run_trajectory_runs(
     print(f"Selected run: {selected_run}")
     print(f"Selected folder: {selected['output_dir']}")
 
-    adata_out = selected["adata"]
-    if adata_out.X is None and "logcounts" in adata_out.layers:
-        adata_out.X = adata_out.layers["logcounts"]
-
-    return adata_out, selected["output_dir"], trajectory_runs
+    return selected["adata"], selected["output_dir"], trajectory_runs
 
 
 # =============================================================================

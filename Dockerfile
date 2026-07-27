@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     scanpy \
     scFates \
     palantir \
+    fa2-modified \
     pandas \
     numpy \
     scipy \
