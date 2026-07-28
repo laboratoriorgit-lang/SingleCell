@@ -1,9 +1,13 @@
 services:
   r:
     image: matigara/scrnaseq:latest
-    build: .
+    # Always pull the tested image from Docker Hub instead of rebuilding from the
+    # Dockerfile (which pins no versions and would drift). To rebuild on purpose:
+    # `docker compose build`.
+    pull_policy: always
     volumes:
-      - ~/projects:/workspace
+      - .:/workspace
+    working_dir: /workspace
     stdin_open: true
     tty: true
-    command: R
+    command: bash

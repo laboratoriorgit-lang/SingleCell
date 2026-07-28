@@ -19,7 +19,7 @@
 
 import os
 
-PIPELINE_DIR = "/workspace/SingleCell/workflow"
+PIPELINE_DIR = "/workspace/workflow"
 DATA_DIR     = "/workspace/."
 base_dir     = os.path.join(DATA_DIR, "resultados")
 
