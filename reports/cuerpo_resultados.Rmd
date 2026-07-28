@@ -173,12 +173,14 @@ image to a local `.sif` once, then open a shell binding the repository to
 
 ```bash
 singularity build scrnaseq.sif docker://matigara/scrnaseq:latest
-singularity exec --bind $(pwd):/workspace scrnaseq.sif /bin/bash
+singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
 Apptainer imports the image environment, so the bundled Python (`/opt/venv`) and
 R stay on `PATH`, and it runs as the invoking user, so files under `resultados/`
-are owned by that user rather than by root.
+are owned by that user rather than by root. The `--pwd /workspace` flag starts
+the shell inside the bound repository (otherwise Apptainer warns that the host
+working directory does not exist in the container and falls back to `$HOME`).
 
 ## Raw data download and Cell Ranger processing
 
