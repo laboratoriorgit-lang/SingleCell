@@ -235,23 +235,22 @@ Download the reads, then rename/symlink them to the naming Cell Ranger
 expects (`<sample>_S1_L001_R1/R2_001.fastq.gz`):
 
 ```bash
-# Run from the cloned repository root (paths are relative to it, not /workspace).
-mkdir -p fastq/CRA010863
+mkdir -p /workspace/fastq/CRA010863
 
-wget -c -P fastq/CRA010863 \
+wget -c -P /workspace/fastq/CRA010863 \
   ftp://download.big.ac.cn/gsa2/CRA010863/CRR775298/CRR775298_f1.fastq.gz
-wget -c -P fastq/CRA010863 \
+wget -c -P /workspace/fastq/CRA010863 \
   ftp://download.big.ac.cn/gsa2/CRA010863/CRR775298/CRR775298_r2.fastq.gz
-wget -c -P fastq/CRA010863 \
+wget -c -P /workspace/fastq/CRA010863 \
   ftp://download.big.ac.cn/gsa2/CRA010863/CRR775297/CRR775297_f1.fastq.gz
-wget -c -P fastq/CRA010863 \
+wget -c -P /workspace/fastq/CRA010863 \
   ftp://download.big.ac.cn/gsa2/CRA010863/CRR775297/CRR775297_r2.fastq.gz
 
-( cd fastq/CRA010863
-  ln -s CRR775298_f1.fastq.gz ScWT_S1_L001_R1_001.fastq.gz
-  ln -s CRR775298_r2.fastq.gz ScWT_S1_L001_R2_001.fastq.gz
-  ln -s CRR775297_f1.fastq.gz Scpifq_S1_L001_R1_001.fastq.gz
-  ln -s CRR775297_r2.fastq.gz Scpifq_S1_L001_R2_001.fastq.gz )
+cd /workspace/fastq/CRA010863
+ln -s CRR775298_f1.fastq.gz ScWT_S1_L001_R1_001.fastq.gz
+ln -s CRR775298_r2.fastq.gz ScWT_S1_L001_R2_001.fastq.gz
+ln -s CRR775297_f1.fastq.gz Scpifq_S1_L001_R1_001.fastq.gz
+ln -s CRR775297_r2.fastq.gz Scpifq_S1_L001_R2_001.fastq.gz
 ```
 
 After FASTQs are available, run Cell Ranger for each sample. Cell Ranger itself
@@ -279,10 +278,10 @@ cellranger mkref \
 Run Cell Ranger counts for each sample:
 
 ```bash
-cellranger count --localcores=80 --id=ScWT --fastqs="$(pwd)/fastq/CRA010863" \
+cellranger count --localcores=80 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \
   --sample=ScWT --transcriptome=Ara --create-bam false
 
-cellranger count --localcores=80 --id=Scpifq --fastqs="$(pwd)/fastq/CRA010863" \
+cellranger count --localcores=80 --id=Scpifq --fastqs=/workspace/fastq/CRA010863 \
   --sample=Scpifq --transcriptome=Ara --create-bam false
 ```
 
