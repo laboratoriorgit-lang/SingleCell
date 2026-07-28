@@ -102,3 +102,15 @@ top_path, highlight_path = run_step29_gene_trends(
 )
 
 print("SECTION 28 COMPLETE: gene trend plots saved")
+
+# ==============================================================================
+# Section 29 - Final export
+# ==============================================================================
+# Save the fully processed pseudotime object (trajectory tree, pseudotime `t`,
+# milestones, segments and the force-directed layout) as the pipeline's final
+# Chapter 3 output, next to the curated Chapter 1 object.
+final_h5ad = os.path.join(base_dir, "objects", "pbmc_pseudotime_final.h5ad")
+os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
+adata_traj.write_h5ad(final_h5ad)
+
+print(f"SECTION 29 COMPLETE: final pseudotime object saved -> {final_h5ad}")
