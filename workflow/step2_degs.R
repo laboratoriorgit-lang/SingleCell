@@ -51,6 +51,14 @@ output_dir <- base_dir
 # ==============================================================================
 pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
 
+# Bibliography marker table (defined during Step 1 annotation; reloaded here so
+# this script is self-contained). Used by the Section 19 heatmap row/column
+# ordering and the Section 20 network.
+biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
+marker_table <- read.table(
+  biblio_marks_file, header = TRUE, sep = "\t", quote = ""
+)
+
 # ==============================================================================
 # Section 13 - Cell-type subsets
 # ==============================================================================
