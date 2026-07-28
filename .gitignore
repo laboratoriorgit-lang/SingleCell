@@ -10,3 +10,10 @@ reports/*
 !reports/*.md
 !reports/*.css
 !reports/assets/
+!reports/rerun_figs/
+!reports/cuerpo.Rmd
+!reports/cuerpo.pdf
+!reports/cuerpo_resultados.Rmd
+!reports/cuerpo_resultados.pdf
+!reports/lang_box.lua
+!reports/latex_header.tex

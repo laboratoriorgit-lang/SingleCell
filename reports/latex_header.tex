@@ -1,0 +1,27 @@
+% Copy-paste correctness: make code copy as ASCII instead of typographic
+% substitutes. pandoc escapes ^ and ~ in code as the accent commands \^{} and
+% \~{}, whose glyphs (circumflex/tilde) map to U+02C6/U+02DC by default; remap
+% them to ASCII ^ (U+005E) and ~ (U+007E). upquote fixes ' and " in code.
+\usepackage[T1]{fontenc}
+\usepackage{upquote}
+\input{glyphtounicode}
+\pdfglyphtounicode{circumflex}{005E}
+\pdfglyphtounicode{tilde}{007E}
+\pdfgentounicode=1
+
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+\definecolor{langboxline}{HTML}{888888}
+\definecolor{langboxbg}{HTML}{F7F7F7}
+
+\newtcolorbox{langbox}[1]{
+  enhanced, breakable,
+  colback=langboxbg, colframe=langboxline,
+  colbacktitle=langboxline, coltitle=white,
+  boxrule=0.5pt, arc=0pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  toptitle=2pt, bottomtitle=2pt,
+  title={\normalfont\bfseries\scshape #1},
+  fonttitle=\normalfont
+}
