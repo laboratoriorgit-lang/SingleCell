@@ -668,21 +668,25 @@ Representative output from Section 8:
 ## Section 9 - Gene expression visualization
 
 ```{r section_09_gene_expression_visualization}
-gene <- "AT5G26000"
+gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
 
 pbmc_harmony <- JoinLayers(pbmc_harmony)
 Idents(pbmc_harmony) <- "celltype"
 
+# Name each file after the plotted gene(s): AT5G26000  ->  ..._AT5G26000.pdf
+# c("gen1","gen2") -> ..._gen1_gen2.pdf
+gene_tag <- paste(gene, collapse = "_")
+
 save_vln(
   VlnPlot(pbmc_harmony, features = gene),
-  "vln_gene_all.pdf"
+  paste0("vln_gene_", gene_tag, ".pdf")
 )
 
 save_pdf(
   FeaturePlot(pbmc_harmony, features = gene),
-  "feature_gene_all.pdf"
+  paste0("feature_gene_", gene_tag, ".pdf")
 )
 
 message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
