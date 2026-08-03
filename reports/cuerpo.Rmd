@@ -2,7 +2,7 @@
 title: "Methods Paper: WT vs pifq single-cell RNA-seq pipeline"
 subtitle: "Single-cell preprocessing and annotation, pseudobulk differential expression and GO, and pseudotime trajectory analysis of the WT vs pifq comparison"
 author: "SingleCell Pipeline"
-date: "2026-07-27"
+date: "2026-08-03"
 output:
   html_document:
     toc: true
@@ -1122,12 +1122,12 @@ Representative output from Section 24:
 
 ## Section 25 - Cell type selection
 
-Picks the cell types used to build the trajectory. Here we follow the stomatal
-lineage: cotyledon epidermis differentiating into guard cells. Names must match
-the Section 24 list exactly.
+Picks the cell types used to build the trajectory. Here we follow the
+epidermis alone (the bibliography annotation no longer splits it into
+Cotyledon/guard-cell subtypes). Names must match the Section 24 list exactly.
 
 ```{python section_25_cell_selection, eval=FALSE}
-TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon", "guard cell"]
+TRAJECTORY_CLUSTERS = ["Epidermis"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -1148,10 +1148,10 @@ root selection at the progenitor cluster, and pseudotime assignment. Add more
 `trajectory_run(...)` entries to sweep parameters.
 
 ```{python section_26_trajectory, eval=FALSE}
-ROOT_CLUSTER = "Epidermis Cotyledon"
+ROOT_CLUSTER = "Epidermis"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.1, lambda_value=200, eigs=8, seed=3),
+    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=8, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -1164,7 +1164,9 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 )
 ```
 
-Representative outputs from Section 26:
+Representative outputs from Section 26. `sigma=0.3` was chosen (over the
+default 0.1) after a one-at-a-time parameter sweep (nodes/sigma/lambda/eigs)
+around the same root cell, for a looser tree fit:
 
 ```{=latex}
 \begin{center}
@@ -1173,6 +1175,8 @@ Representative outputs from Section 26:
 ```{=latex}
 \end{center}
 ```
+
+![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=30%}
 
 ## Section 27 - Plot genes on trajectory
 
@@ -1225,9 +1229,16 @@ top_path, highlight_path = run_step29_gene_trends(
 print("SECTION 28 COMPLETE: gene trend plots saved")
 ```
 
-Representative output from Section 28:
+Representative outputs from Section 28 — the top variable genes and the
+highlighted gene list:
 
-![Gene expression trends along pseudotime (top variable genes).](assets/pseudotime_gene_trends.pdf){width=30%}
+```{=latex}
+\begin{center}
+```
+![Top 10 variable genes along pseudotime.](assets/pseudotime_gene_trends.pdf){width=48%} ![Highlighted gene list along pseudotime.](assets/pseudotime_gene_trends_highlight.pdf){width=48%}
+```{=latex}
+\end{center}
+```
 
 ## Section 29 - Final export
 
