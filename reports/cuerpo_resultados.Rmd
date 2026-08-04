@@ -421,7 +421,7 @@ message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
 
 Representative output from Section 1:
 
-![Pre-filter QC violin plots.](rerun_figs/qc_prefilter.pdf){width=30%}
+![Pre-filter QC violin plots.](../resultados/01_qc/qc_prefilter.pdf){width=30%}
 
 \newpage
 
@@ -441,7 +441,7 @@ message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
 
 Representative output from Section 2:
 
-![Post-filter QC violin plots.](rerun_figs/qc_postfilter.pdf){width=30%}
+![Post-filter QC violin plots.](../resultados/01_qc/qc_postfilter.pdf){width=30%}
 
 \newpage
 
@@ -471,7 +471,7 @@ message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
 Representative output from Section 3:
 
-![UMAP before Harmony correction, colored by sample.](rerun_figs/umap_preharmony.pdf){width=30%}
+![UMAP before Harmony correction, colored by sample.](../resultados/01_qc/umap_preharmony.pdf){width=30%}
 
 \newpage
 
@@ -496,7 +496,7 @@ message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
 Representative output from Section 4:
 
-![UMAP after Harmony correction, colored by sample.](rerun_figs/umap_postharmony.pdf){width=30%}
+![UMAP after Harmony correction, colored by sample.](../resultados/01_qc/umap_postharmony.pdf){width=30%}
 
 \newpage
 
@@ -542,7 +542,7 @@ Representative outputs from Section 5:
 ```{=latex}
 \begin{center}
 ```
-![Elbow diagnostic used to inspect candidate cluster numbers.](rerun_figs/elbow_plot.pdf){width=30%} ![Cluster tree across candidate Leiden resolutions.](rerun_figs/clustree.pdf){width=30%}
+![Elbow diagnostic used to inspect candidate cluster numbers.](../resultados/02_clustering/elbow_plot.pdf){width=30%} ![Cluster tree across candidate Leiden resolutions.](../resultados/02_clustering/clustree2.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -571,7 +571,7 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 
 Representative output from Section 6:
 
-![Final UMAP colored by numbered Seurat clusters.](rerun_figs/umap_seuratclusters.pdf){width=30%}
+![Final UMAP colored by numbered Seurat clusters.](../resultados/02_clustering/umap_seuratclusters.pdf){width=30%}
 
 \newpage
 
@@ -621,7 +621,7 @@ Representative outputs from Section 7:
 ```{=latex}
 \begin{center}
 ```
-![Marker dotplot after bibliography-based cell-type annotation.](rerun_figs/dotplot_annotation.pdf){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](rerun_figs/umap_annotation.pdf){width=30%}
+![Marker dotplot after bibliography-based cell-type annotation.](../resultados/03_annotation/dotplot_marker_table_annotation_biblio.pdf){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](../resultados/03_annotation/umap_annotation_biblio.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -662,7 +662,7 @@ message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 
 Representative output from Section 8:
 
-![Cluster tree labeled by the dominant bibliography-based annotation in each node.](rerun_figs/clustree_annotated.pdf){width=30%}
+![Cluster tree labeled by the dominant bibliography-based annotation in each node.](../resultados/03_annotation/clustree_annotated.pdf){width=30%}
 
 \newpage
 
@@ -698,7 +698,7 @@ Representative outputs from Section 9:
 ```{=latex}
 \begin{center}
 ```
-![Violin plot for the selected gene across all annotated cell types.](rerun_figs/vln_gene.pdf){width=30%} ![UMAP expression overlay for the selected gene.](rerun_figs/feature_gene.pdf){width=30%}
+![Violin plot for the selected gene across all annotated cell types.](../resultados/04_expression/vln_gene_AT5G26000.pdf){width=30%} ![UMAP expression overlay for the selected gene.](../resultados/04_expression/feature_gene_AT5G26000.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -708,12 +708,11 @@ Representative outputs from Section 9:
 ## Section 10 - Cell-type grouping [optional]
 
 ```{r section_10_cell_type_grouping_optional, strip_comments=FALSE}
-grouping <- c()
-# Example:
-# grouping <- c(
-#   "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
-#   "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl"
-# )
+# Merge the two mesophyll subclusters into a single "Mesophyll" label
+grouping <- c(
+  "Mesophyll.1" = "Mesophyll",
+  "Mesophyll.2" = "Mesophyll"
+)
 
 output_dir <- dir_05
 
@@ -736,7 +735,7 @@ message("\nOK SECTION 10 COMPLETE: cell-type grouping complete")
 
 Representative output from Section 10:
 
-![UMAP colored by grouped cell-type labels.](rerun_figs/umap_grouped.pdf){width=30%}
+![UMAP colored by grouped cell-type labels.](assets/umap_grouped_mesophyll_docker.pdf){width=30%}
 
 \newpage
 
@@ -806,7 +805,7 @@ export_to_scanpy(
 
 # To export a specific cell type only:
 # export_to_scanpy(
-#   subset(pbmc_harmony, subset = celltype_curated == "guard cell"),
+#   subset(pbmc_harmony, subset = celltype_curated == "GC"),
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
@@ -848,13 +847,24 @@ cell_type_subsets <- create_cell_type_subsets(
 message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
 ```
 
-Cells per cell type (first three shown):
+Cells per cell type (bibliography annotation `celltype_curated`; the two
+mesophyll subclusters and the still-numeric unannotated clusters are kept
+separate at this stage):
 
 | Cell type | Cells |
 |---|---:|
-| Epidermis_Hypocotyl_1 | 1847 |
-| Epidermis_Cotyledon | 1461 |
-| Mesophyll | 488 |
+| Epidermis | 1464 |
+| SAM | 875 |
+| Mesophyll_1 | 680 |
+| Mesophyll_2 | 489 |
+| MMC | 366 |
+| Vascular | 148 |
+| GC | 49 |
+| 1 | 1839 |
+| 2 | 1594 |
+| 8 | 366 |
+| 10 | 78 |
+| 11 | 57 |
 
 ## Section 14 - Pseudo-replicate assignment
 
@@ -869,26 +879,27 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 )
 
 # Inspect cells per pseudo-replicate for one cell type
-table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
+table(cell_type_subsets_replicates[["Epidermis"]]$replicate)
 
 message("\nOK SECTION 14 COMPLETE: pseudo-replicates assigned")
 ```
 
-Cell types present in only one condition (e.g. `C2`, present in only 57 cells
-from a single sample) are dropped here, since a WT vs pifq contrast needs both
-conditions represented.
+Cell types present in only one condition (here cluster `11`, with only 57
+cells and all from the pifq sample) are dropped, since a WT vs pifq contrast
+needs both conditions represented. Eleven cell types are retained.
 
-Cells per pseudo-replicate (first three cell types shown):
+Cells per pseudo-replicate (first two cell types shown):
 
 | Cell type | Replicate | Cells |
 |---|---|---:|
-| Epidermis_Hypocotyl_1 | pifq_rep1 | 329 |
-| Epidermis_Hypocotyl_1 | pifq_rep2 | 366 |
-| Epidermis_Hypocotyl_1 | pifq_rep3 | 346 |
-| Epidermis_Hypocotyl_1 | WT_rep1 | 279 |
-| Epidermis_Hypocotyl_1 | WT_rep2 | 272 |
-| Epidermis_Hypocotyl_1 | WT_rep3 | 255 |
-| Epidermis_Cotyledon | pifq_rep1 | 316 |
+| Epidermis | pifq_rep1 | 318 |
+| Epidermis | pifq_rep2 | 353 |
+| Epidermis | pifq_rep3 | 329 |
+| Epidermis | WT_rep1 | 164 |
+| Epidermis | WT_rep2 | 155 |
+| Epidermis | WT_rep3 | 145 |
+| Mesophyll_1 | pifq_rep1 | 223 |
+| Mesophyll_1 | pifq_rep2 | 218 |
 | ... | ... | ... |
 
 ## Section 15 - Pseudobulk tables and DESeq2
@@ -914,13 +925,13 @@ message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
 DESeq2 results table (one row per gene, with `log2FoldChange`, `pvalue`, and
 `padj`). Positive log2FC means higher expression in pifq. First rows of the
-Mesophyll table:
+Mesophyll_1 table:
 
 ```text
              baseMean  log2FoldChange   lfcSE      stat     pvalue      padj
-AT1G01010    46.22     -2.102           0.307     -6.857   7.0e-12     9.7e-11
-AT1G01020    48.78      0.100           0.326      0.306   7.6e-01     8.5e-01
-AT1G01030   172.27      0.437           0.306      1.428   1.5e-01     2.8e-01
+AT1G01010    16.74     -1.651           0.418     -3.946   7.9e-05     9.3e-04
+AT1G01020    27.42      0.697           0.388      1.798   7.2e-02     2.2e-01
+AT1G01030   117.17     -1.439           0.501     -2.871   4.1e-03     2.6e-02
 ```
 
 ## Section 16 - Volcano plots
@@ -943,7 +954,7 @@ message("\nOK SECTION 16 COMPLETE: volcano plots saved")
 
 Representative output from Section 16:
 
-![Volcano plot for Mesophyll, WT vs pifq.](rerun_figs/volcano.pdf){width=30%}
+![Volcano plot for Mesophyll_1, WT vs pifq.](../resultados/06_de_results/WT_vs_pifq/volcano/DESeq2_Mesophyll_1_WT_vs_pifq.png){width=30%}
 
 ## Section 17 - Differential gene tables
 
@@ -965,15 +976,15 @@ This writes two combined matrices (genes x cell types). The class matrix
 (`diff_table_WT_vs_pifq_*.tsv`) uses `+1`/`-1`/`0` to flag genes up-, down-, or
 not significantly regulated in each cell type; the log2FC matrix
 (`tabla_log2FC_*.tsv`) holds the actual fold changes (`NA` where not
-significant). Example rows for three annotated cell types (Epidermis
-Cotyledon, guard cell, Mesophyll):
+significant). Example rows for three annotated cell types (Epidermis,
+Mesophyll_1, SAM):
 
 ```text
 # class matrix                       # log2FC matrix
-gene_id    EpiCot  guard  Meso       gene_id    EpiCot  guard  Meso
-AT1G29930    1       1      1        AT1G29930    4.79    3.51   2.02
-AT1G54410   -1       1     -1        AT1G54410   -1.23    2.52  -1.88
-AT1G55670    1       1      1        AT1G55670    3.58    4.05   1.66
+gene_id    Epid  Meso1  SAM          gene_id    Epid   Meso1  SAM
+AT1G01010    0    -1     -1          AT1G01010    NA    -1.65  -1.51
+AT1G01030    0    -1      1          AT1G01030    NA    -1.44   3.05
+AT1G01060    1     1      0          AT1G01060   2.35    4.08    NA
 ```
 
 ## Section 18 - GO enrichment
@@ -999,7 +1010,7 @@ message("\nOK SECTION 18 COMPLETE: GO enrichment complete")
 
 Representative output from Section 18:
 
-![GO enrichment (BP) for Mesophyll, WT vs pifq.](rerun_figs/go_mesophyll.pdf){width=30%}
+![GO enrichment (BP) for Mesophyll_1, WT vs pifq.](../resultados/07_go/WT_vs_pifq/GO_Mesophyll_1_WT_vs_pifq_WT_vs_pifq_BP_bubble.pdf){width=30%}
 
 ## Section 19 - Log2FC heatmap
 
@@ -1024,7 +1035,7 @@ message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
 
 Representative output from Section 19:
 
-![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](rerun_figs/heatmap.pdf){width=30%}
+![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](../resultados/06_de_results/WT_vs_pifq/heatmap_WT_vs_pifq.pdf){width=30%}
 
 \newpage
 
@@ -1058,7 +1069,7 @@ message("\nOK SECTION 20 COMPLETE: TF coexpression network saved")
 
 Representative output from Section 20:
 
-![TF co-expression network, colored by DE direction.](rerun_figs/network.pdf){width=30%}
+![TF co-expression network, colored by DE direction.](../resultados/08_networks/network_tf_DE_direction.pdf){width=30%}
 
 \newpage
 
@@ -1113,16 +1124,17 @@ adata, N_JOBS = load_curated_object(
 
 Representative output from Section 24:
 
-![Overview UMAP colored by curated cell type.](rerun_figs/pt_overview.pdf){width=30%}
+![Overview UMAP colored by curated cell type.](../resultados/09_pseudotime/umap_overview.pdf){width=30%}
 
 ## Section 25 - Cell type selection
 
-Picks the cell types used to build the trajectory. Here we follow the stomatal
-lineage: cotyledon epidermis differentiating into guard cells. Names must match
-the Section 24 list exactly.
+Picks the cell types used to build the trajectory. Here we follow the
+epidermis lineage alone (the `Epidermis` label; guard cells are a separate
+`GC` group and are not included here). Names must match the Section 24 list
+exactly.
 
 ```{python section_25_cell_selection, eval=FALSE}
-TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon", "guard cell"]
+TRAJECTORY_CLUSTERS = ["Epidermis"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -1134,7 +1146,7 @@ adata_sub = preview_trajectory_selection(
 
 Representative output from Section 25:
 
-![UMAP of the cells selected for the trajectory.](rerun_figs/pt_selection.pdf){width=30%}
+![UMAP of the cells selected for the trajectory.](../resultados/09_pseudotime/umap_selection.pdf){width=30%}
 
 ## Section 26 - Trajectory inference
 
@@ -1143,10 +1155,10 @@ root selection at the progenitor cluster, and pseudotime assignment. Add more
 `trajectory_run(...)` entries to sweep parameters.
 
 ```{python section_26_trajectory, eval=FALSE}
-ROOT_CLUSTER = "Epidermis Cotyledon"
+ROOT_CLUSTER = "Epidermis"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.1, lambda_value=200, eigs=8, seed=3),
+    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=8, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -1159,15 +1171,19 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 )
 ```
 
-Representative outputs from Section 26:
+Representative outputs from Section 26. `sigma=0.3` was chosen (over the
+default 0.1) after a one-at-a-time parameter sweep (nodes/sigma/lambda/eigs)
+around the same root cell, for a looser tree fit:
 
 ```{=latex}
 \begin{center}
 ```
-![Trajectory graph colored by cell type.](rerun_figs/pt_traj_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](rerun_figs/pt_traj_time.pdf){width=30%}
+![Trajectory graph colored by cell type.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_pseudotime_trajectory.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
+
+![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_root_cell.pdf){width=30%}
 
 ## Section 27 - Plot genes on trajectory
 
@@ -1193,7 +1209,7 @@ print("SECTION 27 COMPLETE: gene trajectory plots saved")
 
 Representative output from Section 27:
 
-![Selected genes on the trajectory layout.](rerun_figs/pt_gene_plots.pdf){width=30%}
+![Selected genes on the trajectory layout.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_plots/n50_s0.3_l200_e8_seed3_gene_plots.pdf){width=30%}
 
 ## Section 28 - Gene trends
 
@@ -1226,7 +1242,7 @@ highlighted gene list:
 ```{=latex}
 \begin{center}
 ```
-![Top 10 variable genes along pseudotime.](rerun_figs/pt_gene_trends.pdf){width=48%} ![Highlighted gene list along pseudotime.](rerun_figs/pt_gene_trends_highlight.pdf){width=48%}
+![Top 10 variable genes along pseudotime.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_top10_FINAL_24x18.pdf){width=48%} ![Highlighted gene list along pseudotime.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_highlight_list_FINAL_24x18.pdf){width=48%}
 ```{=latex}
 \end{center}
 ```
