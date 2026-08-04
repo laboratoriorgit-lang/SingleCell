@@ -798,8 +798,9 @@ find_markers <- function(seurat_obj,
 #'
 #' @param seurat_obj     Seurat object.
 #' @param markers        Data frame from find_markers().
-#' @param reference_file Path to reference table (gene | cell.types).
-#'   If NULL, a file chooser dialog is shown.
+#' @param reference_file Path to reference table; the first two columns are used
+#'   by position (column 1 = cell type, column 2 = gene). Header names are
+#'   ignored. If NULL, a file chooser dialog is shown.
 #' @return Seurat object with celltype metadata and updated Idents.
 #' @export
 annotate_by_markers <- function(seurat_obj,
@@ -807,12 +808,15 @@ annotate_by_markers <- function(seurat_obj,
                                 reference_file = NULL) {
 
   if (is.null(reference_file)) {
-    reference_file <- file.choose(caption = "Select reference file (gene | cell.types)")
+    reference_file <- file.choose(caption = "Select reference file (col 1 = cell type, col 2 = gene)")
   }
 
   cat("Using reference:", reference_file, "\n")
 
   reference <- read.table(reference_file, header = TRUE, sep = "\t", quote = "")
+  # Only the first two columns are used, by position: column 1 is the cell type
+  # and column 2 is the gene. Header names are ignored.
+  reference <- setNames(reference[, 1:2], c("cell.types", "gene"))
 
   merged <- merge(markers, reference, by.x = "gene", by.y = "gene")
   merged <- merged[order(merged$cluster, merged$p_val_adj), ]

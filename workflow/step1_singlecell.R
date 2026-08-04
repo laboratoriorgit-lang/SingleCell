@@ -221,9 +221,13 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 output_dir <- dir_03
 
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
+# Only the first two columns are used, by position: column 1 is the cell type
+# and column 2 is the gene. The header row is skipped but its names are ignored,
+# so the marker file can use any header labels.
 marker_table <- read.table(
   biblio_marks_file, header = TRUE, sep = "\t", quote = ""
 )
+marker_table <- setNames(marker_table[, 1:2], c("cell.types", "gene"))
 
 markers <- find_markers(
   pbmc_harmony,
