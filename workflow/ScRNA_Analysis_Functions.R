@@ -15,22 +15,22 @@
 #     - summarize_nfeature_plot
 #
 #  2. PREPROCESSING AND DOUBLET DETECTION
-#     - preprocesar_y_doubletfinder
+#     - preprocess_and_doubletfinder
 #     - doubletfinder_pipeline
 #     - filter_sample        (filter + DoubletFinder on annotated object)
 #
 #  3. BULK / PSEUDOBULK UTILITIES
 #     - normalize_bulk_pseudobulk
-#     - clasificar_residuos
+#     - classify_residuals
 #     - generate_pseudobulk
 #     - plot_replicate_correlation
 #
 #  4. SEURAT UTILITIES
-#     - unificar_nombres
-#     - mostrar_tabla
+#     - unify_names
+#     - show_annotation_table
 #     - export_to_scanpy
 #     - safe_vln
-#     - unir_layers_counts
+#     - join_layers_counts
 #
 #  5. ANNOTATION
 #     - find_markers
@@ -41,16 +41,16 @@
 #  6. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
 #     - assign_pseudo_replicates
 #     - run_pseudobulk
-#     - correr_deseq2
+#     - run_deseq2
 #     - plot_volcano
-#     - procesar_deseq2_resultado
+#     - process_deseq2_result
 #     - plot_heatmap
 #     - plot_marker_dotplot
 #
 #  7. GO ENRICHMENT
-#     - correr_enriquecimiento_go
-#     - podar_go
-#     - graficar_go_balones
+#     - compute_go_enrichment
+#     - prune_go
+#     - plot_go_bubbles
 #
 # =============================================================================
 
@@ -118,13 +118,13 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 
   lista_df <- lapply(seq_along(obj_list), function(i) {
     obj <- obj_list[[i]]
-    data.frame(nFeature_RNA = obj@meta.data$nFeature_RNA, grupo = labels[i])
+    data.frame(nFeature_RNA = obj@meta.data$nFeature_RNA, group = labels[i])
   })
 
   meta_comb       <- bind_rows(lista_df)
-  meta_comb$grupo <- factor(meta_comb$grupo, levels = labels)
+  meta_comb$group <- factor(meta_comb$group, levels = labels)
 
-  p_box <- ggplot(meta_comb, aes(x = grupo, y = nFeature_RNA, fill = grupo)) +
+  p_box <- ggplot(meta_comb, aes(x = group, y = nFeature_RNA, fill = group)) +
     geom_boxplot(outlier.shape = NA, width = 0.6) +
     geom_jitter(width = 0.2, alpha = 0.3, size = 0.5) +
     scale_fill_manual(values = colores) +
@@ -132,8 +132,8 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
     theme_minimal(base_size = 12) +
     theme(legend.position = "none")
 
-  cuartiles <- meta_comb %>%
-    group_by(grupo) %>%
+  quartiles <- meta_comb %>%
+    group_by(group) %>%
     summarise(
       Min    = quantile(nFeature_RNA, 0),
       Q1     = quantile(nFeature_RNA, 0.25),
@@ -142,10 +142,10 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
       Max    = quantile(nFeature_RNA, 1),
       .groups = "drop"
     ) %>%
-    arrange(factor(grupo, levels = labels))
+    arrange(factor(group, levels = labels))
 
   quintiles <- meta_comb %>%
-    group_by(grupo) %>%
+    group_by(group) %>%
     summarise(
       `0%`   = quantile(nFeature_RNA, 0.0),
       `20%`  = quantile(nFeature_RNA, 0.2),
@@ -155,21 +155,21 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
       `100%` = quantile(nFeature_RNA, 1.0),
       .groups = "drop"
     ) %>%
-    arrange(factor(grupo, levels = labels))
+    arrange(factor(group, levels = labels))
 
-  tabla_cuartiles <- tableGrob(cuartiles)
-  tabla_quintiles <- tableGrob(quintiles)
+  quartiles_table <- tableGrob(quartiles)
+  quintiles_table <- tableGrob(quintiles)
 
-  panel_tablas <- plot_grid(
+  panel_tables <- plot_grid(
     ggdraw() + draw_label("Quartiles", fontface = "bold", size = 13),
-    ggdraw() + draw_grob(tabla_cuartiles),
+    ggdraw() + draw_grob(quartiles_table),
     ggdraw() + draw_label("Quintiles", fontface = "bold", size = 13),
-    ggdraw() + draw_grob(tabla_quintiles),
+    ggdraw() + draw_grob(quintiles_table),
     ncol        = 1,
     rel_heights = c(0.15, 1, 0.15, 1)
   )
 
-  final_plot <- plot_grid(p_box, panel_tablas, ncol = 2, rel_widths = c(1.5, 1))
+  final_plot <- plot_grid(p_box, panel_tables, ncol = 2, rel_widths = c(1.5, 1))
   print(final_plot)
 }
 
@@ -188,7 +188,7 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 #' @param project_id             Project ID label.
 #' @return Seurat object with doublet classifications in metadata.
 #' @export
-preprocesar_y_doubletfinder <- function(seurat_obj,
+preprocess_and_doubletfinder <- function(seurat_obj,
                                         pcs                   = 1:20,
                                         expected_doublet_rate = 0.075,
                                         project_id            = "sample") {
@@ -415,7 +415,7 @@ normalize_bulk_pseudobulk <- function(pseudobulk_counts, bulk_counts) {
 #' @param umbral Residual threshold for classification.
 #' @return The input data frame augmented with residuals and status columns.
 #' @export
-clasificar_residuos <- function(df, umbral = 5) {
+classify_residuals <- function(df, umbral = 5) {
 
   modelo      <- lm(bulk ~ pseudobulk, data = df)
   df$residuals <- resid(modelo)
@@ -463,7 +463,7 @@ generate_pseudobulk <- function(seurat_obj,
     }
 
     gene_sums <- Matrix::rowSums(counts)
-    cat(" ", group_name, "->", ncol(cells), "celulas,", length(gene_sums), "genes\n")
+    cat(" ", group_name, "->", ncol(cells), "cells,", length(gene_sums), "genes\n")
     return(gene_sums)
   }
 
@@ -544,7 +544,7 @@ plot_replicate_correlation <- function(pseudobulk_mat,
 #' @param obj Seurat object.
 #' @return Seurat object with updated Idents.
 #' @export
-unificar_nombres <- function(obj) {
+unify_names <- function(obj) {
 
   old_levels <- levels(obj)
   new_levels <- gsub("[._][0-9]+$", "", old_levels)
@@ -561,9 +561,9 @@ unificar_nombres <- function(obj) {
 #'
 #' @param filtered_vec  Filtered annotation vector.
 #' @param reference_vec Reference annotation vector.
-#' @param titulo        Table title.
+#' @param title        Table title.
 #' @export
-mostrar_tabla <- function(filtered_vec, reference_vec, titulo = "Annotations") {
+show_annotation_table <- function(filtered_vec, reference_vec, title = "Annotations") {
 
   t1       <- table(filtered_vec)
   t2       <- table(reference_vec)
@@ -732,7 +732,7 @@ safe_vln <- function(obj, feature, colors) {
 #' @param capas Character vector of layer names to merge.
 #' @return A merged sparse matrix.
 #' @export
-unir_layers_counts <- function(obj, capas) {
+join_layers_counts <- function(obj, capas) {
 
   if (length(capas) == 1) {
     return(GetAssayData(obj[["RNA"]], layer = capas))
@@ -822,7 +822,7 @@ annotate_by_markers <- function(seurat_obj,
   merged <- merged[order(merged$cluster, merged$p_val_adj), ]
   merged <- merged[!duplicated(merged$cluster), ]
 
-  cat("\nCoincidencias encontradas:\n")
+  cat("\nMatches found:\n")
   print(merged[, c("cluster", "gene", "cell.types")])
 
   # Add .1 .2 suffix when multiple clusters share the same cell type label
@@ -919,7 +919,7 @@ annotate_by_reference <- function(seurat_obj,
 #' given resolution.
 #'
 #' @param obj        Seurat object.
-#' @param tipo       Cell type(s) to subset (must match values in annot_col).
+#' @param ctype       Cell type(s) to subset (must match values in annot_col).
 #' @param annot_col  Metadata column holding cell-type labels.
 #' @param resolution Clustering resolution.
 #' @param dims       Dimensions for UMAP and neighbor finding.
@@ -947,10 +947,10 @@ plot_subcluster_umap <- function(obj, label, output_dir) {
 }
 
 
-subcluster_cell_type <- function(obj, tipo, annot_col = "celltype_grouped",
+subcluster_cell_type <- function(obj, ctype, annot_col = "celltype_grouped",
                             resolution = 0.3, dims = 1:20) {
 
-  sub <- subset(obj, cells = colnames(obj)[obj@meta.data[[annot_col]] %in% tipo])
+  sub <- subset(obj, cells = colnames(obj)[obj@meta.data[[annot_col]] %in% ctype])
 
   # For small subsets, recompute variable features
   ncells <- ncol(sub)
@@ -1057,7 +1057,7 @@ inspect_subcluster_markers <- function(obj, cluster_id, marker_table,
                                         n_marker_cols = 6) {
 
   sub_obj <- subcluster_cell_type(
-    obj, tipo = cluster_id, annot_col = annot_col,
+    obj, ctype = cluster_id, annot_col = annot_col,
     resolution = resolution, dims = dims
   )
 
@@ -1282,7 +1282,7 @@ run_pseudobulk <- function(obj) {
 #' @param prefix      Filename prefix (default "Pseudobulk_Reps_").
 #' @return Named list of pseudobulk count data frames.
 #' @export
-guardar_tablas_pseudobulk <- function(obj_list,
+save_pseudobulk_tables <- function(obj_list,
                                       output_dir,
                                       prefix = "Pseudobulk_Reps_",
                                       min_cells = 10,
@@ -1292,38 +1292,38 @@ guardar_tablas_pseudobulk <- function(obj_list,
 
   pseudobulk_list <- list()
 
-  for (tipo in names(obj_list)) {
-    obj <- obj_list[[tipo]]
+  for (ctype in names(obj_list)) {
+    obj <- obj_list[[ctype]]
 
     if (!"replicate" %in% colnames(obj@meta.data)) {
-      warning("Skipping ", tipo, " because it lacks 'replicate' metadata.")
+      warning("Skipping ", ctype, " because it lacks 'replicate' metadata.")
       next
     }
 
     obj <- subset(obj, cells = colnames(obj)[!is.na(obj$replicate)])
     if (ncol(obj) < min_cells) {
-      warning("Skipping ", tipo, " because it has fewer than ", min_cells, " cells with pseudo-replicates.")
+      warning("Skipping ", ctype, " because it has fewer than ", min_cells, " cells with pseudo-replicates.")
       next
     }
 
     rep_tab <- table(obj$replicate)
     if (length(rep_tab) < min_replicates) {
-      warning("Skipping ", tipo, " because it has fewer than ", min_replicates, " pseudo-replicates.")
+      warning("Skipping ", ctype, " because it has fewer than ", min_replicates, " pseudo-replicates.")
       next
     }
 
     counts_reps_df <- run_pseudobulk(obj)
 
-    pseudobulk_list[[tipo]] <- counts_reps_df
+    pseudobulk_list[[ctype]] <- counts_reps_df
 
-    tipo_clean <- gsub("[^[:alnum:]_]", "_", tipo)
+    tipo_clean <- gsub("[^[:alnum:]_]", "_", ctype)
     file_name  <- paste0(prefix, tipo_clean, ".csv")
 
     write.csv(counts_reps_df,
               file = file.path(output_dir, file_name),
               row.names = TRUE)
 
-    message("Saved pseudobulk table for ", tipo, " (", ncol(counts_reps_df), " replicates).")
+    message("Saved pseudobulk table for ", ctype, " (", ncol(counts_reps_df), " replicates).")
   }
 
   pseudobulk_list
@@ -1337,7 +1337,7 @@ guardar_tablas_pseudobulk <- function(obj_list,
 #' result CSV files.
 #'
 #' @param counts_mat   Genes x samples count matrix (integer).
-#' @param comparaciones List of lists, each with fields:
+#' @param comparisons List of lists, each with fields:
 #'   \describe{
 #'     \item{conds}{Character vector of length 2: c(reference, treatment).}
 #'     \item{tag}{String label used for output file naming.}
@@ -1346,14 +1346,14 @@ guardar_tablas_pseudobulk <- function(obj_list,
 #'   output_dir/tag/DESeq2_tag.csv.
 #' @return Invisible NULL (side effect: writes CSV files).
 #' @export
-correr_deseq2 <- function(counts_mat, comparaciones, output_dir, tipo = NULL) {
+run_deseq2 <- function(counts_mat, comparisons, output_dir, ctype = NULL) {
 
   rep_names <- colnames(counts_mat)
   condition <- gsub("[_-]rep[0-9]+$", "", sub("^g", "", rep_names))
 
   if (length(unique(condition)) < 2) return(invisible(NULL))
 
-  for (comp in comparaciones) {
+  for (comp in comparisons) {
     conds <- comp$conds
     tag   <- comp$tag
     keep   <- condition %in% conds
@@ -1364,13 +1364,13 @@ correr_deseq2 <- function(counts_mat, comparaciones, output_dir, tipo = NULL) {
     rep_tab    <- table(cond_sub)
 
     if (!all(conds %in% names(rep_tab))) {
-      message("Skipping ", tag, " for ", ifelse(is.null(tipo), "global", tipo),
+      message("Skipping ", tag, " for ", ifelse(is.null(ctype), "global", ctype),
               ": missing condition(s).")
       next
     }
 
     if (any(rep_tab[conds] < 2) || ncol(counts_sub) <= length(conds)) {
-      message("Skipping ", tag, " for ", ifelse(is.null(tipo), "global", tipo),
+      message("Skipping ", tag, " for ", ifelse(is.null(ctype), "global", ctype),
               ": insufficient pseudo-replicates per condition.")
       next
     }
@@ -1386,7 +1386,7 @@ correr_deseq2 <- function(counts_mat, comparaciones, output_dir, tipo = NULL) {
     dds <- DESeq(dds)
     res <- results(dds, contrast = c("condition", conds[2], conds[1]))
 
-    prefix <- if (!is.null(tipo)) paste0("DESeq2_", tipo, "_") else "DESeq2_"
+    prefix <- if (!is.null(ctype)) paste0("DESeq2_", ctype, "_") else "DESeq2_"
     write.csv(as.data.frame(res),
               file = file.path(output_dir, tag, paste0(prefix, tag, ".csv")))
   }
@@ -1406,8 +1406,8 @@ correr_deseq2 <- function(counts_mat, comparaciones, output_dir, tipo = NULL) {
 #' @export
 plot_volcano <- function(file, padj_cut = 0.05, lfc_cut = 1) {
 
-  nombre_base <- tools::file_path_sans_ext(basename(file))
-  titulo      <- gsub("DESeq2_", "", nombre_base)
+  base_name <- tools::file_path_sans_ext(basename(file))
+  title      <- gsub("DESeq2_", "", base_name)
 
   df <- read.csv(file) %>%
     rownames_to_column("gene") %>%
@@ -1430,7 +1430,7 @@ plot_volcano <- function(file, padj_cut = 0.05, lfc_cut = 1) {
     )) +
     geom_vline(xintercept = c(-lfc_cut, lfc_cut), linetype = "dashed") +
     geom_hline(yintercept = -log10(padj_cut),      linetype = "dashed") +
-    labs(title  = titulo,
+    labs(title  = title,
          x      = "Log2 Fold Change",
          y      = "-Log10 adj p-value",
          color  = "Significance") +
@@ -1449,13 +1449,13 @@ plot_volcano <- function(file, padj_cut = 0.05, lfc_cut = 1) {
 #' @param lfc_cut    Log2 fold-change cutoff.
 #' @return Named list with elements class and logfc (data frames).
 #' @export
-procesar_deseq2_resultado <- function(file_path,
+process_deseq2_result <- function(file_path,
                                       output_dir,
                                       padj_cut = 0.05,
                                       lfc_cut  = 1) {
 
   df          <- read_csv(file_path, show_col_types = FALSE)
-  comparacion <- gsub("^DESeq2_(.*)\\.csv$", "\\1", basename(file_path))
+  comparison <- gsub("^DESeq2_(.*)\\.csv$", "\\1", basename(file_path))
 
   # First column is always the gene ID (written as rownames by write.csv)
   gene_col <- colnames(df)[1]
@@ -1470,7 +1470,7 @@ procesar_deseq2_resultado <- function(file_path,
       )
     ) %>%
     dplyr::select(gene_id, clasificacion) %>%
-    setNames(c("gene_id", comparacion))
+    setNames(c("gene_id", comparison))
 
   df_logfc <- df %>%
     mutate(
@@ -1479,10 +1479,10 @@ procesar_deseq2_resultado <- function(file_path,
                        log2FoldChange, NA_real_)
     ) %>%
     dplyr::select(gene_id, logfc) %>%
-    setNames(c("gene_id", comparacion))
+    setNames(c("gene_id", comparison))
 
   df_filt <- df %>% filter(padj <= padj_cut, abs(log2FoldChange) > lfc_cut)
-  write_csv(df_filt, file.path(output_dir, paste0(comparacion, "_filtrado.csv")))
+  write_csv(df_filt, file.path(output_dir, paste0(comparison, "_filtered.csv")))
 
   list(class = df_class, logfc = df_logfc)
 }
@@ -1564,41 +1564,41 @@ build_differential_tables <- function(results_dir,
                                       output_dir,
                                       padj_cut = 0.05,
                                       lfc_cut  = 1,
-                                      prefix   = "tabla_diferenciales") {
+                                      prefix   = "diff_table") {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   files <- list.files(results_dir, pattern = "^DESeq2_.*\\.csv$", full.names = TRUE)
   if (!length(files)) stop("No DESeq2 CSV files found in: ", results_dir)
 
-  listas <- lapply(files,
-                   procesar_deseq2_resultado,
+  de_lists <- lapply(files,
+                   process_deseq2_result,
                    output_dir = output_dir,
                    padj_cut   = padj_cut,
                    lfc_cut    = lfc_cut)
 
-  tabla_class <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
-                        lapply(listas, `[[`, "class")) %>%
+  class_table <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
+                        lapply(de_lists, `[[`, "class")) %>%
     arrange(gene_id)
 
-  tabla_logfc <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
-                        lapply(listas, `[[`, "logfc")) %>%
+  logfc_table <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
+                        lapply(de_lists, `[[`, "logfc")) %>%
     arrange(gene_id)
 
-  tabla_filtrada <- tabla_class %>%
+  filtered_table <- class_table %>%
     filter(apply(dplyr::select(., -gene_id) != 0, 1, any))
 
-  tabla_logfc_filtrada <- tabla_logfc %>%
-    filter(gene_id %in% tabla_filtrada$gene_id)
+  filtered_logfc_table <- logfc_table %>%
+    filter(gene_id %in% filtered_table$gene_id)
 
   suffix <- paste0("fc", lfc_cut, "_padj_", gsub("\\.", "", as.character(padj_cut)))
 
-  write_tsv(tabla_filtrada,
+  write_tsv(filtered_table,
             file.path(output_dir, paste0(prefix, "_", suffix, ".tsv")))
-  write_tsv(tabla_logfc_filtrada,
-            file.path(output_dir, paste0("tabla_log2FC_", suffix, ".tsv")))
+  write_tsv(filtered_logfc_table,
+            file.path(output_dir, paste0("log2FC_table_", suffix, ".tsv")))
 
-  list(class = tabla_filtrada, logfc = tabla_logfc_filtrada)
+  list(class = filtered_table, logfc = filtered_logfc_table)
 }
 
 
@@ -1607,17 +1607,17 @@ build_differential_tables <- function(results_dir,
 #' Clusters rows (genes) by Euclidean distance + dynamic tree cut, clusters
 #' columns (conditions) by PCA-based distance, and renders a pheatmap.
 #'
-#' @param matriz       Numeric matrix (genes x conditions), e.g. log2FC values.
+#' @param mat       Numeric matrix (genes x conditions), e.g. log2FC values.
 #' @param min_genes    Minimum cluster size for dynamic tree cut.
 #' @param deepSplit_val deepSplit parameter for cutreeDynamic.
 #' @param breaks       Two-element vector c(min, max) for the color scale.
 #' @export
-plot_heatmap <- function(matriz,
+plot_heatmap <- function(mat,
                           min_genes    = 1,
                           deepSplit_val = 0,
                           breaks       = c(-5, 5)) {
 
-  dist_rows <- dist(matriz, method = "euclidean")
+  dist_rows <- dist(mat, method = "euclidean")
   hc_rows   <- hclust(dist_rows, method = "complete")
 
   clust <- cutreeDynamic(
@@ -1628,19 +1628,19 @@ plot_heatmap <- function(matriz,
     pamRespectsDendro = FALSE
   )
 
-  pca_res <- prcomp(t(matriz), scale. = FALSE)
+  pca_res <- prcomp(t(mat), scale. = FALSE)
   var_exp <- summary(pca_res)$importance[3, ]
   n_pcs   <- which(var_exp >= 0.90)[1]
   hc_cols <- hclust(dist(pca_res$x[, 1:n_pcs]), method = "complete")
 
   paleta         <- colorRampPalette(brewer.pal(12, "Dark2"))(length(unique(clust[clust > 0])))
   annotation_row <- data.frame(Cluster = as.factor(clust))
-  rownames(annotation_row) <- rownames(matriz)
+  rownames(annotation_row) <- rownames(mat)
 
   breaks_seq  <- seq(breaks[1], breaks[2], length.out = 80)
   color_scale <- colorRampPalette(c("blue", "black", "yellow"))(length(breaks_seq) - 1)
 
-  pheatmap(matriz,
+  pheatmap(mat,
            cluster_rows    = hc_rows,
            cluster_cols    = hc_cols,
            annotation_row  = annotation_row,
@@ -1654,7 +1654,7 @@ plot_heatmap <- function(matriz,
            fontsize_row    = 1,
            fontsize_col    = 20,
            fontsize        = 22,
-           main            = sprintf("Heatmap (%d genes)", nrow(matriz)))
+           main            = sprintf("Heatmap (%d genes)", nrow(mat)))
 }
 
 
@@ -1794,22 +1794,22 @@ plot_marker_dotplot <- function(seurat_obj,
 #'   - Mus musculus         : OrgDb = org.Mm.eg.db,   keytype = "ENSEMBL" or "ENTREZID"
 #'   - Oryza sativa         : OrgDb = org.Os.eg.db,   keytype = "GID"
 #'
-#' @param tabla          Binary matrix (genes x comparisons); genes with value 1
+#' @param tbl          Binary matrix (genes x comparisons); genes with value 1
 #'   are tested for enrichment.
 #' @param universo       Character vector of background gene IDs.
-#' @param espacio        GO namespace: "BP", "MF", or "CC".
+#' @param go_space        GO namespace: "BP", "MF", or "CC".
 #' @param orgdb          OrgDb annotation object (default org.At.tair.db).
-#' @param keytype        Key type matching rownames of tabla (default "TAIR").
+#' @param keytype        Key type matching rownames of tbl (default "TAIR").
 #' @param qvalueCutoff   Q-value cutoff for enrichment (default 0.05).
 #' @param pvalueCutoff   P-value cutoff for enrichment (default 0.05).
 #' @param simplificar    If TRUE, simplify redundant GO terms before saving.
 #' @param umbral_simply  Similarity cutoff for simplify() (default 0.7).
 #' @param output_dir     Directory for output text files.
-#' @return Named list of enrichResult objects (one per column of tabla).
+#' @return Named list of enrichResult objects (one per column of tbl).
 #' @export
-correr_enriquecimiento_go <- function(tabla,
+compute_go_enrichment <- function(tbl,
                                        universo,
-                                       espacio,
+                                       go_space,
                                        orgdb          = org.At.tair.db,
                                        keytype        = "TAIR",
                                        qvalueCutoff   = 0.05,
@@ -1818,14 +1818,14 @@ correr_enriquecimiento_go <- function(tabla,
                                        umbral_simply  = 0.7,
                                        output_dir     = "results/Enrichment") {
 
-  salida        <- vector("list", ncol(tabla))
-  names(salida) <- colnames(tabla)
+  res_out        <- vector("list", ncol(tbl))
+  names(res_out) <- colnames(tbl)
 
-  for (n in seq_len(ncol(tabla))) {
+  for (n in seq_len(ncol(tbl))) {
 
-    gene <- unique(trimws(gsub("\\..*", "", rownames(tabla)[tabla[, n] == 1])))
+    gene <- unique(trimws(gsub("\\..*", "", rownames(tbl)[tbl[, n] == 1])))
     if (length(gene) == 0) {
-      message("Sin genes: ", colnames(tabla)[n])
+      message("No genes: ", colnames(tbl)[n])
       next
     }
 
@@ -1833,42 +1833,42 @@ correr_enriquecimiento_go <- function(tabla,
                      universe      = universo,
                      OrgDb         = orgdb,
                      keyType       = keytype,
-                     ont           = espacio,
+                     ont           = go_space,
                      pAdjustMethod = "BH",
                      pvalueCutoff  = pvalueCutoff,
                      qvalueCutoff  = qvalueCutoff,
                      readable      = FALSE)
 
     if (is.null(enri) || nrow(enri@result) == 0) {
-      message("Sin GO: ", colnames(tabla)[n])
+      message("No GO: ", colnames(tbl)[n])
       next
     }
 
     # Save raw and gene-symbol-readable results
-    sufijo <- paste(colnames(tabla)[n], espacio, qvalueCutoff, sep = ".")
+    suffix <- paste(colnames(tbl)[n], go_space, qvalueCutoff, sep = ".")
 
     write.table(as.data.frame(enri),
-                file.path(output_dir, paste0(sufijo, ".txt")),
+                file.path(output_dir, paste0(suffix, ".txt")),
                 sep = "\t", col.names = NA, quote = FALSE)
 
     write.table(as.data.frame(setReadable(enri, OrgDb = orgdb)),
-                file.path(output_dir, paste0(sufijo, ".symbol.txt")),
+                file.path(output_dir, paste0(suffix, ".symbol.txt")),
                 sep = "\t", col.names = NA, quote = FALSE)
 
     if (simplificar) {
       enri_s <- simplify(enri, cutoff = umbral_simply, by = "p.adjust", select_fun = min)
       if (!is.null(enri_s) && nrow(enri_s@result) > 0) {
         write.table(as.data.frame(enri_s),
-                    file.path(output_dir, paste0(sufijo, ".simply.", umbral_simply, ".txt")),
+                    file.path(output_dir, paste0(suffix, ".simply.", umbral_simply, ".txt")),
                     sep = "\t", col.names = NA, quote = FALSE)
-        salida[[n]] <- enri_s
+        res_out[[n]] <- enri_s
       }
     } else {
-      salida[[n]] <- enri
+      res_out[[n]] <- enri
     }
   }
 
-  return(salida)
+  return(res_out)
 }
 
 
@@ -1877,45 +1877,45 @@ correr_enriquecimiento_go <- function(tabla,
 #' Applies gofilter to each enrichResult in a list, keeping only terms at or
 #' below the specified GO level, and writes filtered tables to disk.
 #'
-#' @param resuGO    Named list of enrichResult objects.
+#' @param go_result    Named list of enrichResult objects.
 #' @param nivel     Maximum GO level to retain.
-#' @param espacio   GO namespace string (used in output filenames).
+#' @param go_space   GO namespace string (used in output filenames).
 #' @param qvalueCutoff Q-value cutoff (used in output filenames).
 #' @param simplificar Logical; affects output filename suffix.
 #' @param output_dir Directory for output files.
 #' @return Named list of filtered enrichResult objects.
 #' @export
-podar_go <- function(resuGO,
+prune_go <- function(go_result,
                      nivel,
-                     espacio,
+                     go_space,
                      qvalueCutoff,
                      simplificar  = FALSE,
                      output_dir   = "results/Enrichment") {
 
-  salida        <- vector("list", length(resuGO))
-  names(salida) <- names(resuGO)
+  res_out        <- vector("list", length(go_result))
+  names(res_out) <- names(go_result)
 
-  for (k in seq_along(resuGO)) {
+  for (k in seq_along(go_result)) {
 
-    if (is.null(resuGO[[k]])) next
+    if (is.null(go_result[[k]])) next
 
-    res <- gofilter(resuGO[[k]], nivel)
+    res <- gofilter(go_result[[k]], nivel)
     if (is.null(res) || nrow(res@result) == 0) next
 
-    salida[[k]] <- res
+    res_out[[k]] <- res
 
-    sufijo <- paste(
-      names(resuGO)[k], espacio, qvalueCutoff,
+    suffix <- paste(
+      names(go_result)[k], go_space, qvalueCutoff,
       if (simplificar) "simply" else "total",
       paste0("nivel_", nivel), "txt",
       sep = "."
     )
     write.table(as.data.frame(res),
-                file.path(output_dir, sufijo),
+                file.path(output_dir, suffix),
                 sep = "\t", col.names = NA, quote = FALSE)
   }
 
-  return(salida)
+  return(res_out)
 }
 
 
@@ -1924,17 +1924,17 @@ podar_go <- function(resuGO,
 #' Visualizes enrichment results as a balloon/bubble chart where bubble size
 #' encodes fold enrichment and fill color encodes -log10(q-value).
 #'
-#' @param resuGO Named list of enrichResult objects (one per comparison).
+#' @param go_result Named list of enrichResult objects (one per comparison).
 #' @return A ggplot object.
 #' @export
-graficar_go_balones <- function(resuGO) {
+plot_go_bubbles <- function(go_result) {
 
-  nombres <- names(resuGO)
-  if (is.null(nombres)) nombres <- as.character(seq_along(resuGO))
+  nms <- names(go_result)
+  if (is.null(nms)) nms <- as.character(seq_along(go_result))
 
-  bloques <- lapply(seq_along(resuGO), function(k) {
-    if (is.null(resuGO[[k]])) return(NULL)
-    df <- as.data.frame(resuGO[[k]])
+  bloques <- lapply(seq_along(go_result), function(k) {
+    if (is.null(go_result[[k]])) return(NULL)
+    df <- as.data.frame(go_result[[k]])
     if (!nrow(df)) return(NULL)
 
     gr <- as.numeric(unlist(strsplit(df$GeneRatio, "/")))
@@ -1943,7 +1943,7 @@ graficar_go_balones <- function(resuGO) {
     br <- br[seq(1, length(br), 2)] / br[seq(2, length(br), 2)]
 
     data.frame(
-      Exp          = nombres[k],
+      Exp          = nms[k],
       GOid         = df$ID,
       GODesc       = df$Description,
       Log10Qvalue  = -log10(df$qvalue),
@@ -1956,7 +1956,7 @@ graficar_go_balones <- function(resuGO) {
 
   dat     <- na.omit(do.call(rbind, bloques))
   if (!nrow(dat)) stop("No GO enrichment results available to plot.")
-  dat$Exp <- factor(dat$Exp, levels = nombres)
+  dat$Exp <- factor(dat$Exp, levels = nms)
 
   ggballoonplot(dat, x = "Exp", y = "GODesc",
                 size = "Enrichment", fill = "Log10Qvalue") +
@@ -1981,7 +1981,7 @@ graficar_go_balones <- function(resuGO) {
 #' @param output_dir     Directory where GO result tables and plots will be saved.
 #' @param orgdb          OrgDb annotation object.
 #' @param keytype        Key type matching the gene IDs in `diff_table`.
-#' @param espacio        GO namespace: "BP", "MF", or "CC".
+#' @param go_space        GO namespace: "BP", "MF", or "CC".
 #' @param qvalue_cutoff  Q-value cutoff for enrichGO.
 #' @param pvalue_cutoff  P-value cutoff for enrichGO.
 #' @param simplify_cutoff Similarity cutoff for simplify().
@@ -1993,7 +1993,7 @@ run_go_enrichment_suite <- function(diff_table,
                                     output_dir,
                                     orgdb,
                                     keytype,
-                                    espacio         = "BP",
+                                    go_space         = "BP",
                                     qvalue_cutoff   = 0.05,
                                     pvalue_cutoff   = 0.05,
                                     simplify_cutoff = 0.7,
@@ -2003,31 +2003,31 @@ run_go_enrichment_suite <- function(diff_table,
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   if (is.character(diff_table) && length(diff_table) == 1) {
-    tabla_df <- read.table(diff_table, header = TRUE, sep = "\t", check.names = FALSE)
+    table_df <- read.table(diff_table, header = TRUE, sep = "\t", check.names = FALSE)
   } else {
-    tabla_df <- as.data.frame(diff_table, check.names = FALSE)
+    table_df <- as.data.frame(diff_table, check.names = FALSE)
   }
 
-  if (ncol(tabla_df) < 2) {
+  if (ncol(table_df) < 2) {
     stop("Differential table must contain one gene-ID column plus at least one comparison column.")
   }
 
-  gene_col <- colnames(tabla_df)[1]
-  rownames(tabla_df) <- tabla_df[[gene_col]]
-  tabla <- as.matrix(tabla_df[, -1, drop = FALSE])
-  mode(tabla) <- "numeric"
-  tabla <- tabla[, colSums(tabla != 0, na.rm = TRUE) > 0, drop = FALSE]
+  gene_col <- colnames(table_df)[1]
+  rownames(table_df) <- table_df[[gene_col]]
+  tbl <- as.matrix(table_df[, -1, drop = FALSE])
+  mode(tbl) <- "numeric"
+  tbl <- tbl[, colSums(tbl != 0, na.rm = TRUE) > 0, drop = FALSE]
 
-  if (!ncol(tabla)) {
+  if (!ncol(tbl)) {
     stop("Differential table contains no non-zero comparison columns.")
   }
 
   universo <- keys(orgdb, keytype = keytype)
 
-  go_total <- correr_enriquecimiento_go(
-    tabla            = tabla,
+  go_total <- compute_go_enrichment(
+    tbl            = tbl,
     universo         = universo,
-    espacio          = espacio,
+    go_space          = go_space,
     orgdb            = orgdb,
     keytype          = keytype,
     qvalueCutoff     = qvalue_cutoff,
@@ -2037,10 +2037,10 @@ run_go_enrichment_suite <- function(diff_table,
     output_dir       = output_dir
   )
 
-  go_simple <- correr_enriquecimiento_go(
-    tabla            = tabla,
+  go_simple <- compute_go_enrichment(
+    tbl            = tbl,
     universo         = universo,
-    espacio          = espacio,
+    go_space          = go_space,
     orgdb            = orgdb,
     keytype          = keytype,
     qvalueCutoff     = qvalue_cutoff,
@@ -2050,19 +2050,19 @@ run_go_enrichment_suite <- function(diff_table,
     output_dir       = output_dir
   )
 
-  go_total_podado <- podar_go(
-    resuGO         = go_total,
+  go_total_podado <- prune_go(
+    go_result         = go_total,
     nivel          = go_level,
-    espacio        = espacio,
+    go_space        = go_space,
     qvalueCutoff   = qvalue_cutoff,
     simplificar    = FALSE,
     output_dir     = output_dir
   )
 
-  go_simple_podado <- podar_go(
-    resuGO         = go_simple,
+  go_simple_podado <- prune_go(
+    go_result         = go_simple,
     nivel          = go_level,
-    espacio        = espacio,
+    go_space        = go_space,
     qvalueCutoff   = qvalue_cutoff,
     simplificar    = TRUE,
     output_dir     = output_dir
@@ -2072,11 +2072,11 @@ run_go_enrichment_suite <- function(diff_table,
   on.exit(dev.off(), add = TRUE)
 
   for (obj in list(go_total, go_simple, go_total_podado, go_simple_podado)) {
-    print(graficar_go_balones(obj))
+    print(plot_go_bubbles(obj))
   }
 
   invisible(list(
-    tabla            = tabla,
+    tbl            = tbl,
     universo         = universo,
     total            = go_total,
     simple           = go_simple,
@@ -2295,7 +2295,7 @@ run_coexpression_cluster_suite <- function(diff_table,
     output_dir      = file.path(output_dir, "GO_clusters"),
     orgdb           = go_orgdb,
     keytype         = go_keytype,
-    espacio         = go_space,
+    go_space         = go_space,
     qvalue_cutoff   = go_qvalue_cutoff,
     pvalue_cutoff   = go_pvalue_cutoff,
     simplify_cutoff = go_simplify_cutoff,
@@ -2561,7 +2561,7 @@ build_coexpression_modules <- function(Mz,
 #' @param output_dir         Output directory.
 #' @param orgdb              OrgDb object matching the organism.
 #' @param keytype            Key type matching the gene IDs.
-#' @param espacio            GO namespace.
+#' @param go_space            GO namespace.
 #' @param qvalue_cutoff      Q-value cutoff for enrichGO.
 #' @param pvalue_cutoff      P-value cutoff for enrichGO.
 #' @param simplify_cutoff    Similarity cutoff for simplify().
@@ -2574,7 +2574,7 @@ run_go_for_gene_clusters <- function(assignments,
                                      output_dir,
                                      orgdb,
                                      keytype,
-                                     espacio         = "BP",
+                                     go_space         = "BP",
                                      qvalue_cutoff   = 0.05,
                                      pvalue_cutoff   = 0.05,
                                      simplify_cutoff = 0.7,
@@ -2601,7 +2601,7 @@ run_go_for_gene_clusters <- function(assignments,
     output_dir      = output_dir,
     orgdb           = orgdb,
     keytype         = keytype,
-    espacio         = espacio,
+    go_space         = go_space,
     qvalue_cutoff   = qvalue_cutoff,
     pvalue_cutoff   = pvalue_cutoff,
     simplify_cutoff = simplify_cutoff,
@@ -2652,7 +2652,7 @@ create_pipeline_dirs <- function(base_dir) {
     dir_02      = mkd("02_clustering"),
     dir_03      = mkd("03_annotation"),
     dir_04      = mkd("04_expression"),
-    dir_05 = mkd("05_curacion"),
+    dir_05 = mkd("05_curation"),
     dir_06      = mkd("06_de_results"),
     dir_07      = mkd("07_go"),
     dir_08      = mkd("08_networks"),
@@ -2682,14 +2682,14 @@ create_pipeline_dirs <- function(base_dir) {
 #'   Mus musculus         : orgdb = org.Mm.eg.db,   keytype = "ENSEMBL"
 #'
 #' @param obj           Integrated Seurat object (post-harmony).
-#' @param comparaciones List of lists, each with conds = c("ref","treat") and tag.
+#' @param comparisons List of lists, each with conds = c("ref","treat") and tag.
 #' @param orgdb         OrgDb annotation object for GO enrichment.
 #' @param keytype       Key type matching gene IDs in the Seurat object.
 #' @param annot_col     Metadata column with curated cell-type labels.
 #' @param n_reps        Number of pseudo-replicates per condition (default 3).
 #' @param padj_cut      Adjusted p-value cutoff for DE and volcano (default 0.05).
 #' @param lfc_cut       Log2 fold-change cutoff (default 1).
-#' @param espacio       GO namespace: "BP", "MF", or "CC" (default "BP").
+#' @param go_space       GO namespace: "BP", "MF", or "CC" (default "BP").
 #' @param qval          Q-value cutoff for GO enrichment (default 0.05).
 #' @param nivel_poda    Maximum GO hierarchy depth for term pruning (default 6).
 #' @param dir_pseudobulk Output directory for sections 14–16.
@@ -2700,14 +2700,14 @@ create_pipeline_dirs <- function(base_dir) {
 #' @return Invisible NULL. All outputs are written to disk.
 #' @export
 run_pseudobulk_pipeline <- function(obj,
-                                     comparaciones,
+                                     comparisons,
                                      orgdb,
                                      keytype,
                                      annot_col      = "celltype_grouped",
                                      n_reps         = 3,
                                      padj_cut       = 0.05,
                                      lfc_cut        = 1,
-                                     espacio        = "BP",
+                                     go_space        = "BP",
                                      qval           = 0.05,
                                      nivel_poda     = 6,
                                      dir_pseudobulk,
@@ -2736,24 +2736,24 @@ run_pseudobulk_pipeline <- function(obj,
     lapply(cell_type_subsets, assign_pseudo_replicates, n_reps = n_reps))
   pseudobulk_list <- lapply(cell_type_subsets_replicates, run_pseudobulk)
 
-  rep_dir <- file.path(dir_pseudobulk, "pseudobulk_replicas")
+  rep_dir <- file.path(dir_pseudobulk, "pseudobulk_replicates")
   dir.create(rep_dir, recursive = TRUE, showWarnings = FALSE)
-  for (tipo in names(pseudobulk_list))
-    write.csv(pseudobulk_list[[tipo]],
-              file.path(rep_dir, paste0("Pseudobulk_", tipo, ".csv")),
+  for (ctype in names(pseudobulk_list))
+    write.csv(pseudobulk_list[[ctype]],
+              file.path(rep_dir, paste0("Pseudobulk_", ctype, ".csv")),
               row.names = TRUE)
 
   # ── [3/6] DESeq2 ─────────────────────────────────────────────────────────────
   message("[3/6] Running DESeq2 differential expression...")
-  for (tag in sapply(comparaciones, `[[`, "tag"))
+  for (tag in sapply(comparisons, `[[`, "tag"))
     dir.create(file.path(dir_deseq2, tag), recursive = TRUE, showWarnings = FALSE)
-  for (tipo in names(pseudobulk_list))
-    correr_deseq2(as.matrix(pseudobulk_list[[tipo]]), comparaciones,
-                  output_dir = dir_deseq2, tipo = tipo)
+  for (ctype in names(pseudobulk_list))
+    run_deseq2(as.matrix(pseudobulk_list[[ctype]]), comparisons,
+                  output_dir = dir_deseq2, ctype = ctype)
 
   # ── [4/6] Volcano plots ───────────────────────────────────────────────────────
   message("[4/6] Generating volcano plots...")
-  for (comp in comparaciones) {
+  for (comp in comparisons) {
     tag       <- comp$tag
     csv_files <- list.files(file.path(dir_deseq2, tag),
                             pattern = "\\.csv$", full.names = TRUE)
@@ -2772,7 +2772,7 @@ run_pseudobulk_pipeline <- function(obj,
 
   # ── [5/6] DE tables and heatmaps ─────────────────────────────────────────────
   message("[5/6] Building DE tables and heatmaps...")
-  for (comp in comparaciones) {
+  for (comp in comparisons) {
     tag       <- comp$tag
     diff_dir  <- file.path(dir_heatmaps, tag)
     csv_files <- list.files(file.path(dir_deseq2, tag),
@@ -2781,24 +2781,24 @@ run_pseudobulk_pipeline <- function(obj,
     dir.create(diff_dir, recursive = TRUE, showWarnings = FALSE)
     if (!length(csv_files)) { message("  No CSV for: ", tag); next }
 
-    listas      <- lapply(csv_files, procesar_deseq2_resultado,
+    de_lists      <- lapply(csv_files, process_deseq2_result,
                           output_dir = diff_dir, padj_cut = padj_cut, lfc_cut = lfc_cut)
-    tabla_class <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
-                          lapply(listas, `[[`, "class"))
-    tabla_logfc <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
-                          lapply(listas, `[[`, "logfc"))
+    class_table <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
+                          lapply(de_lists, `[[`, "class"))
+    logfc_table <- Reduce(function(x, y) full_join(x, y, by = "gene_id"),
+                          lapply(de_lists, `[[`, "logfc"))
 
-    tabla_class <- tabla_class %>% filter(apply(select(., -gene_id) != 0, 1, any))
-    tabla_logfc <- tabla_logfc %>% filter(gene_id %in% tabla_class$gene_id)
+    class_table <- class_table %>% filter(apply(select(., -gene_id) != 0, 1, any))
+    logfc_table <- logfc_table %>% filter(gene_id %in% class_table$gene_id)
 
-    write_tsv(tabla_class, file.path(diff_dir, "tabla_diferenciales.tsv"))
-    write_tsv(tabla_logfc, file.path(diff_dir, "tabla_log2FC.tsv"))
+    write_tsv(class_table, file.path(diff_dir, "diff_table.tsv"))
+    write_tsv(logfc_table, file.path(diff_dir, "log2FC_table.tsv"))
 
-    matriz <- as.matrix(column_to_rownames(tabla_logfc, "gene_id"))
-    matriz[is.na(matriz)] <- 0
-    if (nrow(matriz) > 1) {
+    mat <- as.matrix(column_to_rownames(logfc_table, "gene_id"))
+    mat[is.na(mat)] <- 0
+    if (nrow(mat) > 1) {
       pdf(file.path(diff_dir, paste0("heatmap_", tag, ".pdf")), width = 18, height = 18)
-      plot_heatmap(matriz)
+      plot_heatmap(mat)
       dev.off()
     }
   }
@@ -2807,34 +2807,34 @@ run_pseudobulk_pipeline <- function(obj,
   message("[6/6] GO enrichment analysis...")
   universo <- keys(orgdb, keytype = keytype)
 
-  for (comp in comparaciones) {
+  for (comp in comparisons) {
     tag        <- comp$tag
     enr_dir    <- file.path(dir_go, tag)
-    tabla_path <- file.path(dir_heatmaps, tag, "tabla_diferenciales.tsv")
+    table_path <- file.path(dir_heatmaps, tag, "diff_table.tsv")
 
     dir.create(enr_dir, recursive = TRUE, showWarnings = FALSE)
-    if (!file.exists(tabla_path)) { message("  No differential table for: ", tag); next }
+    if (!file.exists(table_path)) { message("  No differential table for: ", tag); next }
 
-    tabla <- read.table(tabla_path, header = TRUE, row.names = 1, sep = "\t")
-    tabla <- tabla[, colSums(tabla != 0) > 0, drop = FALSE]
+    tbl <- read.table(table_path, header = TRUE, row.names = 1, sep = "\t")
+    tbl <- tbl[, colSums(tbl != 0) > 0, drop = FALSE]
 
-    go_total  <- correr_enriquecimiento_go(tabla, universo, espacio,
+    go_total  <- compute_go_enrichment(tbl, universo, go_space,
                                            orgdb = orgdb, keytype = keytype,
                                            simplificar = FALSE, output_dir = enr_dir)
-    go_simple <- correr_enriquecimiento_go(tabla, universo, espacio,
+    go_simple <- compute_go_enrichment(tbl, universo, go_space,
                                            orgdb = orgdb, keytype = keytype,
                                            simplificar = TRUE,  output_dir = enr_dir)
 
-    go_total_podado  <- podar_go(go_total,  nivel_poda, espacio, qval,
+    go_total_podado  <- prune_go(go_total,  nivel_poda, go_space, qval,
                                  simplificar = FALSE, output_dir = enr_dir)
-    go_simple_podado <- podar_go(go_simple, nivel_poda, espacio, qval,
+    go_simple_podado <- prune_go(go_simple, nivel_poda, go_space, qval,
                                  simplificar = TRUE,  output_dir = enr_dir)
 
     pdf(file.path(enr_dir, paste0("GO_enrichment_", tag, ".pdf")), width = 18, height = 18)
-    print(graficar_go_balones(go_total))
-    print(graficar_go_balones(go_simple))
-    print(graficar_go_balones(go_total_podado))
-    print(graficar_go_balones(go_simple_podado))
+    print(plot_go_bubbles(go_total))
+    print(plot_go_bubbles(go_simple))
+    print(plot_go_bubbles(go_total_podado))
+    print(plot_go_bubbles(go_simple_podado))
     dev.off()
   }
 
@@ -2898,9 +2898,9 @@ create_cell_type_subsets <- function(seurat_obj, annot_col = "celltype_grouped")
   
   # Create subsets and sanitise names
   subsets <- setNames(
-    lapply(cell_types, function(tipo) {
+    lapply(cell_types, function(ctype) {
       subset(seurat_obj,
-             cells = colnames(seurat_obj)[seurat_obj@meta.data[[annot_col]] == tipo])
+             cells = colnames(seurat_obj)[seurat_obj@meta.data[[annot_col]] == ctype])
     }),
     gsub("[^[:alnum:]_]", "_", cell_types)
   )
@@ -2983,7 +2983,7 @@ run_pseudobulk_deseq2_analysis <- function(cell_type_subsets_replicates,
   
   # Set default pseudobulk directory
   if (is.null(pseudobulk_dir))
-    pseudobulk_dir <- file.path(dirname(output_dir), "pseudobulk_replicas")
+    pseudobulk_dir <- file.path(dirname(output_dir), "pseudobulk_replicates")
   
   # Create output directories
   dir.create(pseudobulk_dir, recursive = TRUE, showWarnings = FALSE)
@@ -2997,7 +2997,7 @@ run_pseudobulk_deseq2_analysis <- function(cell_type_subsets_replicates,
   
   # Generate pseudobulk count tables
   message("Generating pseudobulk count tables...")
-  pseudobulk_list <- guardar_tablas_pseudobulk(
+  pseudobulk_list <- save_pseudobulk_tables(
     cell_type_subsets_replicates,
     output_dir = pseudobulk_dir
   )
@@ -3010,17 +3010,17 @@ run_pseudobulk_deseq2_analysis <- function(cell_type_subsets_replicates,
   
   # Run DESeq2 for each cell type (shows all output)
   deseq2_results <- list()
-  for (tipo in names(pseudobulk_list)) {
+  for (ctype in names(pseudobulk_list)) {
     message("
 ", strrep("─", 70))
-    message("DESeq2 analysis for cell type: ", tipo)
+    message("DESeq2 analysis for cell type: ", ctype)
     message(strrep("─", 70))
     
-    deseq2_results[[tipo]] <- correr_deseq2(
-      counts_mat = as.matrix(pseudobulk_list[[tipo]]),
-      comparaciones = comparisons,
+    deseq2_results[[ctype]] <- run_deseq2(
+      counts_mat = as.matrix(pseudobulk_list[[ctype]]),
+      comparisons = comparisons,
       output_dir = output_dir,
-      tipo = tipo
+      ctype = ctype
     )
   }
   
@@ -3062,13 +3062,13 @@ run_simple_go_enrichment <- function(diff_table,
 
   # Read table
   if (is.character(diff_table)) {
-    tabla_df <- read.table(diff_table, header = TRUE, sep = "	", check.names = FALSE)
+    table_df <- read.table(diff_table, header = TRUE, sep = "	", check.names = FALSE)
   } else {
-    tabla_df <- as.data.frame(diff_table, check.names = FALSE)
+    table_df <- as.data.frame(diff_table, check.names = FALSE)
   }
 
-  gene_col <- colnames(tabla_df)[1]
-  genes_all <- tabla_df[[gene_col]]
+  gene_col <- colnames(table_df)[1]
+  genes_all <- table_df[[gene_col]]
 
   # Get universe of genes
   universo <- keys(orgdb, keytype = keytype)
@@ -3976,7 +3976,7 @@ filter_hdwgcna_by_de <- function(hdwgcna_dir,
         cat("  Skipped DE plot (0 edges - adjust tom_threshold)\n")
       }
 
-      # ── Eigengene heatmap — solo módulos con genes DE ────────────────────────
+      # ── Eigengene heatmap — only modules with DE genes ───────────────────────
       {
         MEs <- hdWGCNA::GetMEs(obj, harmonized = FALSE, wgcna_name = ct_tag)
         if (!is.null(MEs) && ncol(MEs) > 0) {
@@ -4748,7 +4748,7 @@ generate_cluster_profile_report <- function(cluster_assignments,
 #
 # Parameters:
 #   heatmap_results      : cluster assignments from Section 20
-#   pseudobulk_dir       : directory with pseudobulk replicas (Section 9)
+#   pseudobulk_dir       : directory with pseudobulk replicates (Section 9)
 #   output_base_dir      : base directory for results (dir_08/<contrast>)
 #   methods              : vector of methods to run ("GENIE3", "WGCNA", "SYNERGY")
 #   orgdb, keytype, custom_tfs : for GENIE3/SYNERGY

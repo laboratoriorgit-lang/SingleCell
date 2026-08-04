@@ -14,9 +14,9 @@
 PIPELINE_DIR <- "/workspace/workflow"
 
 # Root directory for your project data and results.
-# All result files will be written to DATA_DIR/resultados/<step>/
+# All result files will be written to DATA_DIR/results/<step>/
 DATA_DIR   <- "/workspace/."
-base_dir   <- file.path(DATA_DIR, "resultados")
+base_dir   <- file.path(DATA_DIR, "results")
 
 # =============================================================================
 
@@ -124,7 +124,7 @@ message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
 # ==============================================================================
 output_dir <- dir_01
 
-pbmc_harmony <- reduce(seurat_list, merge) %>%
+ath_sc <- reduce(seurat_list, merge) %>%
   NormalizeData(verbose = FALSE) %>%
   FindVariableFeatures(
     selection.method = "vst", nfeatures = 2000, verbose = FALSE
@@ -134,11 +134,11 @@ pbmc_harmony <- reduce(seurat_list, merge) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
   "umap_preharmony.pdf"
 )
 
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
 message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
@@ -147,16 +147,16 @@ message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 # ==============================================================================
 output_dir <- dir_01
 
-pbmc_harmony <- pbmc_harmony %>%
+ath_sc <- ath_sc %>%
   RunHarmony("orig.ident", plot_convergence = FALSE) %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
   "umap_postharmony.pdf"
 )
 
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
 message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
@@ -168,7 +168,7 @@ resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 output_dir <- dir_02
 
 k_range <- 1:31
-pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
+pca_data <- Embeddings(ath_sc, "pca")[, 1:30]
 wss <- sapply(
   k_range,
   function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
@@ -185,7 +185,7 @@ elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
 
 save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
 
-clu <- pbmc_harmony %>%
+clu <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE)
 
@@ -202,14 +202,14 @@ message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 cluster_resolution <- 0.35
 output_dir <- dir_02
 
-pbmc_harmony <- pbmc_harmony %>%
+ath_sc <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
-Idents(pbmc_harmony) <- "seurat_clusters"
+Idents(ath_sc) <- "seurat_clusters"
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "seurat_clusters", label = TRUE),
+  DimPlot(ath_sc, group.by = "seurat_clusters", label = TRUE),
   "umap_seuratclusters.pdf"
 )
 
@@ -230,17 +230,17 @@ marker_table <- read.table(
 marker_table <- setNames(marker_table[, 1:2], c("cell.types", "gene"))
 
 markers <- find_markers(
-  pbmc_harmony,
+  ath_sc,
   output_file = file.path(output_dir, "FindAllMarkers.tsv")
 )
 
-pbmc_harmony <- annotate_by_markers(
-  pbmc_harmony, markers,
+ath_sc <- annotate_by_markers(
+  ath_sc, markers,
   reference_file = biblio_marks_file
 )
 
 plot_marker_dotplot(
-  pbmc_harmony,
+  ath_sc,
   marker_table,
   annot_col = "celltype",
   outfile   = file.path(
@@ -251,7 +251,7 @@ plot_marker_dotplot(
 
 save_pdf(
   DimPlot(
-    pbmc_harmony, group.by = "celltype",
+    ath_sc, group.by = "celltype",
     label = TRUE, repel = TRUE, raster = FALSE
   ),
   "umap_annotation_biblio.pdf"
@@ -272,10 +272,10 @@ Mode <- function(x) {
 }
 
 stopifnot(exists("clu"))
-stopifnot("celltype" %in% colnames(pbmc_harmony@meta.data))
+stopifnot("celltype" %in% colnames(ath_sc@meta.data))
 
-celltype_label <- as.character(pbmc_harmony$celltype)
-names(celltype_label) <- Cells(pbmc_harmony)
+celltype_label <- as.character(ath_sc$celltype)
+names(celltype_label) <- Cells(ath_sc)
 clu$celltype_label <- celltype_label[Cells(clu)]
 
 print(table(clu$celltype_label, useNA = "ifany"))
@@ -297,20 +297,20 @@ gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
 
-pbmc_harmony <- JoinLayers(pbmc_harmony)
-Idents(pbmc_harmony) <- "celltype"
+ath_sc <- JoinLayers(ath_sc)
+Idents(ath_sc) <- "celltype"
 
 # Name each file after the plotted gene(s): AT5G26000  ->  ..._AT5G26000.pdf
 # c("gen1","gen2") -> ..._gen1_gen2.pdf
 gene_tag <- paste(gene, collapse = "_")
 
 save_vln(
-  VlnPlot(pbmc_harmony, features = gene),
+  VlnPlot(ath_sc, features = gene),
   paste0("vln_gene_", gene_tag, ".pdf")
 )
 
 save_pdf(
-  FeaturePlot(pbmc_harmony, features = gene),
+  FeaturePlot(ath_sc, features = gene),
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
@@ -329,14 +329,14 @@ grouping <- c()
 output_dir <- dir_05
 
 if (length(grouping) > 0) {
-  pbmc_harmony$celltype_grouped <- recode(pbmc_harmony$celltype, !!!grouping)
+  ath_sc$celltype_grouped <- recode(ath_sc$celltype, !!!grouping)
 } else {
-  pbmc_harmony$celltype_grouped <- pbmc_harmony$celltype
+  ath_sc$celltype_grouped <- ath_sc$celltype
 }
 
 save_pdf(
   DimPlot(
-    pbmc_harmony, group.by = "celltype_grouped",
+    ath_sc, group.by = "celltype_grouped",
     label = TRUE, repel = TRUE, raster = FALSE
   ),
   "umap_grouped.pdf"
@@ -348,11 +348,11 @@ message("\nOK SECTION 10 COMPLETE: cell-type grouping complete")
 # Section 11 - Subcluster marker inspection [optional]
 # ==============================================================================
 output_dir <- dir_05
-Idents(pbmc_harmony) <- "celltype"
+Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  pbmc_harmony, cluster_id = "2",
+  ath_sc, cluster_id = "2",
   marker_table = marker_table, output_dir = output_dir
 )
 
@@ -362,14 +362,14 @@ reassign <- list(
   "2" = c("0" = "Identity A", "others" = "Unresolved"),
   "4" = c("1" = "Identity B", "others" = "Unresolved")
 )
-pbmc_harmony <- curate_clusters(
-  pbmc_harmony, reassign,
+ath_sc <- curate_clusters(
+  ath_sc, reassign,
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 3. Save the curated annotation UMAP
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "celltype_curated",
+  DimPlot(ath_sc, group.by = "celltype_curated",
           label = TRUE, repel = TRUE, raster = FALSE),
   "umap_curated.pdf"
 )
@@ -380,19 +380,19 @@ message("\nOK SECTION 11 COMPLETE: curation complete")
 # Section 12 - Export the curated object
 # ==============================================================================
 # Checkpoint - restore with:
-#   pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_curated.rds"))
+#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_curated.rds"))
 
 # Export the curated object to AnnData h5ad format for Python-based
 # trajectory and velocity analyses.
 export_to_scanpy(
-  pbmc_harmony,
-  file.path(dir_objects, "pbmc_harmony_curated.h5ad")
+  ath_sc,
+  file.path(dir_objects, "ath_sc_curated.h5ad")
 )
 
 # To export a specific cell type only:
 # export_to_scanpy(
-#   subset(pbmc_harmony, subset = celltype_curated == "guard cell"),
+#   subset(ath_sc, subset = celltype_curated == "guard cell"),
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 

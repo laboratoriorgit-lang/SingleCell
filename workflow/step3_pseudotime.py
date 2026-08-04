@@ -9,7 +9,7 @@ import os
 
 PIPELINE_DIR = "/workspace/workflow"
 DATA_DIR     = "/workspace/."
-base_dir     = os.path.join(DATA_DIR, "resultados")
+base_dir     = os.path.join(DATA_DIR, "results")
 
 exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
 exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
@@ -22,7 +22,7 @@ print("SECTION 23 COMPLETE: setup done")
 # ==============================================================================
 # Section 24 - Load curated object
 # ==============================================================================
-INPUT_H5AD     = "/workspace/resultados/objects/pbmc_harmony_curated.h5ad"
+INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
 ANNOTATION_COL = "celltype_curated"
 N_JOBS         = 4
 

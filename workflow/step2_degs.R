@@ -13,9 +13,9 @@
 PIPELINE_DIR <- "/workspace/workflow"
 
 # Root directory for your project data and results.
-# All result files will be written to DATA_DIR/resultados/<step>/
+# All result files will be written to DATA_DIR/results/<step>/
 DATA_DIR   <- "/workspace/."
-base_dir   <- file.path(DATA_DIR, "resultados")
+base_dir   <- file.path(DATA_DIR, "results")
 
 # =============================================================================
 
@@ -49,7 +49,7 @@ output_dir <- base_dir
 # ==============================================================================
 # Section 12 - Export the curated object
 # ==============================================================================
-pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
+ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
 
 # Bibliography marker table (defined during Step 1 annotation; reloaded here so
 # this script is self-contained). Used by the Section 19 heatmap row/column
@@ -65,10 +65,10 @@ marker_table <- read.table(
 pseudobulk_annot_col <- "celltype_curated"
 
 # Inspect how many cells each cell type has before subsetting
-table(pbmc_harmony[[pseudobulk_annot_col]])
+table(ath_sc[[pseudobulk_annot_col]])
 
 cell_type_subsets <- create_cell_type_subsets(
-  pbmc_harmony, annot_col = pseudobulk_annot_col
+  ath_sc, annot_col = pseudobulk_annot_col
 )
 
 message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
@@ -104,7 +104,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   comparisons    = comparisons,
   output_dir     = output_dir,
   cell_types     = cell_types_to_analyze,
-  pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicas")
+  pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
 message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
@@ -180,8 +180,8 @@ message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
 # Section 20 - Gene-gene coexpression and TF network
 # ==============================================================================
 run_tf_coexpression_network(
-  seurat_obj      = pbmc_harmony,
-  de_table_path   = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
+  seurat_obj      = ath_sc,
+  de_table_path   = file.path(dir_06, volcano_tag, "log2FC_table_fc1_padj_005.tsv"),
   tf_list_path    = file.path(DATA_DIR, "data", "AtTFDB_loci.txt"),
   output_dir      = dir_08,
   annot_col       = pseudobulk_annot_col,
