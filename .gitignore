@@ -10,7 +10,7 @@ reports/*
 !reports/*.md
 !reports/*.css
 !reports/assets/
-!reports/cuerpo_resultados.Rmd
-!reports/cuerpo_resultados.pdf
+!reports/arabidopsis_scRNAseq_pipeline.Rmd
+!reports/arabidopsis_scRNAseq_pipeline.pdf
 !reports/lang_box.lua
 !reports/latex_header.tex

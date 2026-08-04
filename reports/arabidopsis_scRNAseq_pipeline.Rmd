@@ -71,7 +71,7 @@ through three chapters — single-cell preprocessing, clustering and annotation
 exactly as in the methods paper (not executed inline); the figures below are the
 **real outputs** of a fresh run of `workflow/step1_singlecell.R`,
 `workflow/step2_degs.R` and `workflow/step3_pseudotime.py`, written to a separate
-`resultados_rerun/` directory using the bibliography annotation (`celltype`).
+`results_rerun/` directory using the bibliography annotation (`celltype`).
 
 The active annotation path is bibliography-based (`biblio_marks.txt` ->
 `celltype_curated`). Reference-transfer annotation is not part of this draft.
@@ -149,7 +149,7 @@ repository for this WT vs pifq run (see Section 1).
 ## Container startup (Docker or Singularity)
 
 The container mounts the cloned repository itself as `/workspace`, so results
-are written back into the repository (`resultados/`). Since results are not
+are written back into the repository (`results/`). Since results are not
 pushed upstream, this is not a problem. The same public image runs under either
 runtime; always pull it rather than rebuilding from the `Dockerfile`, so every
 user gets the exact tested package versions.
@@ -177,7 +177,7 @@ singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bas
 ```
 
 Apptainer imports the image environment, so the bundled Python (`/opt/venv`) and
-R stay on `PATH`, and it runs as the invoking user, so files under `resultados/`
+R stay on `PATH`, and it runs as the invoking user, so files under `results/`
 are owned by that user rather than by root. The `--pwd /workspace` flag starts
 the shell inside the bound repository (otherwise Apptainer warns that the host
 working directory does not exist in the container and falls back to `$HOME`).
@@ -317,9 +317,9 @@ Edit this block before running the pipeline.
 PIPELINE_DIR <- "/workspace/workflow"
 
 # Root directory for your project data and results.
-# All result files will be written to DATA_DIR/resultados/<step>/
+# All result files will be written to DATA_DIR/results/<step>/
 DATA_DIR   <- "/workspace/."
-base_dir   <- file.path(DATA_DIR, "resultados")
+base_dir   <- file.path(DATA_DIR, "results")
 
 # =============================================================================
 ```
@@ -421,7 +421,7 @@ message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
 
 Representative output from Section 1:
 
-![Pre-filter QC violin plots.](../resultados/01_qc/qc_prefilter.pdf){width=30%}
+![Pre-filter QC violin plots.](../results/01_qc/qc_prefilter.pdf){width=30%}
 
 \newpage
 
@@ -441,7 +441,7 @@ message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
 
 Representative output from Section 2:
 
-![Post-filter QC violin plots.](../resultados/01_qc/qc_postfilter.pdf){width=30%}
+![Post-filter QC violin plots.](../results/01_qc/qc_postfilter.pdf){width=30%}
 
 \newpage
 
@@ -450,7 +450,7 @@ Representative output from Section 2:
 ```{r section_03_merge_and_initial_preprocessing}
 output_dir <- dir_01
 
-pbmc_harmony <- reduce(seurat_list, merge) %>%
+ath_sc <- reduce(seurat_list, merge) %>%
   NormalizeData(verbose = FALSE) %>%
   FindVariableFeatures(
     selection.method = "vst", nfeatures = 2000, verbose = FALSE
@@ -460,18 +460,18 @@ pbmc_harmony <- reduce(seurat_list, merge) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
   "umap_preharmony.pdf"
 )
 
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_preharmony.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
 message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 ```
 
 Representative output from Section 3:
 
-![UMAP before Harmony correction, colored by sample.](../resultados/01_qc/umap_preharmony.pdf){width=30%}
+![UMAP before Harmony correction, colored by sample.](../results/01_qc/umap_preharmony.pdf){width=30%}
 
 \newpage
 
@@ -480,23 +480,23 @@ Representative output from Section 3:
 ```{r section_04_harmony_batch_correction}
 output_dir <- dir_01
 
-pbmc_harmony <- pbmc_harmony %>%
+ath_sc <- ath_sc %>%
   RunHarmony("orig.ident", plot_convergence = FALSE) %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "orig.ident", cols = colors),
+  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
   "umap_postharmony.pdf"
 )
 
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_postharmony.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
 message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 ```
 
 Representative output from Section 4:
 
-![UMAP after Harmony correction, colored by sample.](../resultados/01_qc/umap_postharmony.pdf){width=30%}
+![UMAP after Harmony correction, colored by sample.](../results/01_qc/umap_postharmony.pdf){width=30%}
 
 \newpage
 
@@ -508,7 +508,7 @@ resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 output_dir <- dir_02
 
 k_range <- 1:31
-pca_data <- Embeddings(pbmc_harmony, "pca")[, 1:30]
+pca_data <- Embeddings(ath_sc, "pca")[, 1:30]
 wss <- sapply(
   k_range,
   function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
@@ -525,7 +525,7 @@ elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
 
 save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
 
-clu <- pbmc_harmony %>%
+clu <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE)
 
@@ -542,7 +542,7 @@ Representative outputs from Section 5:
 ```{=latex}
 \begin{center}
 ```
-![Elbow diagnostic used to inspect candidate cluster numbers.](../resultados/02_clustering/elbow_plot.pdf){width=30%} ![Cluster tree across candidate Leiden resolutions.](../resultados/02_clustering/clustree2.pdf){width=30%}
+![Elbow diagnostic used to inspect candidate cluster numbers.](../results/02_clustering/elbow_plot.pdf){width=30%} ![Cluster tree across candidate Leiden resolutions.](../results/02_clustering/clustree2.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -555,14 +555,14 @@ Representative outputs from Section 5:
 cluster_resolution <- 0.35
 output_dir <- dir_02
 
-pbmc_harmony <- pbmc_harmony %>%
+ath_sc <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
   FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
-Idents(pbmc_harmony) <- "seurat_clusters"
+Idents(ath_sc) <- "seurat_clusters"
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "seurat_clusters", label = TRUE),
+  DimPlot(ath_sc, group.by = "seurat_clusters", label = TRUE),
   "umap_seuratclusters.pdf"
 )
 
@@ -571,7 +571,7 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 
 Representative output from Section 6:
 
-![Final UMAP colored by numbered Seurat clusters.](../resultados/02_clustering/umap_seuratclusters.pdf){width=30%}
+![Final UMAP colored by numbered Seurat clusters.](../results/02_clustering/umap_seuratclusters.pdf){width=30%}
 
 \newpage
 
@@ -586,17 +586,17 @@ marker_table <- read.table(
 )
 
 markers <- find_markers(
-  pbmc_harmony,
+  ath_sc,
   output_file = file.path(output_dir, "FindAllMarkers.tsv")
 )
 
-pbmc_harmony <- annotate_by_markers(
-  pbmc_harmony, markers,
+ath_sc <- annotate_by_markers(
+  ath_sc, markers,
   reference_file = biblio_marks_file
 )
 
 plot_marker_dotplot(
-  pbmc_harmony,
+  ath_sc,
   marker_table,
   annot_col = "celltype",
   outfile   = file.path(
@@ -607,7 +607,7 @@ plot_marker_dotplot(
 
 save_pdf(
   DimPlot(
-    pbmc_harmony, group.by = "celltype",
+    ath_sc, group.by = "celltype",
     label = TRUE, repel = TRUE, raster = FALSE
   ),
   "umap_annotation_biblio.pdf"
@@ -621,7 +621,7 @@ Representative outputs from Section 7:
 ```{=latex}
 \begin{center}
 ```
-![Marker dotplot after bibliography-based cell-type annotation.](../resultados/03_annotation/dotplot_marker_table_annotation_biblio.pdf){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](../resultados/03_annotation/umap_annotation_biblio.pdf){width=30%}
+![Marker dotplot after bibliography-based cell-type annotation.](../results/03_annotation/dotplot_marker_table_annotation_biblio.pdf){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](../results/03_annotation/umap_annotation_biblio.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -641,10 +641,10 @@ Mode <- function(x) {
 }
 
 stopifnot(exists("clu"))
-stopifnot("celltype" %in% colnames(pbmc_harmony@meta.data))
+stopifnot("celltype" %in% colnames(ath_sc@meta.data))
 
-celltype_label <- as.character(pbmc_harmony$celltype)
-names(celltype_label) <- Cells(pbmc_harmony)
+celltype_label <- as.character(ath_sc$celltype)
+names(celltype_label) <- Cells(ath_sc)
 clu$celltype_label <- celltype_label[Cells(clu)]
 
 print(table(clu$celltype_label, useNA = "ifany"))
@@ -662,7 +662,7 @@ message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 
 Representative output from Section 8:
 
-![Cluster tree labeled by the dominant bibliography-based annotation in each node.](../resultados/03_annotation/clustree_annotated.pdf){width=30%}
+![Cluster tree labeled by the dominant bibliography-based annotation in each node.](../results/03_annotation/clustree_annotated.pdf){width=30%}
 
 \newpage
 
@@ -673,20 +673,20 @@ gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
 
-pbmc_harmony <- JoinLayers(pbmc_harmony)
-Idents(pbmc_harmony) <- "celltype"
+ath_sc <- JoinLayers(ath_sc)
+Idents(ath_sc) <- "celltype"
 
 # Name each file after the plotted gene(s): AT5G26000  ->  ..._AT5G26000.pdf
 # c("gen1","gen2") -> ..._gen1_gen2.pdf
 gene_tag <- paste(gene, collapse = "_")
 
 save_vln(
-  VlnPlot(pbmc_harmony, features = gene),
+  VlnPlot(ath_sc, features = gene),
   paste0("vln_gene_", gene_tag, ".pdf")
 )
 
 save_pdf(
-  FeaturePlot(pbmc_harmony, features = gene),
+  FeaturePlot(ath_sc, features = gene),
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
@@ -698,7 +698,7 @@ Representative outputs from Section 9:
 ```{=latex}
 \begin{center}
 ```
-![Violin plot for the selected gene across all annotated cell types.](../resultados/04_expression/vln_gene_AT5G26000.pdf){width=30%} ![UMAP expression overlay for the selected gene.](../resultados/04_expression/feature_gene_AT5G26000.pdf){width=30%}
+![Violin plot for the selected gene across all annotated cell types.](../results/04_expression/vln_gene_AT5G26000.pdf){width=30%} ![UMAP expression overlay for the selected gene.](../results/04_expression/feature_gene_AT5G26000.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -717,14 +717,14 @@ grouping <- c(
 output_dir <- dir_05
 
 if (length(grouping) > 0) {
-  pbmc_harmony$celltype_grouped <- recode(pbmc_harmony$celltype, !!!grouping)
+  ath_sc$celltype_grouped <- recode(ath_sc$celltype, !!!grouping)
 } else {
-  pbmc_harmony$celltype_grouped <- pbmc_harmony$celltype
+  ath_sc$celltype_grouped <- ath_sc$celltype
 }
 
 save_pdf(
   DimPlot(
-    pbmc_harmony, group.by = "celltype_grouped",
+    ath_sc, group.by = "celltype_grouped",
     label = TRUE, repel = TRUE, raster = FALSE
   ),
   "umap_grouped.pdf"
@@ -751,11 +751,11 @@ result into `celltype_curated`. Both helpers live in
 
 ```{r section_11_interactive_cell_type_curation_optional, eval=FALSE, strip_comments=FALSE}
 output_dir <- dir_05
-Idents(pbmc_harmony) <- "celltype"
+Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  pbmc_harmony, cluster_id = "2",
+  ath_sc, cluster_id = "2",
   marker_table = marker_table, output_dir = output_dir
 )
 
@@ -765,14 +765,14 @@ reassign <- list(
   "2" = c("0" = "Identity A", "others" = "Unresolved"),
   "4" = c("1" = "Identity B", "others" = "Unresolved")
 )
-pbmc_harmony <- curate_clusters(
-  pbmc_harmony, reassign,
+ath_sc <- curate_clusters(
+  ath_sc, reassign,
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 3. Save the curated annotation UMAP
 save_pdf(
-  DimPlot(pbmc_harmony, group.by = "celltype_curated",
+  DimPlot(ath_sc, group.by = "celltype_curated",
           label = TRUE, repel = TRUE, raster = FALSE),
   "umap_curated.pdf"
 )
@@ -793,19 +793,19 @@ Palantir - all pre-installed in the Docker image).
 
 ```{r section_12_export, strip_comments=FALSE}
 # Checkpoint - restore with:
-#   pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
-saveRDS(pbmc_harmony, file.path(dir_objects, "pbmc_harmony_curated.rds"))
+#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_curated.rds"))
 
 # Export the curated object to AnnData h5ad format for Python-based
 # trajectory and velocity analyses.
 export_to_scanpy(
-  pbmc_harmony,
-  file.path(dir_objects, "pbmc_harmony_curated.h5ad")
+  ath_sc,
+  file.path(dir_objects, "ath_sc_curated.h5ad")
 )
 
 # To export a specific cell type only:
 # export_to_scanpy(
-#   subset(pbmc_harmony, subset = celltype_curated == "GC"),
+#   subset(ath_sc, subset = celltype_curated == "GC"),
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
@@ -823,7 +823,7 @@ differential tables, GO enrichment, a log2FC heatmap, and co-expression
 networks.
 
 ```{r part3_load_curated}
-pbmc_harmony <- readRDS(file.path(dir_objects, "pbmc_harmony_curated.rds"))
+ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
 ```
 
 ## Section 13 - Cell-type subsets
@@ -838,10 +838,10 @@ whichever column is set here.
 pseudobulk_annot_col <- "celltype_curated"
 
 # Inspect how many cells each cell type has before subsetting
-table(pbmc_harmony[[pseudobulk_annot_col]])
+table(ath_sc[[pseudobulk_annot_col]])
 
 cell_type_subsets <- create_cell_type_subsets(
-  pbmc_harmony, annot_col = pseudobulk_annot_col
+  ath_sc, annot_col = pseudobulk_annot_col
 )
 
 message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
@@ -916,7 +916,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   comparisons    = comparisons,
   output_dir     = output_dir,
   cell_types     = cell_types_to_analyze,
-  pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicas")
+  pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
 message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
@@ -954,7 +954,7 @@ message("\nOK SECTION 16 COMPLETE: volcano plots saved")
 
 Representative output from Section 16:
 
-![Volcano plot for Mesophyll_1, WT vs pifq.](../resultados/06_de_results/WT_vs_pifq/volcano/DESeq2_Mesophyll_1_WT_vs_pifq.png){width=30%}
+![Volcano plot for Mesophyll_1, WT vs pifq.](../results/06_de_results/WT_vs_pifq/volcano/DESeq2_Mesophyll_1_WT_vs_pifq.png){width=30%}
 
 ## Section 17 - Differential gene tables
 
@@ -975,7 +975,7 @@ message("\nOK SECTION 17 COMPLETE: differential gene tables saved")
 This writes two combined matrices (genes x cell types). The class matrix
 (`diff_table_WT_vs_pifq_*.tsv`) uses `+1`/`-1`/`0` to flag genes up-, down-, or
 not significantly regulated in each cell type; the log2FC matrix
-(`tabla_log2FC_*.tsv`) holds the actual fold changes (`NA` where not
+(`log2FC_table_*.tsv`) holds the actual fold changes (`NA` where not
 significant). Example rows for three annotated cell types (Epidermis,
 Mesophyll_1, SAM):
 
@@ -1010,7 +1010,7 @@ message("\nOK SECTION 18 COMPLETE: GO enrichment complete")
 
 Representative output from Section 18:
 
-![GO enrichment (BP) for Mesophyll_1, WT vs pifq.](../resultados/07_go/WT_vs_pifq/GO_Mesophyll_1_WT_vs_pifq_WT_vs_pifq_BP_bubble.pdf){width=30%}
+![GO enrichment (BP) for Mesophyll_1, WT vs pifq.](../results/07_go/WT_vs_pifq/GO_Mesophyll_1_WT_vs_pifq_WT_vs_pifq_BP_bubble.pdf){width=30%}
 
 ## Section 19 - Log2FC heatmap
 
@@ -1035,7 +1035,7 @@ message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
 
 Representative output from Section 19:
 
-![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](../resultados/06_de_results/WT_vs_pifq/heatmap_WT_vs_pifq.pdf){width=30%}
+![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](../results/06_de_results/WT_vs_pifq/heatmap_WT_vs_pifq.pdf){width=30%}
 
 \newpage
 
@@ -1050,8 +1050,8 @@ below are meant to be edited.
 
 ```{r section_20_tf_coexpression_network}
 run_tf_coexpression_network(
-  seurat_obj      = pbmc_harmony,
-  de_table_path   = file.path(dir_06, volcano_tag, "tabla_log2FC_fc1_padj_005.tsv"),
+  seurat_obj      = ath_sc,
+  de_table_path   = file.path(dir_06, volcano_tag, "log2FC_table_fc1_padj_005.tsv"),
   tf_list_path    = file.path(DATA_DIR, "data", "AtTFDB_loci.txt"),
   output_dir      = dir_08,
   annot_col       = pseudobulk_annot_col,
@@ -1069,7 +1069,7 @@ message("\nOK SECTION 20 COMPLETE: TF coexpression network saved")
 
 Representative output from Section 20:
 
-![TF co-expression network, colored by DE direction.](../resultados/08_networks/network_tf_DE_direction.pdf){width=30%}
+![TF co-expression network, colored by DE direction.](../results/08_networks/network_tf_DE_direction.pdf){width=30%}
 
 \newpage
 
@@ -1077,7 +1077,7 @@ Representative output from Section 20:
 
 Chapter 3 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
 object exported at the end of Chapter 1
-(`resultados/objects/pbmc_harmony_curated.h5ad`). Exit R and start Python
+(`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
 inside the same Docker container:
 
 ```bash
@@ -1092,7 +1092,7 @@ import os
 
 PIPELINE_DIR = "/workspace/workflow"
 DATA_DIR     = "/workspace/."
-base_dir     = os.path.join(DATA_DIR, "resultados")
+base_dir     = os.path.join(DATA_DIR, "results")
 
 exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
 exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
@@ -1110,7 +1110,7 @@ names to scanpy names, saves an overview UMAP, and prints the available cell
 types (used to choose the trajectory in Section 25).
 
 ```{python section_24_load_object, eval=FALSE}
-INPUT_H5AD     = "/workspace/resultados/objects/pbmc_harmony_curated.h5ad"
+INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
 ANNOTATION_COL = "celltype_curated"
 N_JOBS         = 4
 
@@ -1124,7 +1124,7 @@ adata, N_JOBS = load_curated_object(
 
 Representative output from Section 24:
 
-![Overview UMAP colored by curated cell type.](../resultados/09_pseudotime/umap_overview.pdf){width=30%}
+![Overview UMAP colored by curated cell type.](../results/09_pseudotime/umap_overview.pdf){width=30%}
 
 ## Section 25 - Cell type selection
 
@@ -1146,7 +1146,7 @@ adata_sub = preview_trajectory_selection(
 
 Representative output from Section 25:
 
-![UMAP of the cells selected for the trajectory.](../resultados/09_pseudotime/umap_selection.pdf){width=30%}
+![UMAP of the cells selected for the trajectory.](../results/09_pseudotime/umap_selection.pdf){width=30%}
 
 ## Section 26 - Trajectory inference
 
@@ -1178,12 +1178,12 @@ around the same root cell, for a looser tree fit:
 ```{=latex}
 \begin{center}
 ```
-![Trajectory graph colored by cell type.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_pseudotime_trajectory.pdf){width=30%}
+![Trajectory graph colored by cell type.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_pseudotime_trajectory.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
 
-![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_root_cell.pdf){width=30%}
+![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_root_cell.pdf){width=30%}
 
 ## Section 27 - Plot genes on trajectory
 
@@ -1209,7 +1209,7 @@ print("SECTION 27 COMPLETE: gene trajectory plots saved")
 
 Representative output from Section 27:
 
-![Selected genes on the trajectory layout.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_plots/n50_s0.3_l200_e8_seed3_gene_plots.pdf){width=30%}
+![Selected genes on the trajectory layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_plots/n50_s0.3_l200_e8_seed3_gene_plots.pdf){width=30%}
 
 ## Section 28 - Gene trends
 
@@ -1242,7 +1242,7 @@ highlighted gene list:
 ```{=latex}
 \begin{center}
 ```
-![Top 10 variable genes along pseudotime.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_top10_FINAL_24x18.pdf){width=48%} ![Highlighted gene list along pseudotime.](../resultados/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_highlight_list_FINAL_24x18.pdf){width=48%}
+![Top 10 variable genes along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_top10_FINAL_24x18.pdf){width=48%} ![Highlighted gene list along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_highlight_list_FINAL_24x18.pdf){width=48%}
 ```{=latex}
 \end{center}
 ```
@@ -1251,7 +1251,7 @@ highlighted gene list:
 
 Saves the fully processed pseudotime object (trajectory tree, pseudotime, and
 force-directed layout) as the pipeline's final Chapter 3 output, alongside the
-curated Chapter 1 object in `resultados/objects/`.
+curated Chapter 1 object in `results/objects/`.
 
 ```{python section_29_final_export, eval=FALSE}
 final_h5ad = os.path.join(base_dir, "objects", "pbmc_pseudotime_final.h5ad")
