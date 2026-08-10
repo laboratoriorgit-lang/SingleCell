@@ -61,6 +61,19 @@ The **Rmd** in `reports/` is the literate, publication-ready version of the same
 
 ---
 
+## Hardware requirements
+
+| Component | Minimum | Recommended |
+|---|---:|---:|
+| CPU cores | 4 | 16 or more |
+| RAM | 32 GB | 64–128 GB for merged multi-sample objects |
+| Disk space | 80 GB free | 100 GB free |
+| Container runtime | any OCI-compatible runtime | Docker, or Singularity/Apptainer on HPC |
+
+Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is not installed inside `matigara/scrnaseq:latest` — run it on a host, server, or HPC node separately (see Part 0 below).
+
+---
+
 ## Quick Start with Docker
 
 `docker-compose.yml` is set up to pull the pre-built image by default:
@@ -95,6 +108,19 @@ python3 workflow/step3_pseudotime.py       # run Part 3 end-to-end
 ```
 
 Cell Ranger itself is **not** bundled in the image (proprietary, license-gated download) — run `workflow/step0_cellranger.sh` in an environment where `cellranger` is on `PATH` before Part 1.
+
+### Quick Start with Singularity / Apptainer (HPC)
+
+Common on clusters where Docker itself isn't permitted. No root required — Apptainer converts the public Docker Hub image to a local `.sif` and runs it as the invoking user, so files written under `results/` are owned by that user, not root:
+
+```bash
+singularity build scrnaseq.sif docker://matigara/scrnaseq:latest
+singularity exec --bind "$(pwd)":/workspace --pwd /workspace scrnaseq.sif /bin/bash
+```
+
+`--bind "$(pwd)":/workspace` mounts the cloned repo the same way the Docker `-v` flag does; `--pwd /workspace` starts the shell inside it (otherwise Apptainer warns the host working directory doesn't exist in the container and falls back to `$HOME`). The bundled Python (`/opt/venv`) and R packages stay on `PATH` since Apptainer imports the full image environment. From there, the same `Rscript`/`python3` commands above apply.
+
+Always pull/convert the published image rather than rebuilding from the `Dockerfile` — it pins no versions and would drift from the tested build.
 
 ---
 
