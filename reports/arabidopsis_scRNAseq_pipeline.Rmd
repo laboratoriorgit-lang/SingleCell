@@ -1158,7 +1158,7 @@ root selection at the progenitor cluster, and pseudotime assignment. Add more
 ROOT_CLUSTER = "Epidermis"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=8, seed=3),
+    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -1178,12 +1178,12 @@ around the same root cell, for a looser tree fit:
 ```{=latex}
 \begin{center}
 ```
-![Trajectory graph colored by cell type.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_pseudotime_trajectory.pdf){width=30%}
+![Trajectory graph colored by cell type.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/n50_s0.3_l200_e3_seed3_annotation.pdf){width=30%} ![Pseudotime overlaid on the force-directed layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/n50_s0.3_l200_e3_seed3_pseudotime_trajectory.pdf){width=30%}
 ```{=latex}
 \end{center}
 ```
 
-![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/n50_s0.3_l200_e8_seed3_root_cell.pdf){width=30%}
+![Root cell (red) automatically selected within the Epidermis cluster as the most-connected cell — pseudotime = 0 here.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/n50_s0.3_l200_e3_seed3_root_cell.pdf){width=30%}
 
 ## Section 27 - Plot genes on trajectory
 
@@ -1209,7 +1209,7 @@ print("SECTION 27 COMPLETE: gene trajectory plots saved")
 
 Representative output from Section 27:
 
-![Selected genes on the trajectory layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_plots/n50_s0.3_l200_e8_seed3_gene_plots.pdf){width=30%}
+![Selected genes on the trajectory layout.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/gene_plots/n50_s0.3_l200_e3_seed3_gene_plots.pdf){width=30%}
 
 ## Section 28 - Gene trends
 
@@ -1242,7 +1242,7 @@ highlighted gene list:
 ```{=latex}
 \begin{center}
 ```
-![Top 10 variable genes along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_top10_FINAL_24x18.pdf){width=48%} ![Highlighted gene list along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e8_seed3/gene_trends/step29_gene_trends_highlight_list_FINAL_24x18.pdf){width=48%}
+![Top 10 variable genes along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/gene_trends/step29_gene_trends_top10_FINAL_24x18.pdf){width=48%} ![Highlighted gene list along pseudotime.](../results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3/gene_trends/step29_gene_trends_highlight_list_FINAL_24x18.pdf){width=48%}
 ```{=latex}
 \end{center}
 ```
