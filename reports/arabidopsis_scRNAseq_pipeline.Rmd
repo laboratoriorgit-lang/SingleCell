@@ -91,7 +91,7 @@ PCA/UMAP) risk stalling or exhausting memory.
 | Disk space | 80 GB free | 100 GB free |
 | Container runtime | Any OCI-compatible runtime (e.g. Docker) | Docker or Singularity/Apptainer |
 
-This workflow is packaged as a single public image (`matigara/scrnaseq:latest`,
+This workflow is packaged as a single public image (`psblab/scrnaseq:latest`,
 on Docker Hub); the `docker-compose` YAML used to build and run it is kept in
 the repository. Any container runtime able to run that image works; the setup
 below covers both Docker and Singularity/Apptainer (the latter common on HPC
@@ -101,7 +101,7 @@ Small pilot datasets can be run on a laptop or desktop if memory is sufficient.
 For full experiments, repeated clustering sweeps, Cell Ranger processing from
 FASTQ, or large merged Seurat objects, a server or external cluster is strongly
 recommended. Cell Ranger is CPU- and memory-intensive and is not installed
-inside the downstream `matigara/scrnaseq:latest` Docker image.
+inside the downstream `psblab/scrnaseq:latest` Docker image.
 
 \newpage
 
@@ -115,7 +115,7 @@ into it:
 ```bash
 mkdir -p ~/my-analysis
 cd ~/my-analysis
-git clone https://github.com/cliford2001/SingleCell.git
+git clone https://github.com/laboratoriorgit-lang/SingleCell.git
 cd SingleCell
 ```
 
@@ -159,7 +159,7 @@ user gets the exact tested package versions.
 ```bash
 docker run -it --rm \
   -v $(pwd):/workspace \
-  matigara/scrnaseq:latest /bin/bash
+  psblab/scrnaseq:latest /bin/bash
 ```
 
 Or, from inside the cloned repository, `docker compose run r` uses the bundled
@@ -172,7 +172,7 @@ image to a local `.sif` once, then open a shell binding the repository to
 `/workspace`:
 
 ```bash
-singularity build scrnaseq.sif docker://matigara/scrnaseq:latest
+singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
@@ -186,7 +186,7 @@ working directory does not exist in the container and falls back to `$HOME`).
 
 **Run this whole section outside the Docker container**, on a host, server, or
 HPC where Cell Ranger is installed. Cell Ranger is *not* bundled inside the
-`matigara/scrnaseq:latest` image (that image only covers the downstream R /
+`psblab/scrnaseq:latest` image (that image only covers the downstream R /
 Python workflow), so running `cellranger` inside the container returns
 `command not found`. Write the Cell Ranger outputs into the cloned repository
 directory so they are visible from inside the container (which mounts that same
@@ -1600,7 +1600,7 @@ print(f"SECTION 29 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 
 # Supplementary Table — Software dependencies and versions {-}
 
-Package versions are those bundled in the `matigara/scrnaseq:latest` Docker image
+Package versions are those bundled in the `psblab/scrnaseq:latest` Docker image
 (the public image used for all R and Python steps). R **base-priority** packages
 are omitted. Cell Ranger is 10x Genomics proprietary software run *outside* the
 container (Part 1); its version is fixed by the workflow.

@@ -1,6 +1,6 @@
 services:
   r:
-    image: matigara/scrnaseq:latest
+    image: psblab/scrnaseq:latest
     # Always pull the tested image from Docker Hub instead of rebuilding from the
     # Dockerfile (which pins no versions and would drift). To rebuild on purpose:
     # `docker compose build`.

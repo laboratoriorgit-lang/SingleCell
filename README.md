@@ -70,7 +70,7 @@ The **Rmd** in `reports/` is the literate, publication-ready version of the same
 | Disk space | 80 GB free | 100 GB free |
 | Container runtime | any OCI-compatible runtime | Docker, or Singularity/Apptainer on HPC |
 
-Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is not installed inside `matigara/scrnaseq:latest` — run it on a host, server, or HPC node separately (see Part 0 below).
+Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is not installed inside `psblab/scrnaseq:latest` — run it on a host, server, or HPC node separately (see Part 0 below).
 
 ---
 
@@ -79,7 +79,7 @@ Not hard limits — below them the pipeline still runs, just slower, and the hea
 `docker-compose.yml` is set up to pull the pre-built image by default:
 
 ```bash
-docker compose pull      # fetch matigara/scrnaseq:latest from Docker Hub
+docker compose pull      # fetch psblab/scrnaseq:latest from Docker Hub
 docker compose build     # or build your own local version instead
                           #   (overwrites the same tag, this host only)
 docker compose run --rm r          # open an R console with the mounted repo
@@ -91,10 +91,10 @@ docker compose run --rm r bash     # or a shell
 **Manual, without docker-compose:**
 
 ```bash
-docker pull matigara/scrnaseq:latest                     # from Docker Hub
-# or: docker build -t matigara/scrnaseq:latest .          # build locally
+docker pull psblab/scrnaseq:latest                     # from Docker Hub
+# or: docker build -t psblab/scrnaseq:latest .          # build locally
 
-docker run -it -v "$(pwd)":/workspace matigara/scrnaseq:latest bash
+docker run -it -v "$(pwd)":/workspace psblab/scrnaseq:latest bash
 ```
 
 Once inside the container (`/workspace` = repo root):
@@ -114,7 +114,7 @@ Cell Ranger itself is **not** bundled in the image (proprietary, license-gated d
 Common on clusters where Docker itself isn't permitted. No root required — Apptainer converts the public Docker Hub image to a local `.sif` and runs it as the invoking user, so files written under `results/` are owned by that user, not root:
 
 ```bash
-singularity build scrnaseq.sif docker://matigara/scrnaseq:latest
+singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 singularity exec --bind "$(pwd)":/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
@@ -129,7 +129,7 @@ Always pull/convert the published image rather than rebuilding from the `Dockerf
 ```
 SingleCell/
 ├── Dockerfile                          # rocker/r-ver:4.5 + full R/Python/Bioc stack
-├── docker-compose.yml                  # pulls matigara/scrnaseq:latest, mounts repo at /workspace
+├── docker-compose.yml                  # pulls psblab/scrnaseq:latest, mounts repo at /workspace
 ├── .Rprofile                           # sets RETICULATE_PYTHON for the container's venv
 ├── README.md
 ├── data/
@@ -565,7 +565,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | Seurat ecosystem | `Seurat`, `SeuratObject` (CRAN, latest), `Signac` |
 | Key Bioconductor packages | `DESeq2`, `clusterProfiler`, `org.At.tair.db`, `GENIE3`, `ComplexHeatmap`, `zellkonverter`, `basilisk`, `SingleCellExperiment`, `scuttle`, `scater` |
 | Other clustering / network packages | `WGCNA` (+ `impute`, `preprocessCore` from Bioconductor), `dynamicTreeCut`, `igraph`, `ggraph`, `tidygraph`, `leidenbase` (Leiden clustering, `algorithm = 4`) |
-| Docker image (published) | `matigara/scrnaseq:latest` on Docker Hub |
+| Docker image (published) | `psblab/scrnaseq:latest` on Docker Hub |
 
 > **Known gap:** `workflow/load_libraries.R` calls `library(hdWGCNA)`, and several R functions (`run_unified_hdwgcna`, `run_hdwgcna`, `plot_hdwgcna_network*`, `filter_hdwgcna_by_de`, `run_tf_coexpression_network`) depend on it, but the Dockerfile never installs `hdWGCNA` (typically `remotes::install_github("smorabit/hdWGCNA")`). Install it manually before running Part 2, Section 20.
 

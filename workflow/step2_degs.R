@@ -26,7 +26,7 @@ base_dir   <- file.path(DATA_DIR, "results")
 # =============================================================================
 
 # -- Load helper scripts --------------------------------------------------------
-# Each file is fully documented at https://github.com/cliford2001/SingleCell
+# Each file is fully documented at https://github.com/laboratoriorgit-lang/SingleCell
 source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
 

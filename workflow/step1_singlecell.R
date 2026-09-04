@@ -1,6 +1,6 @@
 # Step 1 - Single-cell analysis (R)
 # Auto-derived from the methods paper (Part 2). Run inside the
-# matigara/scrnaseq container with the repository mounted at /workspace.
+# psblab/scrnaseq container with the repository mounted at /workspace.
 # Helper functions live in workflow/ and are sourced by the init block below.
 
 # ==============================================================================
@@ -27,7 +27,7 @@ base_dir   <- file.path(DATA_DIR, "results")
 # =============================================================================
 
 # -- Load helper scripts --------------------------------------------------------
-# Each file is fully documented at https://github.com/cliford2001/SingleCell
+# Each file is fully documented at https://github.com/laboratoriorgit-lang/SingleCell
 source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
 source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
 

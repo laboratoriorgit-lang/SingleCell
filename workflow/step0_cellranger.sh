@@ -3,7 +3,7 @@
 # Auto-derived from the methods paper (Part 1). Like the rest of the workflow,
 # it assumes the cloned repository is mounted at /workspace (Docker convention),
 # so outputs land in the repo and are visible to the R/Python steps. Cell Ranger
-# 9.0.1 must be available on PATH; it is NOT bundled in the matigara/scrnaseq
+# 9.0.1 must be available on PATH; it is NOT bundled in the psblab/scrnaseq
 # image, so run this in a context where cellranger is installed.
 #
 # This is a reference script: the Cell Ranger download URL is signed and
