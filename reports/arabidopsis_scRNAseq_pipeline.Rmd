@@ -278,12 +278,19 @@ cellranger mkref \
 Run Cell Ranger counts for each sample:
 
 ```bash
-cellranger count --localcores=80 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \
+cellranger count --localcores=10 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \
   --sample=ScWT --transcriptome=Ara --create-bam false
 
-cellranger count --localcores=80 --id=Scpifq --fastqs=/workspace/fastq/CRA010863 \
+cellranger count --localcores=10 --id=Scpifq --fastqs=/workspace/fastq/CRA010863 \
   --sample=Scpifq --transcriptome=Ara --create-bam false
 ```
+
+`--localcores=10` is used here as a portable default that keeps the example
+consistent across this report and the accompanying workflow scripts; it is not
+a hard requirement. Cell Ranger will happily use more or fewer cores, so raise
+or lower this value to match the number of CPU cores actually available on
+the machine running the pipeline (see the Recommended column above for
+guidance).
 
 Use the resulting `filtered_feature_bc_matrix/` path in the sample manifest in
 Section 1.

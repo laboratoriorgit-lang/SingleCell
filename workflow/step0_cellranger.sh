@@ -65,8 +65,10 @@ cellranger mkref \
 # ==============================================================================
 # Use the resulting filtered_feature_bc_matrix/ path in the sample manifest in
 # Step 1, Section 1.
-cellranger count --localcores=80 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \
+# --localcores is set to 10 here as a portable default; adjust it up or down
+# to match the number of CPU cores actually available on your machine.
+cellranger count --localcores=10 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \
   --sample=ScWT --transcriptome=Ara --create-bam false
 
-cellranger count --localcores=80 --id=Scpifq --fastqs=/workspace/fastq/CRA010863 \
+cellranger count --localcores=10 --id=Scpifq --fastqs=/workspace/fastq/CRA010863 \
   --sample=Scpifq --transcriptome=Ara --create-bam false
