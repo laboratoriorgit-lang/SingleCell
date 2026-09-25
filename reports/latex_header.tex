@@ -9,6 +9,13 @@
 \pdfglyphtounicode{tilde}{007E}
 \pdfgentounicode=1
 
+% Keep figures anchored where they appear in the text instead of letting
+% LaTeX float them to another page.
+\usepackage{float}
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][2]{\origfigure[H]}{\endorigfigure}
+
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
 
