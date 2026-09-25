@@ -167,32 +167,9 @@ resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
 
-k_range <- 1:31
-pca_data <- Embeddings(ath_sc, "pca")[, 1:30]
-wss <- sapply(
-  k_range,
-  function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
-)
+plot_resolution_elbow(ath_sc, output_dir = output_dir)
 
-elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
-  geom_line() +
-  geom_point() +
-  labs(
-    x = "Number of clusters (k)",
-    y = "Within-cluster sum of squares"
-  ) +
-  theme_minimal()
-
-save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
-
-clu <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE)
-
-for (res in resolutions_test)
-  clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
-
-save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree2.pdf", w = 18, h = 18)
+clu <- run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = output_dir)
 
 message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 
@@ -264,29 +241,7 @@ message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
 # ==============================================================================
 output_dir <- dir_03
 
-Mode <- function(x) {
-  x <- as.character(x)
-  x <- x[!is.na(x) & nzchar(x)]
-  if (length(x) == 0) return(NA_character_)
-  names(sort(table(x), decreasing = TRUE))[1]
-}
-
-stopifnot(exists("clu"))
-stopifnot("celltype" %in% colnames(ath_sc@meta.data))
-
-celltype_label <- as.character(ath_sc$celltype)
-names(celltype_label) <- Cells(ath_sc)
-clu$celltype_label <- celltype_label[Cells(clu)]
-
-print(table(clu$celltype_label, useNA = "ifany"))
-
-save_pdf(
-  clustree(
-    clu, prefix = "RNA_snn_res.",
-    node_label = "celltype_label", node_label_aggr = "Mode"
-  ),
-  "clustree_annotated.pdf", w = 14, h = 14
-)
+plot_annotated_clustree(ath_sc, clu, annot_col = "celltype", output_dir = output_dir)
 
 message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 
