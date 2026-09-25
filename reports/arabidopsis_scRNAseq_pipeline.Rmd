@@ -1732,33 +1732,70 @@ this:
 ```
 ```text
 results/
-|-- 01_qc/               qc_prefilter.pdf, qc_postfilter.pdf,
-|                         umap_preharmony.pdf, umap_postharmony.pdf
-|-- 02_clustering/        elbow_plot.pdf, clustree2.pdf, umap_seuratclusters.pdf
-|-- 03_annotation/        FindAllMarkers.tsv, dotplot_marker_table_annotation_biblio.pdf,
-|                         umap_annotation_biblio.pdf, clustree_annotated.pdf
-|-- 04_expression/        feature_gene_<gene>.pdf, vln_gene_<gene>.pdf
-|-- 05_curation/          umap_grouped.pdf, subcluster_markers_<cluster>.pdf, umap_curated.pdf
-|-- objects/              checkpoints: seurat_list_postfilter.rds, ath_sc_preharmony.rds,
-|                         ath_sc_postharmony.rds, ath_sc_curated.rds/.h5ad,
-|                         pseudobulk_replicates/, ath_sc_pseudotime_final.h5ad
-|-- 06_de_results/<tag>/  DESeq2_<cell_type>_<tag>.csv, <cell_type>_<tag>_filtered.csv,
-|                         diff_table_<tag>_fc1_padj_005.tsv, log2FC_table_fc1_padj_005.tsv,
-|                         heatmap_<tag>.pdf, volcano/DESeq2_<cell_type>_<tag>.png,
-|                         volcano/VolcanoPlots_<tag>.pdf
-|-- 07_go/<tag>/          GO_<cell_type>_<tag>_BP.tsv, GO_<cell_type>_<tag>_BP_bubble.pdf
-|-- 08_networks/          edges_unified.tsv, nodes_unified.tsv, modules_unified.tsv,
-|                         hubgenes_unified.tsv, hdwgcna_summary.tsv, unified_TOM.rda,
-|                         hdwgcna_unified.rds, network_tf_DE_direction.pdf
-`-- 09_pseudotime/        umap_overview.pdf, umap_selection.pdf,
-                          trajectory/<run_name>/parameters.tsv,
-                          trajectory/<run_name>/<run_name>_{annotation,
-                            pseudotime_trajectory,root_cell}.pdf,
-                          trajectory/<run_name>/<run_name>_pseudotime_by_cell.tsv,
-                          trajectory/<run_name>/<run_name>_trajectory.h5ad,
-                          trajectory/<run_name>/gene_plots/<run_name>_gene_plots.pdf,
-                          trajectory/<run_name>/gene_trends/step29_gene_trends_
-                            {top10,highlight_list}_FINAL_24x18.pdf
+|-- 01_qc/
+|   |-- qc_prefilter.pdf
+|   |-- qc_postfilter.pdf
+|   |-- umap_preharmony.pdf
+|   `-- umap_postharmony.pdf
+|-- 02_clustering/
+|   |-- elbow_plot.pdf
+|   |-- clustree2.pdf
+|   `-- umap_seuratclusters.pdf
+|-- 03_annotation/
+|   |-- FindAllMarkers.tsv
+|   |-- dotplot_marker_table_annotation_biblio.pdf
+|   |-- umap_annotation_biblio.pdf
+|   `-- clustree_annotated.pdf
+|-- 04_expression/
+|   |-- feature_gene_<gene>.pdf
+|   `-- vln_gene_<gene>.pdf
+|-- 05_curation/
+|   |-- umap_grouped.pdf
+|   |-- subcluster_markers_<cluster>.pdf
+|   `-- umap_curated.pdf
+|-- objects/                              # checkpoints (.rds / .h5ad)
+|   |-- seurat_list_postfilter.rds
+|   |-- ath_sc_preharmony.rds
+|   |-- ath_sc_postharmony.rds
+|   |-- ath_sc_curated.rds
+|   |-- ath_sc_curated.h5ad
+|   |-- pseudobulk_replicates/
+|   `-- ath_sc_pseudotime_final.h5ad
+|-- 06_de_results/<comparison_tag>/       # e.g. WT_vs_pifq/
+|   |-- DESeq2_<cell_type>_<tag>.csv
+|   |-- <cell_type>_<tag>_filtered.csv
+|   |-- diff_table_<tag>_fc1_padj_005.tsv
+|   |-- log2FC_table_fc1_padj_005.tsv
+|   |-- heatmap_<tag>.pdf
+|   `-- volcano/
+|       |-- DESeq2_<cell_type>_<tag>.png
+|       `-- VolcanoPlots_<tag>.pdf
+|-- 07_go/<comparison_tag>/
+|   |-- GO_<cell_type>_<tag>_BP.tsv
+|   `-- GO_<cell_type>_<tag>_BP_bubble.pdf
+|-- 08_networks/
+|   |-- edges_unified.tsv
+|   |-- nodes_unified.tsv
+|   |-- modules_unified.tsv
+|   |-- hubgenes_unified.tsv
+|   |-- hdwgcna_summary.tsv
+|   |-- unified_TOM.rda
+|   |-- hdwgcna_unified.rds
+|   `-- network_tf_DE_direction.pdf
+`-- 09_pseudotime/
+    |-- umap_overview.pdf
+    |-- umap_selection.pdf
+    `-- trajectory/<run_name>/            # e.g. n50_s0.3_l200_e3_seed3/
+        |-- parameters.tsv
+        |-- <run_name>_annotation.pdf
+        |-- <run_name>_pseudotime_trajectory.pdf
+        |-- <run_name>_root_cell.pdf
+        |-- <run_name>_pseudotime_by_cell.tsv
+        |-- <run_name>_trajectory.h5ad
+        |-- gene_plots/<run_name>_gene_plots.pdf
+        `-- gene_trends/
+            |-- step29_gene_trends_top10_FINAL_24x18.pdf
+            `-- step29_gene_trends_highlight_list_FINAL_24x18.pdf
 ```
 ```{=latex}
 \normalsize
