@@ -1038,15 +1038,16 @@ Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  ath_sc, cluster_id = "2",
+  ath_sc, cluster_id = "Mesophyll",
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
-#    then curate them in one call. Example for two clusters:
+#    then curate them in one call. Here Mesophyll's subclusters all map back
+#    to "Mesophyll" (no relabeling), which is the pattern to use when the
+#    subcluster inspection confirms the original label was already correct:
 reassign <- list(
-  "2" = c("0" = "Identity A", "others" = "Unresolved"),
-  "4" = c("1" = "Identity B", "others" = "Unresolved")
+  "Mesophyll" = c("others" = "Mesophyll")
 )
 ath_sc <- curate_clusters(
   ath_sc, reassign,
@@ -1063,9 +1064,20 @@ save_pdf(
 message("\nOK SECTION 11 COMPLETE: curation complete")
 ```
 
-*Section 11 (interactive subcluster curation) was not re-executed in this run.
-All downstream analyses use the bibliography annotation (`celltype`) directly,
-so unresolved clusters keep their numeric labels (`2`, `4`, `5`, `7`).*
+Representative output from Section 11 — subcluster inspection of the
+Mesophyll population (UMAP of its subclusters plus marker-gene panels used to
+decide whether to keep or split the label):
+
+![Mesophyll subcluster inspection: subcluster UMAP, marker dotplot, and per-gene marker panels.](assets/subcluster_markers_mesophyll.png){width=45%}
+
+*This example was executed in a validation run of this pipeline on the
+bibliography-annotated Mesophyll population. Its subclusters were mapped back
+to `others = "Mesophyll"` (no relabeling), which is why `celltype_curated`
+matches `celltype` for Mesophyll in that run — this demonstrates the
+inspect-then-curate mechanism without changing any label. The rest of this
+document (from Section 13 on) uses the reference run's `celltype_curated`
+labels shown in the table below, which came from curating its own
+unresolved clusters (`1`, `2`, `8`, `10`, `11`) individually.*
 
 ## Section 12 - Export the curated object
 
