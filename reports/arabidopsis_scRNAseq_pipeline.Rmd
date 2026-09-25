@@ -619,7 +619,7 @@ message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
 
 Representative output from Section 1:
 
-![Pre-filter QC violin plots.](assets/qc_prefilter_generic.png){width=30%}
+![Pre-filter QC violin plots.](assets/qc_prefilter.png){width=30%}
 
 \newpage
 
@@ -661,7 +661,7 @@ message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
 
 Representative output from Section 2:
 
-![Post-filter QC violin plots.](assets/qc_postfilter_generic.png){width=30%}
+![Post-filter QC violin plots.](assets/qc_postfilter.png){width=30%}
 
 \newpage
 
@@ -703,7 +703,7 @@ message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
 Representative output from Section 3:
 
-![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony_generic.png){width=30%}
+![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
 
 \newpage
 
@@ -739,7 +739,7 @@ message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
 Representative output from Section 4:
 
-![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony_generic.png){width=30%}
+![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony.png){width=30%}
 
 \newpage
 
@@ -779,7 +779,7 @@ Representative outputs from Section 5:
 ```{=latex}
 \begin{center}
 ```
-![Elbow diagnostic used to inspect candidate cluster numbers.](assets/elbow_plot_generic.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree_generic.png){width=30%}
+![Elbow diagnostic used to inspect candidate cluster numbers.](assets/elbow_plot.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -823,7 +823,7 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 
 Representative output from Section 6:
 
-![Final UMAP colored by numbered Seurat clusters.](assets/umap_seuratclusters_generic.png){width=30%}
+![Final UMAP colored by numbered Seurat clusters.](assets/umap_seuratclusters.png){width=30%}
 
 \newpage
 
@@ -885,7 +885,7 @@ Representative outputs from Section 7:
 ```{=latex}
 \begin{center}
 ```
-![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio_generic.png){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio_generic.png){width=30%}
+![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio.png){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -912,7 +912,7 @@ message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 
 Representative output from Section 8:
 
-![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated_generic.png){width=30%}
+![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated.png){width=30%}
 
 \newpage
 
@@ -959,7 +959,7 @@ Representative outputs from Section 9:
 ```{=latex}
 \begin{center}
 ```
-![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_all_generic.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_all_generic.png){width=30%}
+![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_AT5G26000.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_AT5G26000.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -1145,24 +1145,23 @@ cell_type_subsets <- create_cell_type_subsets(
 message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
 ```
 
-Cells per cell type (bibliography annotation `celltype_curated`; the two
-mesophyll subclusters and the still-numeric unannotated clusters are kept
-separate at this stage):
+Cells per cell type (bibliography annotation `celltype_curated`; the three
+epidermis hypocotyl subclusters and the still-numeric unannotated clusters
+are kept separate at this stage):
 
 | Cell type | Cells |
 |---|---:|
-| Epidermis | 1464 |
-| SAM | 875 |
-| Mesophyll_1 | 680 |
-| Mesophyll_2 | 489 |
-| MMC | 366 |
-| Vascular | 148 |
-| GC | 49 |
-| 1 | 1839 |
-| 2 | 1594 |
-| 8 | 366 |
-| 10 | 78 |
-| 11 | 57 |
+| Mesophyll | 1739 |
+| Epidermis Cotyledon | 1569 |
+| Epidermis Hypocotyl.1 | 1691 |
+| Epidermis Hypocotyl.2 | 752 |
+| Epidermis Hypocotyl.3 | 498 |
+| PHLOEM | 127 |
+| ENDO1 | 67 |
+| guard cell | 31 |
+| 3 | 1586 |
+| 7 | 437 |
+| 9 | 78 |
 
 ## Section 14 - Pseudo-replicate assignment
 
@@ -1196,27 +1195,27 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 )
 
 # Inspect cells per pseudo-replicate for one cell type
-table(cell_type_subsets_replicates[["Epidermis"]]$replicate)
+table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
 
 message("\nOK SECTION 14 COMPLETE: pseudo-replicates assigned")
 ```
 
-Cell types present in only one condition (here cluster `11`, with only 57
-cells and all from the pifq sample) are dropped, since a WT vs pifq contrast
-needs both conditions represented. Eleven cell types are retained.
+Cell types present in only one condition (here cluster `9`, with only 78
+cells) are dropped, since a WT vs pifq contrast needs both conditions
+represented. Ten cell types are retained.
 
 Cells per pseudo-replicate (first two cell types shown):
 
 | Cell type | Replicate | Cells |
 |---|---|---:|
-| Epidermis | pifq_rep1 | 318 |
-| Epidermis | pifq_rep2 | 353 |
-| Epidermis | pifq_rep3 | 329 |
-| Epidermis | WT_rep1 | 164 |
-| Epidermis | WT_rep2 | 155 |
-| Epidermis | WT_rep3 | 145 |
-| Mesophyll_1 | pifq_rep1 | 223 |
-| Mesophyll_1 | pifq_rep2 | 218 |
+| Mesophyll | pifq_rep1 | 499 |
+| Mesophyll | pifq_rep2 | 527 |
+| Mesophyll | pifq_rep3 | 488 |
+| Mesophyll | WT_rep1 | 72 |
+| Mesophyll | WT_rep2 | 76 |
+| Mesophyll | WT_rep3 | 77 |
+| Epidermis Cotyledon | pifq_rep1 | ... |
+| Epidermis Cotyledon | pifq_rep2 | ... |
 | ... | ... | ... |
 
 ## Section 15 - Pseudobulk tables and DESeq2
@@ -1260,13 +1259,13 @@ message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
 DESeq2 results table (one row per gene, with `log2FoldChange`, `pvalue`, and
 `padj`). Positive log2FC means higher expression in pifq. First rows of the
-Mesophyll_1 table:
+Mesophyll table:
 
 ```text
              baseMean  log2FoldChange   lfcSE      stat     pvalue      padj
-AT1G01010    16.74     -1.651           0.418     -3.946   7.9e-05     9.3e-04
-AT1G01020    27.42      0.697           0.388      1.798   7.2e-02     2.2e-01
-AT1G01030   117.17     -1.439           0.501     -2.871   4.1e-03     2.6e-02
+AT1G01010    94.04     -1.659           0.294     -5.652   1.6e-08     1.3e-07
+AT1G01020   119.88      0.204           0.168      1.212   2.3e-01     3.6e-01
+AT1G01030   417.65     -0.605           0.172     -3.521   4.3e-04     1.8e-03
 ```
 
 ## Section 16 - Volcano plots
@@ -1300,7 +1299,7 @@ message("\nOK SECTION 16 COMPLETE: volcano plots saved")
 
 Representative output from Section 16:
 
-![Volcano plot for Mesophyll_1, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
+![Volcano plot for Mesophyll, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
 
 ## Section 17 - Differential gene tables
 
@@ -1334,15 +1333,15 @@ This writes two combined matrices (genes x cell types). The class matrix
 (`diff_table_WT_vs_pifq_*.tsv`) uses `+1`/`-1`/`0` to flag genes up-, down-, or
 not significantly regulated in each cell type; the log2FC matrix
 (`log2FC_table_*.tsv`) holds the actual fold changes (`NA` where not
-significant). Example rows for three annotated cell types (Epidermis,
-Mesophyll_1, SAM):
+significant). Example rows for three annotated cell types (Epidermis
+Cotyledon, Mesophyll, PHLOEM):
 
 ```text
-# class matrix                       # log2FC matrix
-gene_id    Epid  Meso1  SAM          gene_id    Epid   Meso1  SAM
-AT1G01010    0    -1     -1          AT1G01010    NA    -1.65  -1.51
-AT1G01030    0    -1      1          AT1G01030    NA    -1.44   3.05
-AT1G01060    1     1      0          AT1G01060   2.35    4.08    NA
+# class matrix                          # log2FC matrix
+gene_id    EpiCot  Meso  Phlo          gene_id    EpiCot   Meso   Phlo
+AT1G01010    -1     -1     0          AT1G01010    -1.90   -1.66    NA
+AT1G01060     1      1     0          AT1G01060     1.47    4.55    NA
+AT1G01120    -1      1     0          AT1G01120    -1.72    1.22    NA
 ```
 
 ## Section 18 - GO enrichment
@@ -1383,7 +1382,7 @@ message("\nOK SECTION 18 COMPLETE: GO enrichment complete")
 
 Representative output from Section 18:
 
-![GO enrichment (BP) for Mesophyll_1, WT vs pifq.](assets/go_mesophyll.png){width=30%}
+![GO enrichment (BP) for Mesophyll, WT vs pifq.](assets/go_mesophyll.png){width=30%}
 
 ## Section 19 - Log2FC heatmap
 
