@@ -1538,7 +1538,7 @@ these cells before fitting the trajectory, which helps confirm that the intended
 population was chosen.
 
 ```{python section_25_cell_selection, eval=FALSE}
-TRAJECTORY_CLUSTERS = ["epidermis cotyledon"]
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -1569,7 +1569,7 @@ the trajectory. The outputs include the trajectory graph, pseudotime
 visualization, and selected root cell plot inside `results/09_pseudotime/`.
 
 ```{python section_26_trajectory, eval=FALSE}
-ROOT_CLUSTER = "epidermis cotyledon"
+ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
     trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
