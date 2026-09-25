@@ -973,9 +973,9 @@ or subclusters into broader groups. It uses the `grouping` object as a small
 renaming table: the names on the left are the current labels, and the values on
 the right are the new labels.
 
-For example, in this report `Mesophyll.1` and `Mesophyll.2` are both renamed as
-`Mesophyll`. Any cell type that is not listed in `grouping` keeps its original
-label.
+For example, in this report `Epidermis Hypocotyl.1`, `.2`, and `.3` are all
+renamed as `Epidermis Hypocotyl`. Any cell type that is not listed in
+`grouping` keeps its original label.
 
 Use this section when the detailed annotation is useful for inspection but a
 simpler grouping is better for figures or downstream summaries. The grouped
@@ -983,10 +983,11 @@ labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
 `results/05_curation/umap_grouped.pdf`.
 
 ```{r section_10_cell_type_grouping_optional, strip_comments=FALSE}
-# Merge the two mesophyll subclusters into a single "Mesophyll" label
+# Merge the three epidermis hypocotyl subclusters into a single label
 grouping <- c(
-  "Mesophyll.1" = "Mesophyll",
-  "Mesophyll.2" = "Mesophyll"
+  "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
+  "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl",
+  "Epidermis Hypocotyl.3" = "Epidermis Hypocotyl"
 )
 
 output_dir <- dir_05
@@ -1010,7 +1011,7 @@ message("\nOK SECTION 10 COMPLETE: cell-type grouping complete")
 
 Representative output from Section 10:
 
-![UMAP colored by grouped cell-type labels.](assets/umap_grouped_mesophyll_docker.pdf){width=30%}
+![UMAP colored by grouped cell-type labels.](assets/umap_grouped_epidermis_hypocotyl.png){width=30%}
 
 \newpage
 
