@@ -1728,7 +1728,7 @@ subfolder per step. After running the full pipeline once, it looks like
 this:
 
 ```{=latex}
-\footnotesize
+\scriptsize
 ```
 ```text
 results/
@@ -1797,9 +1797,6 @@ results/
             |-- step29_gene_trends_top10_FINAL_24x18.pdf
             `-- step29_gene_trends_highlight_list_FINAL_24x18.pdf
 ```
-```{=latex}
-\normalsize
-```
 
 `01_qc`-`05_curation` and `objects/` come from Part 2 (`step1_singlecell.R`);
 `06_de_results`/`07_go` (one subfolder per `comparisons` tag, Section 15) and
@@ -1808,6 +1805,9 @@ results/
 `TRAJECTORY_RUNS` (Section 26). `<gene>`, `<cluster>`, `<cell_type>`, and
 `<tag>` depend on the values used when running each section, not on fixed
 names.
+```{=latex}
+\normalsize
+```
 
 # Supplementary Table — Software dependencies and versions {-}
 
