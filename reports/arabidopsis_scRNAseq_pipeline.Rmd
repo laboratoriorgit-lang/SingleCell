@@ -1350,7 +1350,7 @@ Representative output from Section 20:
 
 Chapter 3 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
 object exported at the end of Chapter 1
-(`resultados/objects/pbmc_harmony_curated.h5ad`). Exit R and start Python
+(`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
 inside the same Docker container:
 
 ```bash
@@ -1373,7 +1373,7 @@ import os
 
 PIPELINE_DIR = "/workspace/workflow"
 DATA_DIR     = "/workspace/."
-base_dir     = os.path.join(DATA_DIR, "resultados")
+base_dir     = os.path.join(DATA_DIR, "results")
 
 exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
 exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
@@ -1395,7 +1395,7 @@ Scanpy. It saves an overview UMAP and prints the available cell types, which are
 used to choose the trajectory cells in the next section.
 
 ```{python section_24_load_object, eval=FALSE}
-INPUT_H5AD     = "/workspace/resultados/objects/pbmc_harmony_curated.h5ad"
+INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
 ANNOTATION_COL = "celltype_curated"
 N_JOBS         = 4
 
@@ -1450,7 +1450,7 @@ overwriting previous results. The run shown here uses 50 nodes, `sigma = 0.3`,
 
 Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
-visualization, and selected root cell plot inside `resultados/09_pseudotime/`.
+visualization, and selected root cell plot inside `results/09_pseudotime/`.
 
 ```{python section_26_trajectory, eval=FALSE}
 ROOT_CLUSTER = "epidermis cotyledon"
@@ -1553,7 +1553,7 @@ ORDERING        = "max"
 SPLINE_DF       = 3
 
 # selected_trajectory_dir points to the epidermis cotyledon run:
-# resultados/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3
+# results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3
 name = os.path.basename(selected_trajectory_dir)
 
 ensure_expression_in_X(adata_traj)
