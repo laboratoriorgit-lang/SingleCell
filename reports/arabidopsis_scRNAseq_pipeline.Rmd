@@ -63,6 +63,101 @@ knitr::knit_hooks$set(source = function(x, options) {
 })
 ```
 
+\newpage
+
+# Abstract {-}
+
+**A stepwise framework for inferring gene regulatory networks and
+pseudotime-based trajectories from single-cell RNA-sequencing data**
+
+Riveras E.^1^, Vergara M.^1^, Moreno-Ramirez S.^2^, Gutiérrez R.A.^1^
+
+^1^Departamento de Genética Molecular y Microbiología, Facultad de Ciencias
+Biológicas, Pontificia Universidad Católica de Chile, Santiago, Chile.
+Millennium Institute for Integrative Biology, Millennium Institute for Center
+for Genome Regulation. ^2^Sainsbury Laboratory, University of Cambridge,
+Bateman Street, Cambridge CB2 1LR, UK.
+
+Plant development is a dynamic process in which new organs are continuously
+formed throughout an individual's lifetime. This continuous production of new
+organs enables plants to increase in size and generate tissues with diverse
+physiological and functional capabilities. Single-cell RNA sequencing
+(scRNA-seq) has emerged as a powerful approach for characterizing
+cell-type-specific transcriptomes at high resolution across tissues and
+species. However, the bioinformatics analyses required to extract biological
+information from scRNA-seq datasets can be challenging for researchers without
+formal training in bioinformatics. Here, we provide a step-by-step workflow
+for inferring gene regulatory networks and pseudotime-based developmental
+trajectories from scRNA-seq data. To facilitate the implementation and
+reproducibility of these analyses, we provide a Docker image and a GitHub
+repository (github.com/laboratoriorgit-lang/SingleCell) containing all
+scripts, helper functions, reference files, container configuration, and
+environment YAML files. The workflow was applied to publicly available
+scRNA-seq data from *Arabidopsis thaliana* seedlings and enables the
+identification of differentially expressed genes (DEGs) across cell types,
+gene regulatory networks, and developmental trajectories associated with
+epidermal differentiation. Although this guide focuses on scRNA-seq analysis
+in *A. thaliana*, the workflow can be adapted to other organisms using
+appropriate reference genomes, genome annotations, and experimental designs.
+
+\newpage
+
+# Introduction {-}
+
+Plant organs are not laid down once during embryogenesis but are produced
+continuously across the plant's life, from meristems that generate new roots,
+leaves and flowers on demand. This ongoing organogenesis depends on precisely
+coordinated, cell-type-specific gene expression programs, as neighboring
+cells within the same tissue can follow markedly different transcriptional
+trajectories depending on their developmental origin, position, and stage of
+differentiation. Bulk RNA-seq, which averages expression across every cell in
+a sample, is poorly suited to resolving this heterogeneity: rare cell types
+are diluted out, and transitions between cell states are collapsed into a
+single average that may not represent any individual cell.
+
+Single-cell RNA sequencing (scRNA-seq) addresses this limitation directly by
+profiling transcriptomes one cell at a time, making it possible to resolve
+cell-type identity, cell-state transitions, and developmental trajectories
+within a tissue at a resolution bulk approaches cannot reach. Once cells are
+clustered and annotated, the same data can support several complementary
+analyses: differential expression between cell types or genotypes, inference
+of gene regulatory networks from co-expression patterns, and reconstruction
+of pseudotime trajectories that order cells along a developmental or
+differentiation axis. In practice, however, each of these steps involves a
+distinct set of tools, file formats and statistical choices, and combining
+them into a coherent, reproducible pipeline requires computational expertise
+that is not always available in plant biology labs, which can be a real
+barrier to adopting scRNA-seq despite its potential.
+
+This guide provides a complete, reproducible workflow that carries scRNA-seq
+data from raw sequencing reads through all of these downstream analyses.
+Starting from FASTQ files, Cell Ranger is used to generate per-cell count
+matrices (Part 1). These matrices are then loaded into R, where cells are
+filtered, doublets are removed, samples are merged and batch-corrected with
+Harmony, and clusters are annotated to cell types using literature-curated
+marker genes (Part 2). From the annotated object, the pipeline builds
+pseudobulk profiles per cell type to identify differentially expressed genes
+between genotypes, runs GO enrichment on those gene sets, and infers a
+transcription-factor co-expression network to highlight candidate regulators
+(Part 3). Finally, the workflow switches to Python (scanpy, Palantir,
+scFates) to reconstruct pseudotime trajectories within a selected cell
+population, order cells along that trajectory, and identify genes whose
+expression trends define it (Part 4). Every step is packaged as a single
+container image, so the same software environment — R, Python, and every
+package version — is available to anyone who pulls the image, removing a
+major source of "works on my machine" irreproducibility.
+
+To illustrate the complete workflow end to end, this document applies it to a
+public scRNA-seq dataset comparing wild-type and *pifq* mutant *Arabidopsis
+thaliana* seedlings, from raw Cell Ranger processing through cell-type
+annotation, differential expression, regulatory network inference, and a
+pseudotime trajectory of epidermal differentiation. Although the example
+organism is *A. thaliana*, none of the workflow logic is specific to it: the
+same steps apply to other species by substituting the reference genome,
+annotation, and marker gene set used for cell-type calling.
+
+## About this document {-}
+
 This methods-paper R Markdown documents the full WT vs pifq workflow: two
 samples, `WT` and `pifq`, processed and integrated together, then carried
 through three chapters — single-cell preprocessing, clustering and annotation
@@ -102,6 +197,51 @@ For full experiments, repeated clustering sweeps, Cell Ranger processing from
 FASTQ, or large merged Seurat objects, a server or external cluster is strongly
 recommended. Cell Ranger is CPU- and memory-intensive and is not installed
 inside the downstream `psblab/scrnaseq:latest` Docker image.
+
+## Recommended: persistent terminal sessions with tmux or screen {-}
+
+Several steps in this pipeline run for a long time without any interaction —
+Cell Ranger takes 30-60 minutes per sample, and the R/Python clustering and
+pseudotime steps can run for hours on large merged objects. If these are
+launched directly in an SSH session and the connection drops (network hiccup,
+laptop sleep, closed terminal), the process is killed along with it.
+
+Running everything inside a `tmux` or `screen` session avoids this: the
+session keeps running on the server after you disconnect, and can be
+reattached later — from the same machine or a different one — to check
+progress or pick up where things were left off. This is strongly recommended
+any time this pipeline runs on a remote server or HPC cluster, and is still
+useful on a local machine to keep a session alive while doing other work.
+
+Either tool works; `tmux` is used in the examples below.
+
+```bash
+tmux new -s scrnaseq     # start a new named session
+# ... run Cell Ranger, Docker/Singularity, R, etc. inside it ...
+# detach without stopping anything: Ctrl-b, then d
+
+tmux attach -t scrnaseq  # reattach later
+tmux ls                  # list running sessions
+```
+
+This pipeline's R/Python environment ships as a single public container image
+(`psblab/scrnaseq:latest`, Docker or Singularity/Apptainer). It mounts the
+cloned repository as `/workspace`, so results are written back into the repo.
+Always pull the image rather than rebuilding it from the `Dockerfile`, so
+everyone gets the exact tested package versions (details and commands in
+"Container startup", Part 1).
+
+**Once inside a container (Docker or Singularity) shell, stay inside it for
+the rest of the work.** The R and Python packages this pipeline needs
+(Seurat, scanpy, Palantir, scFates, etc.) are installed only inside the
+`psblab/scrnaseq:latest` image — they are not available on the bare host.
+Leaving the container shell (e.g. `exit`, or the shell dying) means the next
+command expecting those packages will fail. Pair this with tmux/screen: open
+a session, enter the container from inside it, and do the rest of the R/Python
+work (Parts 2-4) without leaving either until finished.
+
+Installation instructions for tmux, screen, Docker and Singularity/Apptainer
+are in the Supplementary section at the end of this document.
 
 \newpage
 
@@ -181,6 +321,11 @@ R stay on `PATH`, and it runs as the invoking user, so files under `results/`
 are owned by that user rather than by root. The `--pwd /workspace` flag starts
 the shell inside the bound repository (otherwise Apptainer warns that the host
 working directory does not exist in the container and falls back to `$HOME`).
+
+**Stay inside this shell for Parts 2-4.** All R and Python packages this
+pipeline needs are installed only inside this container image; running them
+outside of it fails. Start this shell inside a `tmux`/`screen` session (see
+above) so it survives a dropped connection.
 
 ## Raw data download and Cell Ranger processing
 
@@ -612,39 +757,19 @@ values. Together, these plots help avoid choosing a resolution that is too coars
 or too fragmented.
 
 The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
-`clustree2.pdf`.
+`clustree2.pdf`. The underlying PCA dimensions, k-means settings, and neighbor
+count are fixed inside `plot_resolution_elbow()` and `run_resolution_sweep()`
+(`workflow/ScRNA_Analysis_Functions.R`) and rarely need changing; the only
+thing to edit here is `resolutions_test`.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
 
-k_range <- 1:31
-pca_data <- Embeddings(ath_sc, "pca")[, 1:30]
-wss <- sapply(
-  k_range,
-  function(k) kmeans(pca_data, centers = k, nstart = 4)$tot.withinss
-)
+plot_resolution_elbow(ath_sc, output_dir = output_dir)
 
-elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
-  geom_line() +
-  geom_point() +
-  labs(
-    x = "Number of clusters (k)",
-    y = "Within-cluster sum of squares"
-  ) +
-  theme_minimal()
-
-save_pdf(elbow_plot, "elbow_plot.pdf", w = 18, h = 18)
-
-clu <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE)
-
-for (res in resolutions_test)
-  clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
-
-save_pdf(clustree(clu, prefix = "RNA_snn_res."), "clustree2.pdf", w = 18, h = 18)
+clu <- run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = output_dir)
 
 message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 ```
@@ -780,29 +905,7 @@ different clustering resolutions. The output is saved as
 ```{r section_08_annotated_clustree}
 output_dir <- dir_03
 
-Mode <- function(x) {
-  x <- as.character(x)
-  x <- x[!is.na(x) & nzchar(x)]
-  if (length(x) == 0) return(NA_character_)
-  names(sort(table(x), decreasing = TRUE))[1]
-}
-
-stopifnot(exists("clu"))
-stopifnot("celltype" %in% colnames(ath_sc@meta.data))
-
-celltype_label <- as.character(ath_sc$celltype)
-names(celltype_label) <- Cells(ath_sc)
-clu$celltype_label <- celltype_label[Cells(clu)]
-
-print(table(clu$celltype_label, useNA = "ifany"))
-
-save_pdf(
-  clustree(
-    clu, prefix = "RNA_snn_res.",
-    node_label = "celltype_label", node_label_aggr = "Mode"
-  ),
-  "clustree_annotated.pdf", w = 14, h = 14
-)
+plot_annotated_clustree(ath_sc, clu, annot_col = "celltype", output_dir = output_dir)
 
 message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 ```
@@ -1378,7 +1481,7 @@ base_dir     = os.path.join(DATA_DIR, "results")
 exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
 exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
 
-dir_pseudotime = os.path.join(base_dir, "09_pseudotime_guard_cell")
+dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
 os.makedirs(dir_pseudotime, exist_ok=True)
 
 print("SECTION 23 COMPLETE: setup done")
@@ -1592,10 +1695,10 @@ gene-trend analysis. The exported `.h5ad` file keeps the trajectory results,
 pseudotime values, and layout coordinates for later reuse.
 
 The final object is saved in `results/objects/` as
-`guard_cell_pseudotime_final.h5ad`.
+`ath_sc_pseudotime_final.h5ad`.
 
 ```{python section_29_final_export, eval=FALSE}
-final_h5ad = os.path.join(base_dir, "objects", "guard_cell_pseudotime_final.h5ad")
+final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
@@ -1620,6 +1723,46 @@ container (Part 1); its version is fixed by the workflow.
 | R | 4.5.3 |
 | Python | 3.12.3 |
 
+## Installing tmux or screen {-}
+
+| OS | tmux | screen |
+|---|---|---|
+| Linux (Debian/Ubuntu) | `sudo apt install tmux` | `sudo apt install screen` |
+| Linux (RHEL/CentOS/Fedora) | `sudo yum install tmux` | `sudo yum install screen` |
+| macOS (Homebrew) | `brew install tmux` | ships with macOS by default |
+| Windows | not natively available — see note below | not natively available — see note below |
+
+Windows users: this whole pipeline (Cell Ranger, Docker/Singularity, R,
+Python) is Linux-based. The practical options on Windows are WSL2
+(https://learn.microsoft.com/windows/wsl/install) running Ubuntu locally, or
+an SSH client (Windows Terminal, PuTTY, or WSL2's own `ssh`) connecting out to
+a Linux server or HPC cluster where the rest of this guide applies directly.
+Once inside WSL2 or an SSH session on Linux, use the Linux commands above.
+
+## Installing a container runtime (Docker or Singularity/Apptainer) {-}
+
+Pick one; both run the same `psblab/scrnaseq:latest` image (see "Container
+startup" in Part 1).
+
+**Docker**
+
+| OS | Install |
+|---|---|
+| Linux | https://docs.docker.com/engine/install/ (distro-specific packages) |
+| macOS | Docker Desktop: https://docs.docker.com/desktop/install/mac-install/ |
+| Windows | Docker Desktop with the WSL2 backend: https://docs.docker.com/desktop/install/windows-install/ |
+
+**Singularity / Apptainer** (no root required; common on HPC clusters where
+Docker is not permitted)
+
+| OS | Install |
+|---|---|
+| Linux | https://apptainer.org/docs/admin/main/installation.html |
+| macOS / Windows | not natively supported — use a Linux VM, WSL2, or the remote server/cluster itself |
+
+On a shared HPC cluster, Singularity/Apptainer is usually already installed
+system-wide — check with `singularity --version` or `apptainer --version`
+before installing anything.
 
 ## R packages (421) {-}
 

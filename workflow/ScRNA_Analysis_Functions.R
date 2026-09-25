@@ -14,31 +14,37 @@
 #     - plot_qc_violin_grid
 #     - summarize_nfeature_plot
 #
-#  2. PREPROCESSING AND DOUBLET DETECTION
+#  2. CLUSTERING / RESOLUTION OPTIMIZATION
+#     - plot_resolution_elbow
+#     - run_resolution_sweep
+#     - Mode                  (mode helper for clustree node labels)
+#     - plot_annotated_clustree
+#
+#  3. PREPROCESSING AND DOUBLET DETECTION
 #     - preprocess_and_doubletfinder
 #     - doubletfinder_pipeline
 #     - filter_sample        (filter + DoubletFinder on annotated object)
 #
-#  3. BULK / PSEUDOBULK UTILITIES
+#  4. BULK / PSEUDOBULK UTILITIES
 #     - normalize_bulk_pseudobulk
 #     - classify_residuals
 #     - generate_pseudobulk
 #     - plot_replicate_correlation
 #
-#  4. SEURAT UTILITIES
+#  5. SEURAT UTILITIES
 #     - unify_names
 #     - show_annotation_table
 #     - export_to_scanpy
 #     - safe_vln
 #     - join_layers_counts
 #
-#  5. ANNOTATION
+#  6. ANNOTATION
 #     - find_markers
 #     - annotate_by_markers
 #     - annotate_by_reference
 #     - subcluster_cell_type
 #
-#  6. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
+#  7. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
 #     - assign_pseudo_replicates
 #     - run_pseudobulk
 #     - run_deseq2
@@ -47,7 +53,7 @@
 #     - plot_heatmap
 #     - plot_marker_dotplot
 #
-#  7. GO ENRICHMENT
+#  8. GO ENRICHMENT
 #     - compute_go_enrichment
 #     - prune_go
 #     - plot_go_bubbles
@@ -175,7 +181,125 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 
 
 # =============================================================================
-# 2. PREPROCESSING AND DOUBLET DETECTION
+# 2. CLUSTERING / RESOLUTION OPTIMIZATION
+# =============================================================================
+
+#' Elbow plot for choosing a clustering resolution
+#'
+#' Runs k-means over a range of k values on the PCA embedding and plots
+#' within-cluster sum of squares vs k, as a rough guide to how many clusters
+#' the data support.
+#'
+#' @param seurat_obj Seurat object with a PCA reduction computed.
+#' @param output_dir Folder to save the elbow plot pdf into.
+#' @param filename   Output pdf filename (default: "elbow_plot.pdf").
+#' @param pca_dims   PCA dimensions to use (default: 1:30).
+#' @param k_range    Candidate k values to test (default: 1:31).
+#' @param nstart     kmeans random restarts (default: 4).
+#' @return The elbow ggplot object (invisibly).
+#' @export
+plot_resolution_elbow <- function(seurat_obj, output_dir, filename = "elbow_plot.pdf",
+                                   pca_dims = 1:30, k_range = 1:31, nstart = 4) {
+  pca_data <- Embeddings(seurat_obj, "pca")[, pca_dims]
+  wss <- sapply(
+    k_range,
+    function(k) kmeans(pca_data, centers = k, nstart = nstart)$tot.withinss
+  )
+
+  elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
+    geom_line() +
+    geom_point() +
+    labs(x = "Number of clusters (k)", y = "Within-cluster sum of squares") +
+    theme_minimal()
+
+  ggsave(file.path(output_dir, filename), elbow_plot,
+         width = 18, height = 18, dpi = 300, limitsize = FALSE)
+
+  invisible(elbow_plot)
+}
+
+#' Clustering resolution sweep and clustree
+#'
+#' Recomputes UMAP/neighbors on the Harmony embedding, runs FindClusters
+#' across each candidate resolution, and saves a clustree diagnostic showing
+#' how clusters split or stay stable across them.
+#'
+#' @param seurat_obj  Seurat object with a Harmony reduction computed.
+#' @param resolutions Candidate resolutions to test.
+#' @param output_dir  Folder to save the clustree pdf into.
+#' @param filename    Output pdf filename (default: "clustree2.pdf").
+#' @param pca_dims    PCA/Harmony dimensions to use (default: 1:30).
+#' @param knn_k       Neighbors per cell for FindNeighbors (default: 20).
+#' @return The Seurat object with one `RNA_snn_res.<r>` column per tested resolution.
+#' @export
+run_resolution_sweep <- function(seurat_obj, resolutions, output_dir,
+                                  filename = "clustree2.pdf",
+                                  pca_dims = 1:30, knn_k = 20) {
+  clu <- seurat_obj %>%
+    RunUMAP(reduction = "harmony", dims = pca_dims, verbose = FALSE) %>%
+    FindNeighbors(reduction = "harmony", dims = pca_dims, k.param = knn_k, verbose = FALSE)
+
+  for (res in resolutions)
+    clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
+
+  ggsave(file.path(output_dir, filename), clustree(clu, prefix = "RNA_snn_res."),
+         width = 18, height = 18, dpi = 300, limitsize = FALSE)
+
+  clu
+}
+
+#' Most common value (mode) for a categorical vector
+#'
+#' Used to label each clustree node with its dominant cell-type annotation
+#' (see plot_annotated_clustree()); NA/empty values are ignored.
+#'
+#' @param x Character or factor vector.
+#' @return The most frequent non-missing value, or NA if none.
+#' @export
+Mode <- function(x) {
+  x <- as.character(x)
+  x <- x[!is.na(x) & nzchar(x)]
+  if (length(x) == 0) return(NA_character_)
+  names(sort(table(x), decreasing = TRUE))[1]
+}
+
+#' Annotated clustree
+#'
+#' Labels the resolution-sweep clustree (from run_resolution_sweep()) with
+#' the dominant cell-type annotation in each node, instead of only numeric
+#' cluster IDs, and saves it.
+#'
+#' @param seurat_obj Annotated Seurat object.
+#' @param clu        Clustering object returned by run_resolution_sweep().
+#' @param annot_col  Metadata column with the cell-type annotation to label nodes with.
+#' @param output_dir Folder to save the clustree pdf into.
+#' @param filename   Output pdf filename (default: "clustree_annotated.pdf").
+#' @return Invisibly, the table of cell-type labels used for annotation.
+#' @export
+plot_annotated_clustree <- function(seurat_obj, clu, annot_col, output_dir,
+                                     filename = "clustree_annotated.pdf") {
+  stopifnot(annot_col %in% colnames(seurat_obj@meta.data))
+
+  celltype_label <- as.character(seurat_obj[[annot_col, drop = TRUE]])
+  names(celltype_label) <- Cells(seurat_obj)
+  clu$celltype_label <- celltype_label[Cells(clu)]
+
+  tbl <- table(clu$celltype_label, useNA = "ifany")
+  print(tbl)
+
+  ggsave(
+    file.path(output_dir, filename),
+    clustree(clu, prefix = "RNA_snn_res.",
+             node_label = "celltype_label", node_label_aggr = "Mode"),
+    width = 14, height = 14, dpi = 300, limitsize = FALSE
+  )
+
+  invisible(tbl)
+}
+
+
+# =============================================================================
+# 3. PREPROCESSING AND DOUBLET DETECTION
 # =============================================================================
 
 #' Preprocessing + DoubletFinder Pipeline
@@ -359,7 +483,7 @@ filter_sample <- function(obj,
 
 
 # =============================================================================
-# 3. BULK / PSEUDOBULK UTILITIES
+# 4. BULK / PSEUDOBULK UTILITIES
 # =============================================================================
 
 #' Normalize Pseudobulk vs Bulk Counts
@@ -534,7 +658,7 @@ plot_replicate_correlation <- function(pseudobulk_mat,
 
 
 # =============================================================================
-# 4. SEURAT UTILITIES
+# 5. SEURAT UTILITIES
 # =============================================================================
 
 #' Unify Ident Names
@@ -747,7 +871,7 @@ join_layers_counts <- function(obj, capas) {
 
 
 # =============================================================================
-# 5. ANNOTATION
+# 6. ANNOTATION
 # =============================================================================
 
 #' Find Cluster Markers
@@ -1170,7 +1294,7 @@ curate_clusters <- function(obj, reassign, marker_table, output_dir,
 
 
 # =============================================================================
-# 6. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
+# 7. PSEUDOBULK, DESEQ2, VOLCANO, HEATMAP
 # =============================================================================
 
 #' Assign Pseudo-replicates
@@ -1779,7 +1903,7 @@ plot_marker_dotplot <- function(seurat_obj,
 
 
 # =============================================================================
-# 7. GO ENRICHMENT
+# 8. GO ENRICHMENT
 # =============================================================================
 
 #' Run GO Enrichment Analysis
@@ -2629,7 +2753,7 @@ save_qc <- function(plot_list, file)
 
 
 # =============================================================================
-# 8. PIPELINE SETUP HELPERS
+# 9. PIPELINE SETUP HELPERS
 # =============================================================================
 
 #' Create All Pipeline Output Directories
@@ -2662,7 +2786,7 @@ create_pipeline_dirs <- function(base_dir) {
 
 
 # =============================================================================
-# 9. PSEUDOBULK DE & GO ENRICHMENT PIPELINE
+# 10. PSEUDOBULK DE & GO ENRICHMENT PIPELINE
 # =============================================================================
 
 #' Run the Full Pseudobulk DE and GO Enrichment Pipeline (Chapter 2)
