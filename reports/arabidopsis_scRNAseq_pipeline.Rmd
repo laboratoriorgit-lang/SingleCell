@@ -980,7 +980,7 @@ label.
 Use this section when the detailed annotation is useful for inspection but a
 simpler grouping is better for figures or downstream summaries. The grouped
 labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
-`results/05_curacion/umap_grouped.pdf`.
+`results/05_curation/umap_grouped.pdf`.
 
 ```{r section_10_cell_type_grouping_optional, strip_comments=FALSE}
 # Merge the two mesophyll subclusters into a single "Mesophyll" label
@@ -1029,7 +1029,7 @@ not listed explicitly.
 
 Then `curate_clusters()` applies those manual labels and stores the result in
 `celltype_curated`. The final curated UMAP is saved as
-`results/05_curacion/umap_curated.pdf`. This block is not executed automatically
+`results/05_curation/umap_curated.pdf`. This block is not executed automatically
 because the label choices depend on inspecting the figures.
 
 ```{r section_11_interactive_cell_type_curation_optional, eval=FALSE, strip_comments=FALSE}
