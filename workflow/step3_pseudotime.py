@@ -36,7 +36,7 @@ adata, N_JOBS = load_curated_object(
 # ==============================================================================
 # Section 25 - Cell type selection
 # ==============================================================================
-TRAJECTORY_CLUSTERS = ["Epidermis"]
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -48,7 +48,7 @@ adata_sub = preview_trajectory_selection(
 # ==============================================================================
 # Section 26 - Trajectory inference
 # ==============================================================================
-ROOT_CLUSTER = "Epidermis"
+ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
     trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),

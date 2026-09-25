@@ -274,12 +274,13 @@ message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
 # ==============================================================================
 # Section 10 - Cell-type grouping [optional]
 # ==============================================================================
-grouping <- c()
-# Example:
-# grouping <- c(
-#   "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
-#   "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl"
-# )
+# Merge the three epidermis hypocotyl subclusters into a single label.
+# Set grouping <- c() to skip this step (celltype_grouped == celltype).
+grouping <- c(
+  "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
+  "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl",
+  "Epidermis Hypocotyl.3" = "Epidermis Hypocotyl"
+)
 
 output_dir <- dir_05
 
@@ -307,15 +308,16 @@ Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  ath_sc, cluster_id = "2",
+  ath_sc, cluster_id = "Mesophyll",
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
-#    then curate them in one call. Example for two clusters:
+#    then curate them in one call. Here Mesophyll's subclusters all map back
+#    to "Mesophyll" (no relabeling) -- use this pattern when inspection
+#    confirms the original label was already correct:
 reassign <- list(
-  "2" = c("0" = "Identity A", "others" = "Unresolved"),
-  "4" = c("1" = "Identity B", "others" = "Unresolved")
+  "Mesophyll" = c("others" = "Mesophyll")
 )
 ath_sc <- curate_clusters(
   ath_sc, reassign,
