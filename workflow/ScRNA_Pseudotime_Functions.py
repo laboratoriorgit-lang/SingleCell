@@ -31,6 +31,14 @@ def ensure_expression_in_X(adata, layer="logcounts"):
     return adata
 
 
+# The R workflow can export up to three annotation columns depending on which
+# optional sections were run: "celltype" (Section 7, always present), plus
+# "celltype_grouped" (Section 10) and/or "celltype_curated" (Section 11) if
+# the curation steps were used. Checked here so a missing ANNOTATION_COL fails
+# with a clear message instead of a raw KeyError deep inside sc.pl.umap.
+KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
+
+
 # Notebook wrapper for Step 25. Loads the full curated object, fixes Seurat-style
 # coordinate names, plots the overview UMAP, and prints available cell types.
 def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
@@ -43,6 +51,16 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
         if key_from in adata.obsm and key_to not in adata.obsm:
             val = adata.obsm[key_from]
             adata.obsm[key_to] = val.values if hasattr(val, "values") else val
+
+    available_annots = [c for c in KNOWN_ANNOTATION_COLS if c in adata.obs.columns]
+    print(f"\nAvailable annotation columns in this object: {available_annots}")
+    if annotation_col not in available_annots:
+        raise ValueError(
+            f"ANNOTATION_COL = '{annotation_col}' not found in this object. "
+            f"Available annotation columns: {available_annots}. Set ANNOTATION_COL "
+            "to one of these -- 'celltype_grouped'/'celltype_curated' are only "
+            "present if Section 10/11 were run in Step 1."
+        )
 
     sc.settings.figdir = dir_pseudotime
     sc.set_figure_params(figsize=PLOT_FIGSIZE, dpi=100, dpi_save=PLOT_DPI)
