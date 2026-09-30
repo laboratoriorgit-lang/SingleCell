@@ -131,8 +131,11 @@ barrier to adopting scRNA-seq despite its potential.
 
 This guide provides a complete, reproducible workflow that carries scRNA-seq
 data from raw sequencing reads through all of these downstream analyses.
-Starting from FASTQ files, Cell Ranger is used to generate per-cell count
-matrices (Part 1). These matrices are then loaded into R, where cells are
+Starting from FASTQ files, Cell Ranger -- a 10x Genomics program that aligns
+reads to a reference genome and counts, for every gene, how many transcripts
+were detected in each individual cell -- is used to generate a per-cell count
+matrix (Part 1): this matrix (genes x cells) is the starting point for
+everything else in this workflow. These matrices are then loaded into R, where cells are
 filtered, doublets are removed, samples are merged and batch-corrected with
 Harmony, and clusters are annotated to cell types using literature-curated
 marker genes (Part 2). From the annotated object, the pipeline builds
@@ -288,31 +291,34 @@ repository for this WT vs pifq run (see Section 1).
 
 ## Container startup (Docker or Singularity)
 
+A container image is a single portable package holding a fixed, pre-installed
+set of R and Python libraries -- exactly the versions this pipeline was tested
+with. Anyone who runs the same image gets an identical environment, with no
+version-mismatch problems across machines, operating systems, or clusters.
 The container mounts the cloned repository itself as `/workspace`, so results
 are written back into the repository (`results/`). Since results are not
-pushed upstream, this is not a problem. The same public image runs under either
-runtime; always pull it rather than rebuilding from the `Dockerfile`, so every
-user gets the exact tested package versions.
+pushed upstream, this is not a problem. The same public image (`psblab/scrnaseq`
+on Docker Hub) runs under either runtime; always pull it rather than rebuilding
+from the `Dockerfile`, so every user gets the exact tested package versions.
 
-**Docker.** Mount the cloned repository and open a shell:
+**Singularity / Apptainer (primary).** This is the container app used
+throughout this guide. No root is required, which is what makes it the
+practical choice on shared servers and HPC clusters (where Docker access is
+usually restricted to admins). It involves two separate steps:
 
-```bash
-docker run -it --rm \
-  -v $(pwd):/workspace \
-  psblab/scrnaseq:latest /bin/bash
-```
-
-Or, from inside the cloned repository, `docker compose run r` uses the bundled
-`docker-compose.yml` (same image, same `/workspace` mount). On the current
-server the Docker container is already running and the project is mounted at
-`/workspace`.
-
-**Singularity / Apptainer.** No root is required. Convert the public Docker Hub
-image to a local `.sif` once, then open a shell binding the repository to
-`/workspace`:
+1. **Build the `.sif` once.** This converts the public Docker Hub image into a
+   local Singularity image file. Only needs to be done once per machine:
 
 ```bash
 singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
+```
+
+2. **Run it with `exec`.** This opens the working shell, binding the current
+   directory to `/workspace` inside the container. Every time you come back to
+   work on this pipeline, run this from inside the repository cloned in
+   Section 1.1 (so `$(pwd)` resolves to the repository, not somewhere else):
+
+```bash
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
@@ -322,6 +328,20 @@ are owned by that user rather than by root. The `--pwd /workspace` flag starts
 the shell inside the bound repository (otherwise Apptainer warns that the host
 working directory does not exist in the container and falls back to `$HOME`).
 
+**Docker (secondary).** Only needed when Singularity/Apptainer is not
+available. Requires root (or membership in the `docker` group), which is the
+reason it is not the default here. Mount the cloned repository and open a
+shell:
+
+```bash
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  psblab/scrnaseq:latest /bin/bash
+```
+
+Or, from inside the cloned repository, `docker compose run r` uses the bundled
+`docker-compose.yml` (same image, same `/workspace` mount).
+
 **Stay inside this shell for Parts 2-4.** All R and Python packages this
 pipeline needs are installed only inside this container image; running them
 outside of it fails. Start this shell inside a `tmux`/`screen` session (see
@@ -329,17 +349,22 @@ above) so it survives a dropped connection.
 
 ## Raw data download and Cell Ranger processing
 
-**Run this whole section outside the Docker container**, on a host, server, or
-HPC where Cell Ranger is installed. Cell Ranger is *not* bundled inside the
-`psblab/scrnaseq:latest` image (that image only covers the downstream R /
-Python workflow), so running `cellranger` inside the container returns
-`command not found`. Write the Cell Ranger outputs into the cloned repository
-directory so they are visible from inside the container (which mounts that same
-directory as `/workspace`).
+**Run this whole section inside Singularity**, same as every other part of
+this pipeline: `cd` into the cloned repository and `singularity exec` into it
+(Section 1.2) before running any of the commands below. Write the Cell Ranger
+outputs into the cloned repository directory so they are visible from inside
+the container (which mounts that same directory as `/workspace`).
+
+Now that the container is running, the first thing this pipeline needs is a
+count matrix: for every cell, how many transcripts of each gene were detected.
+That matrix is what the program **Cell Ranger** builds from the raw FASTQ
+reads, so it is the first tool run in this workflow, before anything in R or
+Python.
 
 **Install Cell Ranger 9.0.1** (proprietary 10x Genomics software; this workflow
 uses version 9.0.1). Get it from the 10x Genomics *previous versions* page:
-https://www.10xgenomics.com/support/software/cell-ranger/downloads/previous-versions
+
+`https://www.10xgenomics.com/support/software/cell-ranger/downloads/previous-versions`
 
 1. Log in and accept the license.
 2. Find **Cell Ranger 9.0.1** and copy its `curl` command.
@@ -359,6 +384,12 @@ tar -xzvf cellranger-9.0.1.tar.gz
 export PATH=$PWD/cellranger-9.0.1/bin:$PATH
 cellranger --version
 ```
+
+**Expected output:** `tar` extracts a `cellranger-9.0.1/` folder; `cellranger
+--version` prints something like `cellranger cellranger-9.0.1` if the install
+and `PATH` are correct. If instead you get `command not found`, the `export
+PATH` line did not run, or was run in a different terminal/session than the
+one you are using now.
 
 The single-cell workflow starts from Cell Ranger output, specifically the
 `outs/filtered_feature_bc_matrix/` folder for each sample. If only raw FASTQ
@@ -398,13 +429,11 @@ ln -s CRR775297_f1.fastq.gz Scpifq_S1_L001_R1_001.fastq.gz
 ln -s CRR775297_r2.fastq.gz Scpifq_S1_L001_R2_001.fastq.gz
 ```
 
-After FASTQs are available, run Cell Ranger for each sample. Cell Ranger itself
-is not redistributed in this repository; download it from the official 10x
-Genomics GitHub release
-(https://github.com/10XGenomics/cellranger/releases/tag/cellranger-9.0.1) and
-add it to your `PATH`. Run all commands in this section from the cloned
-repository directory, on a host/server/HPC where Cell Ranger is installed (not
-inside the container).
+**Expected output:** `ls /workspace/fastq/CRA010863` should show the four
+downloaded `.gz` files plus the four renamed symlinks
+(`ScWT_S1_L001_R1_001.fastq.gz`, etc.). Cell Ranger reads the symlink names, not
+the original ones, so if a rename step is skipped or misspelled, the next
+command below fails immediately with a "no input FASTQs found" error.
 
 The reference genome (TAIR10.1) and Araport11 annotation ship compressed in the
 repository under `data/`, so no download is needed. Decompress them and build
@@ -420,6 +449,11 @@ cellranger mkref \
   --genes=data/Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf
 ```
 
+**Expected output:** this creates a folder named `Ara/` (matching `--genome`)
+containing the indexed reference Cell Ranger needs, and ends with a line
+reading `>>> Reference successfully created! <<<`. This only needs to be built
+once; the same `Ara/` folder is reused for every sample below.
+
 Run Cell Ranger counts for each sample:
 
 ```bash
@@ -430,6 +464,14 @@ cellranger count --localcores=10 --id=Scpifq --fastqs=/workspace/fastq/CRA010863
   --sample=Scpifq --transcriptome=Ara --create-bam false
 ```
 
+**Expected output:** each run creates a folder named after `--id` (`ScWT/`,
+`Scpifq/`) containing `outs/`, and ends with `Pipestance completed
+successfully!`. Inside `outs/`, `web_summary.html` is a self-contained QC
+report worth opening first (cell count, reads/cell, sequencing saturation);
+`filtered_feature_bc_matrix/` is the per-cell count matrix this whole pipeline
+is built on, and its path is what goes into the sample manifest in Section 1.
+This is the slowest step here, taking roughly 30-60 minutes per sample.
+
 `--localcores=10` is used here as a portable default that keeps the example
 consistent across this report and the accompanying workflow scripts; it is not
 a hard requirement. Cell Ranger will happily use more or fewer cores, so raise
@@ -437,14 +479,11 @@ or lower this value to match the number of CPU cores actually available on
 the machine running the pipeline (see the Recommended column above for
 guidance).
 
-Use the resulting `filtered_feature_bc_matrix/` path in the sample manifest in
-Section 1.
-
 \newpage
 
 # Part 2 - Single-cell analysis in R
 
-From this point on, the pipeline runs in R inside the Docker container.
+From this point on, the pipeline runs in R inside the container (Singularity).
 Start R:
 
 ```bash
@@ -709,9 +748,13 @@ Representative output from Section 3:
 
 ## Section 4 - Harmony batch correction
 
-This section applies Harmony to reduce sample-specific batch effects after the
-initial merge. The correction is done using the sample identity stored in
-`orig.ident`.
+Samples processed and captured separately (even from the same experiment) can
+end up looking different in ways that have nothing to do with biology --
+technical noise from sample handling or sequencing depth, for example. Left
+uncorrected, this can make cells cluster by *sample* rather than by *cell
+type*. This section applies **Harmony**, a widely used batch-correction
+algorithm, to remove that technical variation after the initial merge. The
+correction is done using the sample identity stored in `orig.ident`.
 
 After Harmony, the UMAP is recalculated using the corrected representation. This
 second UMAP helps check whether samples mix better while still preserving
@@ -788,7 +831,11 @@ Representative outputs from Section 5:
 
 ## Section 6 - Final clustering
 
-This section applies the final clustering resolution chosen after inspecting the
+This section groups cells that look transcriptionally similar into discrete
+clusters, using the **Leiden algorithm** (`algorithm = 4`) -- a standard
+community-detection method for single-cell data. Each cluster is a candidate
+cell population; cell-type labels are only assigned afterward, in Section 7.
+This uses the final clustering resolution chosen after inspecting the
 diagnostic plots from Section 5. The value is set in `cluster_resolution`.
 
 To use this block, first look at the elbow plot and clustree from Section 5, then
@@ -973,9 +1020,9 @@ or subclusters into broader groups. It uses the `grouping` object as a small
 renaming table: the names on the left are the current labels, and the values on
 the right are the new labels.
 
-For example, in this report `Epidermis Hypocotyl.1`, `.2`, and `.3` are all
-renamed as `Epidermis Hypocotyl`. Any cell type that is not listed in
-`grouping` keeps its original label.
+For example, in this report `Epidermis Cotyledon.1` and `.2` are renamed as
+`Epidermis Cotyledon`. Any cell type that is not listed in `grouping` keeps its
+original label.
 
 Use this section when the detailed annotation is useful for inspection but a
 simpler grouping is better for figures or downstream summaries. The grouped
@@ -983,11 +1030,10 @@ labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
 `results/05_curation/umap_grouped.pdf`.
 
 ```{r section_10_cell_type_grouping_optional, strip_comments=FALSE}
-# Merge the three epidermis hypocotyl subclusters into a single label
+# Merge the two epidermis cotyledon subclusters into a single label
 grouping <- c(
-  "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
-  "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl",
-  "Epidermis Hypocotyl.3" = "Epidermis Hypocotyl"
+  "Epidermis Cotyledon.1" = "Epidermis Cotyledon",
+  "Epidermis Cotyledon.2" = "Epidermis Cotyledon"
 )
 
 output_dir <- dir_05
@@ -1133,7 +1179,7 @@ how Chapter 1 was run, this is one of `celltype` (bibliography annotation),
 whichever column is set here.
 
 ```{r section_13_cell_type_subsets}
-pseudobulk_annot_col <- "celltype_curated"
+pseudobulk_annot_col <- "celltype"
 
 # Inspect how many cells each cell type has before subsetting
 table(ath_sc[[pseudobulk_annot_col]])
@@ -1145,9 +1191,9 @@ cell_type_subsets <- create_cell_type_subsets(
 message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
 ```
 
-Cells per cell type (bibliography annotation `celltype_curated`; the three
-epidermis hypocotyl subclusters and the still-numeric unannotated clusters
-are kept separate at this stage):
+Cells per cell type (bibliography annotation `celltype`; the three epidermis
+hypocotyl subclusters and the still-numeric unannotated clusters are kept
+separate at this stage):
 
 | Cell type | Cells |
 |---|---:|
@@ -1220,10 +1266,14 @@ Cells per pseudo-replicate (first two cell types shown):
 
 ## Section 15 - Pseudobulk tables and DESeq2
 
-This section builds pseudobulk count tables and runs DESeq2 for the selected
-comparisons. For each cell type, counts from cells belonging to the same
-pseudo-replicate are summed together, creating replicate-level count profiles
-that can be analyzed with a bulk RNA-seq method.
+Testing every single cell as its own replicate overstates statistical
+confidence, since cells from the same sample are not independent. This
+section avoids that by building pseudobulk count tables and running
+**DESeq2** -- the standard, widely-cited tool for differential expression
+from count data -- for the selected comparisons. For each cell type, counts
+from cells belonging to the same pseudo-replicate are summed together,
+creating replicate-level count profiles that can be analyzed the same way a
+bulk RNA-seq experiment would be.
 
 The comparisons are defined in the `comparisons` list. Each entry contains the
 two conditions to compare and a short `tag` used to name the output folder and
@@ -1466,7 +1516,7 @@ Representative output from Section 20:
 Chapter 3 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
 object exported at the end of Chapter 1
 (`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
-inside the same Docker container:
+inside the same container (Singularity):
 
 ```bash
 q()          # leave R (do not save the workspace)
@@ -1499,19 +1549,44 @@ os.makedirs(dir_pseudotime, exist_ok=True)
 print("SECTION 23 COMPLETE: setup done")
 ```
 
+\newpage
+
 ## Section 24 - Load curated object
 
 This section loads the `.h5ad` object exported at the end of the R workflow. The
 `INPUT_H5AD` path points to that file, and `ANNOTATION_COL` selects which cell
 type annotation column will be used for plotting and selecting cells.
 
+Up to three annotation columns can be present, depending on which optional
+sections were run in Step 1:
+
+- `celltype` -- the direct output of Section 7 (bibliography-marker annotation).
+  The rawest of the three, and always present.
+- `celltype_grouped` -- present only if Section 10 was run. Same as `celltype`,
+  but with related subclusters merged into a single label (e.g. the two
+  epidermis cotyledon subclusters collapsed into one).
+- `celltype_curated` -- present only if Section 11 was run. The manually
+  curated annotation, built by inspecting and relabeling subclusters.
+
+Set `ANNOTATION_COL` to whichever of these matches how far the curation went in
+Step 1: `celltype` if Section 10/11 were skipped, `celltype_grouped` if only
+Section 10 was used, `celltype_curated` if Section 11 was used.
+
+The example below uses `celltype`, the rawest of the three. Under this column,
+epidermis cotyledon is split into `Epidermis Cotyledon.1` and `.2` -- both
+options for handling this are shown in Sections 25-26 below.
+
 The function also standardizes coordinate names so the object works cleanly with
-Scanpy. It saves an overview UMAP and prints the available cell types, which are
-used to choose the trajectory cells in the next section.
+Scanpy. It prints the annotation columns available in the loaded object -- use
+this to confirm `ANNOTATION_COL` is set correctly -- then saves an overview UMAP
+and prints the available cell types, which are used to choose the trajectory
+cells in the next section.
 
 ```{python section_24_load_object, eval=FALSE}
 INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
-ANNOTATION_COL = "celltype_curated"
+# "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
+# Section 10 was used, or "celltype_curated" if Section 11 was used.
+ANNOTATION_COL = "celltype"
 N_JOBS         = 4
 
 adata, N_JOBS = load_curated_object(
@@ -1526,17 +1601,47 @@ Representative output from Section 24:
 
 ![Overview UMAP colored by curated cell type.](assets/pseudotime_umap_overview.pdf){width=30%}
 
+\newpage
+
 ## Section 25 - Cell type selection
 
 This section selects which cell types will be used for trajectory inference. The
 list is set in `TRAJECTORY_CLUSTERS`, and the names must match the cell-type
 labels printed in Section 24.
 
-In this report, only `epidermis cotyledon` is selected. The preview UMAP shows
+In this report, only epidermis cotyledon is selected. The preview UMAP shows
 these cells before fitting the trajectory, which helps confirm that the intended
 population was chosen.
 
-```{python section_25_cell_selection, eval=FALSE}
+The exact label(s) to use here depend on which `ANNOTATION_COL` was set in
+Section 24:
+
+- With `ANNOTATION_COL = "celltype"` (raw), the two cotyledon subclusters are
+  told apart and both must be listed.
+- With `ANNOTATION_COL = "celltype_grouped"` (Section 10), all cotyledon cells
+  are already one population.
+
+**Tip:** if the goal is to evaluate the trajectory across the whole cell type
+without splitting it into subclusters, `celltype_grouped` is the better choice
+here.
+
+Option A -- with `ANNOTATION_COL = "celltype"` (raw, subclusters told apart):
+
+```{python section_25_cell_selection_celltype, eval=FALSE}
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
+
+adata_sub = preview_trajectory_selection(
+    adata          = adata,
+    clusters       = TRAJECTORY_CLUSTERS,
+    annotation_col = ANNOTATION_COL,
+    dir_pseudotime = dir_pseudotime,
+)
+```
+
+Option B -- with `ANNOTATION_COL = "celltype_grouped"` (all cotyledon cells as
+one population; preferred when subclusters should not be told apart):
+
+```{python section_25_cell_selection_grouped, eval=FALSE}
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
@@ -1551,12 +1656,15 @@ Representative output from Section 25:
 
 ![UMAP of the epidermis cotyledon cells selected for the trajectory.](assets/pseudotime_umap_selection.pdf){width=30%}
 
+\newpage
+
 ## Section 26 - Trajectory inference
 
 This section fits the pseudotime trajectory for the selected cells. The
-`ROOT_CLUSTER` defines where pseudotime starts. Here, the root is set to
-`epidermis cotyledon`, so the trajectory is oriented within that selected
-population.
+`ROOT_CLUSTER` defines where pseudotime starts, and must be a single existing
+label (not a list): with raw `celltype` this means picking one of the two
+cotyledon subclusters (the larger one, `.1`, is used below); with
+`celltype_grouped` it is simply the merged `Epidermis Cotyledon` label.
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
@@ -1567,7 +1675,30 @@ Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
 visualization, and selected root cell plot inside `results/09_pseudotime/`.
 
-```{python section_26_trajectory, eval=FALSE}
+Option A -- with `ANNOTATION_COL = "celltype"` (raw, pick one of the two
+cotyledon subclusters as root -- the larger one, `.1`, is used here):
+
+```{python section_26_trajectory_celltype, eval=FALSE}
+ROOT_CLUSTER = "Epidermis Cotyledon.1"
+
+TRAJECTORY_RUNS = [
+    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
+]
+
+adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
+    adata           = adata,
+    clusters        = TRAJECTORY_CLUSTERS,
+    root_cluster    = ROOT_CLUSTER,
+    annotation_col  = ANNOTATION_COL,
+    output_base_dir = dir_pseudotime,
+    runs            = TRAJECTORY_RUNS,
+)
+```
+
+Option B -- with `ANNOTATION_COL = "celltype_grouped"` (preferred when
+evaluating the trajectory across the whole cell type):
+
+```{python section_26_trajectory_grouped, eval=FALSE}
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [

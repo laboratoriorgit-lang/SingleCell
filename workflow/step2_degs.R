@@ -62,7 +62,7 @@ marker_table <- read.table(
 # ==============================================================================
 # Section 13 - Cell-type subsets
 # ==============================================================================
-pseudobulk_annot_col <- "celltype_curated"
+pseudobulk_annot_col <- "celltype"
 
 # Inspect how many cells each cell type has before subsetting
 table(ath_sc[[pseudobulk_annot_col]])

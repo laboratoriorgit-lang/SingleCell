@@ -23,7 +23,9 @@ print("SECTION 23 COMPLETE: setup done")
 # Section 24 - Load curated object
 # ==============================================================================
 INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
-ANNOTATION_COL = "celltype_curated"
+# "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
+# Section 10 was used, or "celltype_curated" if Section 11 was used.
+ANNOTATION_COL = "celltype"
 N_JOBS         = 4
 
 adata, N_JOBS = load_curated_object(
@@ -36,7 +38,12 @@ adata, N_JOBS = load_curated_object(
 # ==============================================================================
 # Section 25 - Cell type selection
 # ==============================================================================
-TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
+# Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart):
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
+
+# Option B -- ANNOTATION_COL = "celltype_grouped" (all cotyledon cells as one
+# population; preferred when subclusters should not be told apart):
+# TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -48,7 +55,12 @@ adata_sub = preview_trajectory_selection(
 # ==============================================================================
 # Section 26 - Trajectory inference
 # ==============================================================================
-ROOT_CLUSTER = "Epidermis Cotyledon"
+# Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart -- pick one):
+ROOT_CLUSTER = "Epidermis Cotyledon.1"
+
+# Option B -- ANNOTATION_COL = "celltype_grouped" (preferred when evaluating
+# the trajectory across the whole cell type):
+# ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
     trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),

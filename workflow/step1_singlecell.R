@@ -274,12 +274,11 @@ message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
 # ==============================================================================
 # Section 10 - Cell-type grouping [optional]
 # ==============================================================================
-# Merge the three epidermis hypocotyl subclusters into a single label.
+# Merge the two epidermis cotyledon subclusters into a single label.
 # Set grouping <- c() to skip this step (celltype_grouped == celltype).
 grouping <- c(
-  "Epidermis Hypocotyl.1" = "Epidermis Hypocotyl",
-  "Epidermis Hypocotyl.2" = "Epidermis Hypocotyl",
-  "Epidermis Hypocotyl.3" = "Epidermis Hypocotyl"
+  "Epidermis Cotyledon.1" = "Epidermis Cotyledon",
+  "Epidermis Cotyledon.2" = "Epidermis Cotyledon"
 )
 
 output_dir <- dir_05
