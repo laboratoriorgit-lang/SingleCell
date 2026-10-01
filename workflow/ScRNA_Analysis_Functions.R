@@ -193,23 +193,12 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 #' @param seurat_obj Seurat object with a PCA reduction computed.
 #' @param output_dir Folder to save the elbow plot pdf into.
 #' @param filename   Output pdf filename (default: "elbow_plot.pdf").
-#' @param pca_dims   PCA dimensions to use (default: 1:30).
-#' @param k_range    Candidate k values to test (default: 1:31).
-#' @param nstart     kmeans random restarts (default: 4).
+#' @param ndims      Number of PCs to plot (default: 30).
 #' @return The elbow ggplot object (invisibly).
 #' @export
 plot_resolution_elbow <- function(seurat_obj, output_dir, filename = "elbow_plot.pdf",
-                                   pca_dims = 1:30, k_range = 1:31, nstart = 4) {
-  pca_data <- Embeddings(seurat_obj, "pca")[, pca_dims]
-  wss <- sapply(
-    k_range,
-    function(k) kmeans(pca_data, centers = k, nstart = nstart)$tot.withinss
-  )
-
-  elbow_plot <- ggplot(data.frame(k = k_range, wss = wss), aes(k, wss)) +
-    geom_line() +
-    geom_point() +
-    labs(x = "Number of clusters (k)", y = "Within-cluster sum of squares") +
+                                   ndims = 30) {
+  elbow_plot <- ElbowPlot(seurat_obj, ndims = ndims, reduction = "pca") +
     theme_minimal()
 
   ggsave(file.path(output_dir, filename), elbow_plot,

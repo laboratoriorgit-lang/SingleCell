@@ -788,22 +788,27 @@ Representative output from Section 4:
 
 ## Section 5 - Resolution optimization
 
-This section helps choose a reasonable clustering resolution before assigning the
-final clusters. The `resolutions_test` vector contains the candidate resolutions
-that will be tested. Lower values produce fewer, broader clusters; higher values
-produce more, smaller clusters.
+By this point the samples are merged and batch-corrected, so this is where it
+makes sense to check two things before assigning final clusters: how many
+principal components actually carry signal, and what clustering resolution to
+use.
 
 The section generates two diagnostic plots: an elbow plot and a clustree. The
-elbow plot gives a broad view of how many groups are supported by the data. The
-clustree shows how clusters split or remain stable across the tested resolution
-values. Together, these plots help avoid choosing a resolution that is too coarse
-or too fragmented.
+elbow plot shows the standard deviation explained by each principal component,
+from PC1 onward. The first few PCs carry most of the real biological signal, so
+the curve drops fast; past a certain point, each extra PC adds almost nothing
+and the curve flattens out -- that bend is the "elbow", and it marks a
+reasonable number of components to keep (PCs past it are mostly technical
+noise). The clustree shows, across the candidate resolutions in
+`resolutions_test`, how many clusters each one produces and whether cells
+settle into stable clusters or keep reshuffling between them as resolution
+changes -- a resolution where cell membership stops moving around much is a
+safer choice than one still fragmenting. Lower resolutions produce fewer,
+broader clusters; higher resolutions produce more, smaller ones.
 
 The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
-`clustree2.pdf`. The underlying PCA dimensions, k-means settings, and neighbor
-count are fixed inside `plot_resolution_elbow()` and `run_resolution_sweep()`
-(`workflow/ScRNA_Analysis_Functions.R`) and rarely need changing; the only
-thing to edit here is `resolutions_test`.
+`clustree2.pdf`. Read the elbow plot's flattening point here, then set that
+number of dimensions as `elbow_dims` in Section 6 below.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
@@ -822,7 +827,7 @@ Representative outputs from Section 5:
 ```{=latex}
 \begin{center}
 ```
-![Elbow diagnostic used to inspect candidate cluster numbers.](assets/elbow_plot.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
+![Elbow diagnostic used to inspect candidate component numbers.](assets/elbow_plot.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -836,12 +841,16 @@ clusters, using the **Leiden algorithm** (`algorithm = 4`) -- a standard
 community-detection method for single-cell data. Each cluster is a candidate
 cell population; cell-type labels are only assigned afterward, in Section 7.
 This uses the final clustering resolution chosen after inspecting the
-diagnostic plots from Section 5. The value is set in `cluster_resolution`.
+diagnostic plots from Section 5. The value is set in `cluster_resolution`, and
+the number of PCs to use is set in `elbow_dims`, read off the elbow plot's
+flattening point from Section 5.
 
-To use this block, first look at the elbow plot and clustree from Section 5, then
-choose the resolution that gives a reasonable number of stable clusters. Lower
-values produce fewer, broader clusters; higher values produce more, smaller
-clusters.
+To use this block, first look at the elbow plot and clustree from Section 5:
+set `elbow_dims` to where the elbow plot flattens, and `cluster_resolution` to
+whichever tested resolution gives a reasonable number of stable clusters.
+Lower resolutions produce fewer, broader clusters; higher resolutions produce
+more, smaller clusters. For this dataset, the elbow plot in Section 5 flattens
+around PC 15, so `elbow_dims <- 1:15` is used below.
 
 After running this block, each cell receives a final Seurat cluster ID stored in
 `seurat_clusters`. These numeric clusters are the starting point for cell-type
@@ -852,11 +861,12 @@ The output figure is a UMAP colored by final cluster number, saved as
 
 ```{r section_06_final_clustering}
 cluster_resolution <- 0.35
+elbow_dims <- 1:15
 output_dir <- dir_02
 
 ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = elbow_dims, verbose = FALSE) %>%
+  FindNeighbors(reduction = "harmony", dims = elbow_dims, k.param = 20, verbose = FALSE) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
 Idents(ath_sc) <- "seurat_clusters"
