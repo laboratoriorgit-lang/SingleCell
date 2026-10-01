@@ -177,11 +177,12 @@ message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 # Section 6 - Final clustering
 # ==============================================================================
 cluster_resolution <- 0.35
+elbow_dims <- 1:15
 output_dir <- dir_02
 
 ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = elbow_dims, verbose = FALSE) %>%
+  FindNeighbors(reduction = "harmony", dims = elbow_dims, k.param = 20, verbose = FALSE) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
 Idents(ath_sc) <- "seurat_clusters"
