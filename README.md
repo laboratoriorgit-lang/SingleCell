@@ -68,13 +68,38 @@ The **Rmd** in `reports/` is the literate, publication-ready version of the same
 | CPU cores | 4 | 16 or more |
 | RAM | 32 GB | 64–128 GB for merged multi-sample objects |
 | Disk space | 80 GB free | 100 GB free |
-| Container runtime | any OCI-compatible runtime | Docker, or Singularity/Apptainer on HPC |
+| Container runtime | any OCI-compatible runtime | Singularity/Apptainer (primary), or Docker |
 
-Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is not installed inside `psblab/scrnaseq:latest` — run it on a host, server, or HPC node separately (see Part 0 below).
+Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is **not bundled** in `psblab/scrnaseq:latest` — but since it is proprietary software that ends up installed under the cloned repository (e.g. `cellranger-9.0.1/` alongside `workflow/`), it lands inside the same `/workspace` bind either runtime provides, so it is reachable from `PATH` within the same container session as the rest of the pipeline (see Part 0 below) — no separate host shell needed.
 
 ---
 
-## Quick Start with Docker
+## Quick Start with Singularity / Apptainer (primary)
+
+This is the container runtime used throughout the accompanying report. Common on clusters where Docker itself isn't permitted, and the reason it's primary here: no root required. Apptainer converts the public Docker Hub image to a local `.sif` and runs it as the invoking user, so files written under `results/` are owned by that user, not root:
+
+```bash
+singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
+singularity exec --bind "$(pwd)":/workspace --pwd /workspace scrnaseq.sif /bin/bash
+```
+
+Run the `singularity exec` line every time you come back to work on this pipeline, from inside the cloned repository directory (so `$(pwd)` resolves to it). `--pwd /workspace` starts the shell inside the bound repo (otherwise Apptainer warns the host working directory doesn't exist in the container and falls back to `$HOME`). The bundled Python (`/opt/venv`) and R packages stay on `PATH` since Apptainer imports the full image environment.
+
+Once inside the container (`/workspace` = repo root):
+
+```bash
+R                                          # interactive R console
+python3                                    # interactive Python console (venv on PATH)
+Rscript workflow/step1_singlecell.R        # run Part 1 end-to-end
+Rscript workflow/step2_degs.R              # run Part 2 end-to-end
+python3 workflow/step3_pseudotime.py       # run Part 3 end-to-end
+```
+
+Always pull/convert the published image rather than rebuilding from the `Dockerfile` — it pins no versions and would drift from the tested build.
+
+### Quick Start with Docker (secondary)
+
+Only needed when Singularity/Apptainer isn't available. Requires root (or membership in the `docker` group), which is why it isn't the default here.
 
 `docker-compose.yml` is set up to pull the pre-built image by default:
 
@@ -97,30 +122,7 @@ docker pull psblab/scrnaseq:latest                     # from Docker Hub
 docker run -it -v "$(pwd)":/workspace psblab/scrnaseq:latest bash
 ```
 
-Once inside the container (`/workspace` = repo root):
-
-```bash
-R                                          # interactive R console
-python3                                    # interactive Python console (venv on PATH)
-Rscript workflow/step1_singlecell.R        # run Part 1 end-to-end
-Rscript workflow/step2_degs.R              # run Part 2 end-to-end
-python3 workflow/step3_pseudotime.py       # run Part 3 end-to-end
-```
-
-Cell Ranger itself is **not** bundled in the image (proprietary, license-gated download) — run `workflow/step0_cellranger.sh` in an environment where `cellranger` is on `PATH` before Part 1.
-
-### Quick Start with Singularity / Apptainer (HPC)
-
-Common on clusters where Docker itself isn't permitted. No root required — Apptainer converts the public Docker Hub image to a local `.sif` and runs it as the invoking user, so files written under `results/` are owned by that user, not root:
-
-```bash
-singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
-singularity exec --bind "$(pwd)":/workspace --pwd /workspace scrnaseq.sif /bin/bash
-```
-
-`--bind "$(pwd)":/workspace` mounts the cloned repo the same way the Docker `-v` flag does; `--pwd /workspace` starts the shell inside it (otherwise Apptainer warns the host working directory doesn't exist in the container and falls back to `$HOME`). The bundled Python (`/opt/venv`) and R packages stay on `PATH` since Apptainer imports the full image environment. From there, the same `Rscript`/`python3` commands above apply.
-
-Always pull/convert the published image rather than rebuilding from the `Dockerfile` — it pins no versions and would drift from the tested build.
+Once inside, the same `R`/`python3`/`Rscript` commands above apply.
 
 ---
 
@@ -181,7 +183,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 2 | Filter cells (`filter_seurat_samples`/`filter_sample`), save post-filter QC, checkpoint `.rds` |
 | 3 | Merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony) |
 | 4 | `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP |
-| 5 | Elbow plot (k-means WSS over PCs) + `clustree` across 5 candidate resolutions |
+| 5 | Elbow plot (`ElbowPlot`, stdev per PC, read manually to pick `elbow_dims`) + `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
 | 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution |
 | 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
 | 8 | Annotated `clustree` (cluster tree labeled by majority cell type) |
@@ -213,7 +215,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 26 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → automatic root-cell selection → pseudotime assignment; supports sweeping multiple parameter sets in one call |
 | 27 | Gene expression plotted directly on the force-directed trajectory graph |
 | 28 | `run_step29_gene_trends` — `scFates.tl.test_association` + `.fit`, top-N and custom-gene trend plots along pseudotime |
-| 29 | Export the final trajectory object as `results/objects/pbmc_pseudotime_final.h5ad` |
+| 29 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
 
 ---
 
@@ -229,6 +231,15 @@ Violin grid for `nFeature_RNA`, `nCount_RNA`, `percent.mt`, and `percent.cp` if 
 
 #### `summarize_nfeature_plot(obj_list, labels = NULL, colores = NULL)`
 Boxplot + jitter of `nFeature_RNA` across a list of Seurat objects, combined with printed quartile/quintile summary tables (`cowplot::plot_grid`). `labels` auto-generates `"Group1"`, `"Group2"`, … if `NULL`; `colores` defaults to a 5-color palette.
+
+#### `plot_resolution_elbow(seurat_obj, output_dir, filename = "elbow_plot.pdf", ndims = 30)`
+Standard Deviation per principal component (`Seurat::ElbowPlot`, `reduction = "pca"`), saved as a PDF. Read the flattening point manually to pick how many PCs (`elbow_dims`) to carry into clustering in Section 6 — this does not decide the number of clusters, see `run_resolution_sweep()` below for that.
+
+#### `run_resolution_sweep(seurat_obj, resolutions, output_dir, filename = "clustree2.pdf", pca_dims = 1:30, knn_k = 20)`
+Recomputes UMAP/neighbors on the Harmony embedding, runs `FindClusters` (Leiden, `algorithm = 4`) across every candidate resolution, and saves a `clustree` diagnostic showing how clusters split or stay stable as resolution changes. Returns the Seurat object with one `RNA_snn_res.<r>` column per tested resolution.
+
+#### `plot_annotated_clustree(seurat_obj, clu, annot_col, output_dir, filename = "clustree_annotated.pdf")`
+Re-labels the `run_resolution_sweep()` clustree with the dominant cell-type annotation (`Mode()`) per node instead of only numeric cluster IDs, and saves it.
 
 ---
 
