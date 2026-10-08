@@ -52,6 +52,8 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
+print("SECTION 25 COMPLETE: cell type selection saved")
+
 # ==============================================================================
 # Section 26 - Trajectory inference
 # ==============================================================================
@@ -74,6 +76,8 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     output_base_dir = dir_pseudotime,
     runs            = TRAJECTORY_RUNS,
 )
+
+print("SECTION 26 COMPLETE: trajectory inference saved")
 
 # ==============================================================================
 # Section 27 - Plot genes on trajectory
