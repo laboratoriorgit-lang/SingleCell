@@ -664,9 +664,17 @@ Representative output from Section 1:
 
 ## Section 2 - Cell filtering and doublet detection
 
-This section filters low-quality cells and then runs doublet detection. The code
-shown here uses two thresholds: cells must have more than 200 detected genes
-(`min_features = 200`) and less than 5% mitochondrial reads (`max_mt = 5`).
+This section filters low-quality cells, then runs **DoubletFinder** to flag and
+remove doublets (droplets that captured two cells instead of one, which would
+otherwise show up as a fake intermediate or hybrid cell type). The code shown
+here uses two filtering thresholds -- cells must have more than 200 detected
+genes (`min_features = 200`) and less than 5% mitochondrial reads (`max_mt =
+5`) -- and DoubletFinder runs automatically after that filtering step, since
+`run_doubletfinder` defaults to `TRUE` in `filter_sample()`; it is not something
+that needs to be added, only disabled if you don't want it (see below).
+Internally, this calls `doubletfinder_pipeline()`, which normalizes, scales,
+runs PCA, sweeps DoubletFinder's `pK` parameter, and removes any cells it
+classifies as doublets.
 
 The filtering function also accepts extra variables that are not used explicitly
 in this example:
@@ -675,11 +683,11 @@ in this example:
 - `min_counts`: minimum total RNA counts per cell.
 - `max_counts`: maximum total RNA counts per cell.
 - `max_cp`: maximum chloroplast percentage.
-- `run_doubletfinder`: whether DoubletFinder should be run after filtering.
+- `run_doubletfinder`: set to `FALSE` to skip DoubletFinder (e.g. for a quick
+  test run).
 
 These extra options are useful when the QC plots show cells with very low
-complexity, unusually high gene or UMI counts, high chloroplast signal, or when
-you want to disable doublet detection for a quick test.
+complexity, unusually high gene or UMI counts, or high chloroplast signal.
 
 After running the block, the pipeline saves a post-filter QC plot in
 `results/01_qc/qc_postfilter.pdf` and stores the filtered sample list in
@@ -689,7 +697,9 @@ next section.
 ```{r section_02_cell_filtering_and_doublet_detection}
 output_dir <- dir_01
 
-seurat_list <- filter_seurat_samples(seurat_list_raw, min_features = 200, max_mt = 5)
+seurat_list <- filter_seurat_samples(
+  seurat_list_raw, min_features = 200, max_mt = 5, run_doubletfinder = TRUE
+)
 
 plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
