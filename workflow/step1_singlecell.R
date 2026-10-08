@@ -111,7 +111,9 @@ message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
 # ==============================================================================
 output_dir <- dir_01
 
-seurat_list <- filter_seurat_samples(seurat_list_raw, min_features = 200, max_mt = 5)
+seurat_list <- filter_seurat_samples(
+  seurat_list_raw, min_features = 200, max_mt = 5, run_doubletfinder = TRUE
+)
 
 plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 

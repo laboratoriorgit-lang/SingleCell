@@ -199,7 +199,11 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 plot_resolution_elbow <- function(seurat_obj, output_dir, filename = "elbow_plot.pdf",
                                    ndims = 30) {
   elbow_plot <- ElbowPlot(seurat_obj, ndims = ndims, reduction = "pca") +
-    theme_minimal()
+    theme_minimal(base_size = 20) +
+    theme(
+      axis.title = element_text(size = 30),
+      axis.text  = element_text(size = 24)
+    )
 
   ggsave(file.path(output_dir, filename), elbow_plot,
          width = 18, height = 18, dpi = 300, limitsize = FALSE)
@@ -464,8 +468,13 @@ filter_sample <- function(obj,
                     percent.mt   < max_mt)
   }
 
-  if (run_doubletfinder)
+  if (run_doubletfinder) {
+    n_before <- ncol(obj)
     obj <- doubletfinder_pipeline(obj, etiqueta = Project(obj))
+    n_after <- ncol(obj)
+    message(sprintf("DoubletFinder (%s): removed %d doublets (%d -> %d cells)",
+                     Project(obj), n_before - n_after, n_before, n_after))
+  }
 
   return(obj)
 }
