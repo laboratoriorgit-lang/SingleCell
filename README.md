@@ -404,7 +404,6 @@ Hierarchical heatmap of a log2FC matrix (same logic as `plot_heatmap`, self-cont
 
 #### `build_coexpression_modules(Mz, output_dir, min_genes = 1, deepSplit_val = 0, network_power = 6, network_type = c("signed","unsigned"), cor_method = "spearman", tom_pdf = "tom_heatmap.pdf")`
 Rank-based gene-gene correlation → adjacency → TOM → TOM modules (`cutreeDynamic`) from a log2FC matrix; exports TOM heatmap + module assignment table.
-> **Known bug:** the returned `tom_heatmap` element references an undefined `tom_plot` object — the `pheatmap()` call inside the `pdf()`/`dev.off()` block is never captured with `<-`.
 
 #### `run_go_for_gene_clusters(...)` — see section 8 (used here to enrich the modules produced above).
 

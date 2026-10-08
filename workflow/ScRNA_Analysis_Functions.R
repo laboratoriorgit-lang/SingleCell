@@ -2628,7 +2628,7 @@ build_coexpression_modules <- function(Mz,
   tom_plot_mat <- TOM[tom_order, tom_order, drop = FALSE]
   tom_plot_ann <- tom_annotation[tom_order, , drop = FALSE]
   pdf(file.path(output_dir, tom_pdf), width = 18, height = 18)
-  pheatmap(
+  tom_plot <- pheatmap(
     tom_plot_mat,
     cluster_rows      = FALSE,
     cluster_cols      = FALSE,

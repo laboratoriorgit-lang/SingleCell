@@ -1170,7 +1170,7 @@ message("\nOK SECTION 12 COMPLETE: curated object saved (.rds + .h5ad)")
 
 # Part 3 - Pseudobulk differential expression and GO
 
-This part continues from the object saved at the end of Chapter 1. It
+This part continues from the object saved at the end of Part 1. It
 aggregates cells into pseudo-replicates per cell type, runs pseudobulk DESeq2
 for the WT vs pifq contrast, and summarizes results with volcano plots,
 differential tables, GO enrichment, a log2FC heatmap, and co-expression
@@ -1183,7 +1183,7 @@ ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
 ## Section 13 - Cell-type subsets
 
 The annotation column used to define cell types is a user choice. Depending on
-how Chapter 1 was run, this is one of `celltype` (bibliography annotation),
+how Part 1 was run, this is one of `celltype` (bibliography annotation),
 `celltype_grouped` (broad groups from Section 10), or `celltype_curated`
 (manual curation from Section 11). All downstream sections in this part use
 whichever column is set here.
@@ -1523,8 +1523,8 @@ Representative output from Section 20:
 
 # Part 4 - Pseudotime trajectory analysis (Python)
 
-Chapter 3 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
-object exported at the end of Chapter 1
+Part 4 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
+object exported at the end of Part 1
 (`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
 inside the same container (Singularity):
 
@@ -1646,6 +1646,8 @@ adata_sub = preview_trajectory_selection(
     annotation_col = ANNOTATION_COL,
     dir_pseudotime = dir_pseudotime,
 )
+
+print("SECTION 25 COMPLETE: cell type selection saved")
 ```
 
 Option B -- with `ANNOTATION_COL = "celltype_grouped"` (all cotyledon cells as
@@ -1660,6 +1662,8 @@ adata_sub = preview_trajectory_selection(
     annotation_col = ANNOTATION_COL,
     dir_pseudotime = dir_pseudotime,
 )
+
+print("SECTION 25 COMPLETE: cell type selection saved")
 ```
 
 Representative output from Section 25:
@@ -1703,6 +1707,8 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     output_base_dir = dir_pseudotime,
     runs            = TRAJECTORY_RUNS,
 )
+
+print("SECTION 26 COMPLETE: trajectory inference saved")
 ```
 
 Option B -- with `ANNOTATION_COL = "celltype_grouped"` (preferred when
@@ -1723,6 +1729,8 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     output_base_dir = dir_pseudotime,
     runs            = TRAJECTORY_RUNS,
 )
+
+print("SECTION 26 COMPLETE: trajectory inference saved")
 ```
 
 Representative outputs from Section 26 for the epidermis-cotyledon-only trajectory using
@@ -1856,6 +1864,13 @@ os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
 print(f"SECTION 29 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+```
+
+This is the last step of the pipeline. Leave the Python REPL the same way
+Part 4 started -- by exiting it explicitly, mirroring `q()` on the R side:
+
+```bash
+exit()        # leave Python
 ```
 ```{=latex}
 \newpage
