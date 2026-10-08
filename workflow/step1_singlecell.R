@@ -171,7 +171,9 @@ output_dir <- dir_02
 
 plot_resolution_elbow(ath_sc, output_dir = output_dir)
 
-clu <- run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = output_dir)
+clu <- run_resolution_sweep(
+  ath_sc, resolutions = resolutions_test, output_dir = output_dir
+)
 
 message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 
@@ -184,7 +186,9 @@ output_dir <- dir_02
 
 ath_sc <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = elbow_dims, verbose = FALSE) %>%
-  FindNeighbors(reduction = "harmony", dims = elbow_dims, k.param = 20, verbose = FALSE) %>%
+  FindNeighbors(
+    reduction = "harmony", dims = elbow_dims, k.param = 20, verbose = FALSE
+  ) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
 Idents(ath_sc) <- "seurat_clusters"
@@ -244,7 +248,9 @@ message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
 # ==============================================================================
 output_dir <- dir_03
 
-plot_annotated_clustree(ath_sc, clu, annot_col = "celltype", output_dir = output_dir)
+plot_annotated_clustree(
+  ath_sc, clu, annot_col = "celltype", output_dir = output_dir
+)
 
 message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
 
