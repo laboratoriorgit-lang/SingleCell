@@ -571,13 +571,11 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | Reference genome | TAIR10.1 + Araport11 annotation (bundled, gzipped, under `data/`) |
 | CRAN / Bioconductor packages | **not version-pinned** in the Dockerfile — installed at build time from `packagemanager.posit.co` (latest for R 4.5) and Bioconductor's release matching R 4.5 |
 | Python packages | **not version-pinned** — `pip install` inside a venv at build time (`scanpy`, `scFates`, `palantir`, `fa2-modified`, `rpy2`, `pandas`, `numpy`, `scipy`, `scikit-learn`, `matplotlib`, `seaborn`) |
-| GitHub-only R packages | `SeuratDisk` (mojaveazure), `DoubletFinder` (chris-mcginnis-ucsf), `SeuratWrappers` (satijalab, needs `GITHUB_PAT` build arg), `monocle3` (cole-trapnell-lab) |
+| GitHub-only R packages | `SeuratDisk` (mojaveazure), `DoubletFinder` (chris-mcginnis-ucsf), `SeuratWrappers` (satijalab, needs `GITHUB_PAT` build arg), `monocle3` (cole-trapnell-lab), `hdWGCNA` (smorabit) |
 | Seurat ecosystem | `Seurat`, `SeuratObject` (CRAN, latest), `Signac` |
 | Key Bioconductor packages | `DESeq2`, `clusterProfiler`, `org.At.tair.db`, `GENIE3`, `ComplexHeatmap`, `zellkonverter`, `basilisk`, `SingleCellExperiment`, `scuttle`, `scater` |
 | Other clustering / network packages | `WGCNA` (+ `impute`, `preprocessCore` from Bioconductor), `dynamicTreeCut`, `igraph`, `ggraph`, `tidygraph`, `leidenbase` (Leiden clustering, `algorithm = 4`) |
 | Docker image (published) | `psblab/scrnaseq:latest` on Docker Hub |
-
-> **Known gap:** `workflow/load_libraries.R` calls `library(hdWGCNA)`, and several R functions (`run_unified_hdwgcna`, `run_hdwgcna`, `plot_hdwgcna_network*`, `filter_hdwgcna_by_de`, `run_tf_coexpression_network`) depend on it, but the Dockerfile never installs `hdWGCNA` (typically `remotes::install_github("smorabit/hdWGCNA")`). Install it manually before running Part 2, Section 20.
 
 > `.Rprofile` sets `RETICULATE_PYTHON` to a hard-coded path (`/home/mvergara/projects3/app/miniconda/envs/scrna_seba/bin/python`) from the original development host — this only matters if you call Python from within an R session via `reticulate`; it does not affect running `workflow/step3_pseudotime.py` directly with the container's own `python3`. Edit it if you use `reticulate` from R on a different machine.
 
