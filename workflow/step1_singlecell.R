@@ -52,14 +52,14 @@ output_dir <- base_dir
 # ==============================================================================
 # SECTION 1 - DATA LOADING AND PRE-FILTER QC
 # =============================================================================
-# Each sample is loaded from its input file and mitochondrial / chloroplast
-# read fractions are computed per cell to guide filtering thresholds in
+# Each sample is loaded from its input file and the mitochondrial read
+# fraction is computed per cell to guide filtering thresholds in
 # Section 2. Pre-filter violin plots are saved to 01_qc/.
 #
 # +- CHANGE FOR YOUR ORGANISM --------------------------------------------------
-#   Arabidopsis : mt_pattern = "^ATMG"  |  cp_pattern = "^ATCG"
-#   Human       : mt_pattern = "^MT-"   |  cp_pattern = NULL
-#   Mouse       : mt_pattern = "^mt-"   |  cp_pattern = NULL
+#   Arabidopsis : mt_pattern = "^ATMG"
+#   Human       : mt_pattern = "^MT-"
+#   Mouse       : mt_pattern = "^mt-"
 # +-----------------------------------------------------------------------------
 output_dir <- dir_01
 
@@ -90,14 +90,12 @@ colors <- c(
 
 
 mt_pattern <- "^ATMG"  # Arabidopsis mitochondrial genes
-cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
 
 
 # Load all samples using the helper function
 seurat_list_raw <- load_seurat_samples(samples = samples,
                                        DATA_DIR = DATA_DIR,
-                                       mt_pattern = mt_pattern,
-                                       cp_pattern = cp_pattern)
+                                       mt_pattern = mt_pattern)
 
 plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 

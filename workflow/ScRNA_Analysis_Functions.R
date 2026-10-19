@@ -67,7 +67,7 @@
 
 #' QC Violin Plot Grid
 #'
-#' Visualizes nFeature_RNA, nCount_RNA, percent.mt, and percent.cp by condition.
+#' Visualizes nFeature_RNA, nCount_RNA and percent.mt by condition.
 #'
 #' @param obj1  Seurat object.
 #' @param label Condition label.
@@ -87,9 +87,6 @@ plot_qc_violin_grid <- function(obj1, label, color) {
   obj1$cond <- label
 
   features <- c("nFeature_RNA", "nCount_RNA", "percent.mt")
-  if ("percent.cp" %in% colnames(obj1@meta.data)) {
-    features <- c(features, "percent.cp")
-  }
 
   p1 <- VlnPlot(obj1,
                 features = features,
@@ -423,13 +420,12 @@ doubletfinder_pipeline <- function(obj,
 #' Applies QC thresholds to an already-annotated Seurat object (output of
 #' load_sample) and optionally runs DoubletFinder.
 #'
-#' @param obj             Seurat object with percent.mt (and percent.cp).
+#' @param obj             Seurat object with percent.mt.
 #' @param min_features    Minimum nFeature_RNA.
 #' @param max_features    Maximum nFeature_RNA.
 #' @param min_counts      Minimum nCount_RNA.
 #' @param max_counts      Maximum nCount_RNA.
 #' @param max_mt          Maximum mitochondrial percent.
-#' @param max_cp          Maximum chloroplast percent (ignored if percent.cp absent).
 #' @param run_doubletfinder Whether to run DoubletFinder (default TRUE).
 #' @return Filtered Seurat object.
 #' @export
@@ -446,27 +442,14 @@ filter_sample <- function(obj,
                           min_counts        = 0,
                           max_counts        = Inf,
                           max_mt            = 5,
-                          max_cp            = 100,
                           run_doubletfinder = TRUE) {
 
-  has_cp <- "percent.cp" %in% colnames(obj@meta.data)
-
-  if (has_cp) {
-    obj <- subset(obj, subset =
-                    nFeature_RNA > min_features &
-                    nFeature_RNA < max_features &
-                    nCount_RNA   > min_counts   &
-                    nCount_RNA   < max_counts   &
-                    percent.mt   < max_mt       &
-                    percent.cp   < max_cp)
-  } else {
-    obj <- subset(obj, subset =
-                    nFeature_RNA > min_features &
-                    nFeature_RNA < max_features &
-                    nCount_RNA   > min_counts   &
-                    nCount_RNA   < max_counts   &
-                    percent.mt   < max_mt)
-  }
+  obj <- subset(obj, subset =
+                  nFeature_RNA > min_features &
+                  nFeature_RNA < max_features &
+                  nCount_RNA   > min_counts   &
+                  nCount_RNA   < max_counts   &
+                  percent.mt   < max_mt)
 
   if (run_doubletfinder) {
     n_before <- ncol(obj)
@@ -2974,20 +2957,17 @@ run_pseudobulk_pipeline <- function(obj,
 #' @param samples List of sample configurations (file, label, condition)
 #' @param DATA_DIR Root data directory path
 #' @param mt_pattern Regex pattern for mitochondrial genes (e.g., "^ATMG" for Arabidopsis)
-#' @param cp_pattern Regex pattern for chloroplast genes (e.g., "^ATCG" for Arabidopsis)
 #'
-#' @return Named list of Seurat objects with QC metrics (percent.mt, percent.cp)
+#' @return Named list of Seurat objects with QC metrics (percent.mt)
 #'
 #' @export
-load_seurat_samples <- function(samples, DATA_DIR, mt_pattern, cp_pattern) {
+load_seurat_samples <- function(samples, DATA_DIR, mt_pattern) {
   seurat_list <- lapply(samples, function(s) {
     mat <- Read10X(data.dir = file.path(DATA_DIR, s$file))
     obj <- CreateSeuratObject(counts = mat, project = s$label,
                               min.cells = 3, min.features = 200)
     obj$condition <- s$condition
     obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = mt_pattern)
-    if (!is.null(cp_pattern))
-      obj[["percent.cp"]] <- PercentageFeatureSet(obj, pattern = cp_pattern)
     obj
   })
   
