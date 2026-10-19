@@ -179,7 +179,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 
 | Section | What happens |
 |---|---|
-| 1 | Load each CellRanger `filtered_feature_bc_matrix/` (`load_seurat_samples`), compute `percent.mt`/`percent.cp`, save pre-filter QC violins (`plot_qc_batch`) |
+| 1 | Load each CellRanger `filtered_feature_bc_matrix/` (`load_seurat_samples`), compute `percent.mt`, save pre-filter QC violins (`plot_qc_batch`) |
 | 2 | Filter cells (`filter_seurat_samples`/`filter_sample`), save post-filter QC, checkpoint `.rds` |
 | 3 | Merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony) |
 | 4 | `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP |
@@ -227,7 +227,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 Iterates a named list of Seurat objects, builds one QC violin panel per sample (`plot_qc_violin_grid`), stacks them and saves a single PDF via `save_qc`.
 
 #### `plot_qc_violin_grid(obj1, label, color)`
-Violin grid for `nFeature_RNA`, `nCount_RNA`, `percent.mt`, and `percent.cp` if present, for one Seurat object; title includes cell count.
+Violin grid for `nFeature_RNA`, `nCount_RNA`, and `percent.mt` for one Seurat object; title includes cell count.
 
 #### `summarize_nfeature_plot(obj_list, labels = NULL, colores = NULL)`
 Boxplot + jitter of `nFeature_RNA` across a list of Seurat objects, combined with printed quartile/quintile summary tables (`cowplot::plot_grid`). `labels` auto-generates `"Group1"`, `"Group2"`, … if `NULL`; `colores` defaults to a 5-color palette.
@@ -254,8 +254,8 @@ Full doublet pipeline: normalize, scale, PCA, `FindNeighbors`/`FindClusters`, `B
 #### `filter_seurat_samples(seurat_list, ...)`
 Applies `filter_sample` to every element of a named Seurat list via `lapply`, preserving names; `...` is forwarded.
 
-#### `filter_sample(obj, min_features = 200, max_features = Inf, min_counts = 0, max_counts = Inf, max_mt = 5, max_cp = 100, run_doubletfinder = TRUE)`
-QC-threshold `subset()` on nFeature/nCount/%mt/%cp, then optionally runs `doubletfinder_pipeline` on the filtered cells.
+#### `filter_sample(obj, min_features = 200, max_features = Inf, min_counts = 0, max_counts = Inf, max_mt = 5, run_doubletfinder = TRUE)`
+QC-threshold `subset()` on nFeature/nCount/%mt, then optionally runs `doubletfinder_pipeline` on the filtered cells.
 
 ---
 
@@ -493,8 +493,8 @@ Creates the standard output folder structure under `base_dir` — `01_qc` … `0
 
 ### 14. Data Loading and Subsetting
 
-#### `load_seurat_samples(samples, DATA_DIR, mt_pattern, cp_pattern)`
-Loads multiple CellRanger samples (`Read10X`), creates Seurat objects (`min.cells = 3`, `min.features = 200`), tags condition, computes `percent.mt`/`percent.cp` via `PercentageFeatureSet`.
+#### `load_seurat_samples(samples, DATA_DIR, mt_pattern)`
+Loads multiple CellRanger samples (`Read10X`), creates Seurat objects (`min.cells = 3`, `min.features = 200`), tags condition, computes `percent.mt` via `PercentageFeatureSet`.
 
 #### `create_cell_type_subsets(seurat_obj, annot_col = "celltype_grouped")`
 One Seurat subset per unique (non-NA) cell type in `annot_col`, with sanitized list names.
@@ -583,13 +583,13 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 
 ## Adapting to other organisms
 
-Swap the organism-specific parameters below when applying this pipeline to species other than *Arabidopsis thaliana*. `mt_pattern`/`cp_pattern` go to `load_seurat_samples()`; `orgdb`/`keytype` go to every GO/network function (`run_go_enrichment_for_contrast`, `run_go_enrichment_suite`, `run_network_inference_pipeline`, `test_network_thresholds`, `get_tfs_from_orgdb`, …).
+Swap the organism-specific parameters below when applying this pipeline to species other than *Arabidopsis thaliana*. `mt_pattern` goes to `load_seurat_samples()`; `orgdb`/`keytype` go to every GO/network function (`run_go_enrichment_for_contrast`, `run_go_enrichment_suite`, `run_network_inference_pipeline`, `test_network_thresholds`, `get_tfs_from_orgdb`, …).
 
-| Organism | `mt_pattern` | `cp_pattern` | `orgdb` | `keytype` |
-|---|---|---|---|---|
-| *Arabidopsis thaliana* | `"^ATMG"` | `"^ATCG"` | `org.At.tair.db` | `"TAIR"` |
-| *Homo sapiens* | `"^MT-"` | `NULL` | `org.Hs.eg.db` | `"ENSEMBL"` |
-| *Mus musculus* | `"^mt-"` | `NULL` | `org.Mm.eg.db` | `"ENSEMBL"` |
-| *Oryza sativa* | organism-specific | `NULL` | `org.Os.eg.db` | `"GID"` |
+| Organism | `mt_pattern` | `orgdb` | `keytype` |
+|---|---|---|---|
+| *Arabidopsis thaliana* | `"^ATMG"` | `org.At.tair.db` | `"TAIR"` |
+| *Homo sapiens* | `"^MT-"` | `org.Hs.eg.db` | `"ENSEMBL"` |
+| *Mus musculus* | `"^mt-"` | `org.Mm.eg.db` | `"ENSEMBL"` |
+| *Oryza sativa* | organism-specific | `org.Os.eg.db` | `"GID"` |
 
-For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern`/`cp_pattern` to your genome annotation's organelle gene-naming convention, replace `data/biblio_marks.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_tf_coexpression_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.
+For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern` to your genome annotation's mitochondrial gene-naming convention, replace `data/biblio_marks.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_tf_coexpression_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.

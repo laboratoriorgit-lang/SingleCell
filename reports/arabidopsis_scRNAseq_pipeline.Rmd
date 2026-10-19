@@ -161,6 +161,15 @@ annotation, and marker gene set used for cell-type calling.
 
 ## About this document {-}
 
+**Important: this guide uses a subset of the published data.** The study
+by Han et al. (2023) contains many more samples than the two analyzed here.
+This guide uses only two of them (`WT` and `pifq`) so that the whole workflow
+can be run in reasonable time on a single machine. It is **not** the same
+dataset as in the paper, so the clusters, differentially expressed genes,
+networks and trajectories obtained here are not expected to reproduce the
+paper's figures or numbers. The goal is to demonstrate the workflow, not to
+replicate the published results.
+
 This methods-paper R Markdown documents the full WT vs pifq workflow: two
 samples, `WT` and `pifq`, processed and integrated together, then carried
 through three chapters — single-cell preprocessing, clustering and annotation
@@ -187,7 +196,7 @@ PCA/UMAP) risk stalling or exhausting memory.
 | CPU cores | 4 | 16 or more |
 | RAM | 32 GB | 64-128 GB for merged multi-sample objects |
 | Disk space | 80 GB free | 100 GB free |
-| Container runtime | Any OCI-compatible runtime (e.g. Docker) | Docker or Singularity/Apptainer |
+| Container runtime | Docker or Singularity/Apptainer (choose one; see "Container startup") | Singularity/Apptainer on a cluster; Docker Desktop on a personal computer |
 
 This workflow is packaged as a single public image (`psblab/scrnaseq:latest`,
 on Docker Hub); the `docker-compose` YAML used to build and run it is kept in
@@ -291,6 +300,48 @@ repository for this WT vs pifq run (see Section 1).
 
 ## Container startup (Docker or Singularity)
 
+\newpage
+
+### Which container runtime should I use?
+
+You need **one** container program, not both. Docker and Singularity/Apptainer
+run the same image and give the same results; they differ only in where they
+can be installed and whether they need administrator rights. Use the table to
+pick one, then follow **only** the matching option below and skip the other.
+
+| Where you will run the pipeline | Use | Why |
+|---|---|---|
+| Institutional cluster or shared server (Linux) | **Option A: Singularity/Apptainer** | Needs no root; Docker is usually restricted to administrators |
+| Personal Linux computer | **Option A: Singularity/Apptainer**, or **Option B: Docker** if it is already installed | Either works; reuse what you have |
+| Personal macOS computer | **Option B: Docker** (Docker Desktop) | Apptainer does not run natively on macOS |
+| Personal Windows computer | **Option B: Docker** (Docker Desktop with WSL2) | Apptainer does not run natively on Windows |
+
+A personal computer is only suitable for small pilot datasets (see the
+requirements above). For a full run, use a cluster or server and Option A.
+
+**Check what is already installed.** Run these in a terminal; a version number
+means the program is available, and "command not found" means it is not:
+
+```bash
+apptainer --version      # Option A (newer name)
+singularity --version    # Option A (older name; either one is enough)
+docker --version         # Option B
+docker ps                # Option B only: an error here means you lack permission
+```
+
+On a cluster, Apptainer or Singularity is often installed system-wide (or
+available through `module avail apptainer` / `module load apptainer`). Docker
+may be installed but unusable if you are not in the `docker` group.
+
+**If neither is available:**
+
+- *Personal computer:* install the one chosen in the table above, following
+  "Installing a container runtime" in the Supplementary section.
+- *Cluster or shared server:* do not try to install anything. Ask the system
+  administrators or support team, for example: "Please make Apptainer
+  (Singularity) available so I can run the public image
+  `docker://psblab/scrnaseq:latest`."
+
 A container image is a single portable package holding a fixed, pre-installed
 set of R and Python libraries -- exactly the versions this pipeline was tested
 with. Anyone who runs the same image gets an identical environment, with no
@@ -301,7 +352,7 @@ pushed upstream, this is not a problem. The same public image (`psblab/scrnaseq`
 on Docker Hub) runs under either runtime; always pull it rather than rebuilding
 from the `Dockerfile`, so every user gets the exact tested package versions.
 
-**Singularity / Apptainer (primary).** This is the container app used
+**Option A: Singularity / Apptainer.** This is the container app used
 throughout this guide. No root is required, which is what makes it the
 practical choice on shared servers and HPC clusters (where Docker access is
 usually restricted to admins). It involves two separate steps:
@@ -322,13 +373,17 @@ singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
+If this step fails (for example with `squashfuse not found` or `Operation not
+permitted`), see "Troubleshooting Singularity/Apptainer" in the Supplementary
+section.
+
 Apptainer imports the image environment, so the bundled Python (`/opt/venv`) and
 R stay on `PATH`, and it runs as the invoking user, so files under `results/`
 are owned by that user rather than by root. The `--pwd /workspace` flag starts
 the shell inside the bound repository (otherwise Apptainer warns that the host
 working directory does not exist in the container and falls back to `$HOME`).
 
-**Docker (secondary).** Only needed when Singularity/Apptainer is not
+**Option B: Docker.** Use this only if the table above sent you here, or if Singularity/Apptainer is not
 available. Requires root (or membership in the `docker` group), which is the
 reason it is not the default here. Mount the cloned repository and open a
 shell:
@@ -349,7 +404,7 @@ above) so it survives a dropped connection.
 
 ## Raw data download and Cell Ranger processing
 
-**Run this whole section inside Singularity**, same as every other part of
+**Run this whole section inside the container**, same as every other part of
 this pipeline: `cd` into the cloned repository and `singularity exec` into it
 (Section 1.2) before running any of the commands below. Write the Cell Ranger
 outputs into the cloned repository directory so they are visible from inside
@@ -396,11 +451,13 @@ The single-cell workflow starts from Cell Ranger output, specifically the
 files are available, first download or stage the FASTQs, then run Cell Ranger
 for each sample before starting the R workflow.
 
-The WT vs pifq FASTQ files used in this run are public data from
+The WT vs pifq FASTQ files used in this guide are public data from
 [Han et al., 2023, *Nature Plants*](https://www.nature.com/articles/s41477-023-01544-4#data-availability),
 deposited at the CNCB Genome Sequence Archive under BioProject
 [PRJCA016521](https://ngdc.cncb.ac.cn/bioproject/browse/PRJCA016521), run
-accession `CRA010863`:
+accession `CRA010863`. **Only two of the samples in that study are used here**
+(WT and pifq, listed below), not the full dataset, so results will differ from
+those reported in the paper:
 
 | Sample | Run accession | Files |
 |---|---|---|
@@ -478,6 +535,33 @@ a hard requirement. Cell Ranger will happily use more or fewer cores, so raise
 or lower this value to match the number of CPU cores actually available on
 the machine running the pipeline (see the Recommended column above for
 guidance).
+
+**Check the Cell Ranger output before moving on.** A poor run is much easier to
+diagnose here than after clustering. Open `ScWT/outs/web_summary.html` and
+`Scpifq/outs/web_summary.html` in a browser (the same numbers are in
+`outs/metrics_summary.csv`) and look at the following:
+
+| Metric | What it tells you | What to look for |
+|---|---|---|
+| Estimated number of cells | Barcodes called as cells | Close to the number of cells you intended to capture; very different from the expected value suggests a loading or calling problem |
+| Mean reads per cell / median genes per cell | Sequencing depth and per-cell complexity | Both should be of the same order in the two samples; a large imbalance can introduce a technical difference between WT and pifq |
+| Sequencing saturation | How much deeper sequencing would still add new transcripts | Low values mean more sequencing would recover more genes; very high values mean little is gained |
+| Valid barcodes and reads in cells | Library quality and how much signal is in real cells versus ambient background | Low values indicate a poor library or a high background |
+| Reads mapped confidently to the transcriptome | Reference suitability | A low fraction can mean a wrong or incomplete reference or annotation |
+
+The **barcode rank plot** (the "knee plot", under the *Cells* panel) ranks
+barcodes by total UMI counts. A good run shows a sharp drop (the "knee")
+separating a high-count group of cells from a long tail of empty droplets.
+A gradual slope with no clear knee, or a knee at a very different position in
+the two samples, means that cell calling was uncertain and the cell counts of
+the two samples may not be comparable. These values are not strict pass/fail
+thresholds, and they depend on the tissue and the protocol; use them to compare
+the two samples with each other and to spot samples that look clearly different
+from the other.
+
+Cell Ranger's cell calling is only a first pass: the QC filtering in Part 2
+(Section 2) removes low-quality cells and doublets from this set, so the cell
+number reported here is expected to be larger than the one used downstream.
 
 \newpage
 
@@ -588,10 +672,10 @@ To use this block, edit the sample list with one entry per sample:
 Then edit `colors`, assigning one color to each sample `label`. These colors are
 used in the QC plots and later visualizations.
 
-The mitochondrial and chloroplast gene patterns tell the pipeline how to identify
-organellar reads. For Arabidopsis, mitochondrial genes usually start with `ATMG`
-and chloroplast genes usually start with `ATCG`; those are the defaults used in
-this report.
+The mitochondrial gene pattern tells the pipeline how to identify mitochondrial
+reads. For Arabidopsis, mitochondrial genes usually start with `ATMG`; this is
+the default used in this report. The resulting mitochondrial percentage
+(`percent.mt`) is used to filter cells in Section 2.
 
 After running the block, the pipeline creates one raw Seurat object per sample
 and saves the pre-filter QC plot in `results/01_qc/qc_prefilter.pdf`. This plot
@@ -601,14 +685,14 @@ next section.
 ```{r section_01_data_loading_and_pre_filter_qc}
 # SECTION 1 - DATA LOADING AND PRE-FILTER QC
 # =============================================================================
-# Each sample is loaded from its input file and mitochondrial / chloroplast
-# read fractions are computed per cell to guide filtering thresholds in
+# Each sample is loaded from its input file and the mitochondrial read
+# fraction is computed per cell to guide filtering thresholds in
 # Section 2. Pre-filter violin plots are saved to 01_qc/.
 #
 # +- CHANGE FOR YOUR ORGANISM --------------------------------------------------
-#   Arabidopsis : mt_pattern = "^ATMG"  |  cp_pattern = "^ATCG"
-#   Human       : mt_pattern = "^MT-"   |  cp_pattern = NULL
-#   Mouse       : mt_pattern = "^mt-"   |  cp_pattern = NULL
+#   Arabidopsis : mt_pattern = "^ATMG"
+#   Human       : mt_pattern = "^MT-"
+#   Mouse       : mt_pattern = "^mt-"
 # +-----------------------------------------------------------------------------
 output_dir <- dir_01
 
@@ -639,14 +723,12 @@ colors <- c(
 
 
 mt_pattern <- "^ATMG"  # Arabidopsis mitochondrial genes
-cp_pattern <- "^ATCG"  # Arabidopsis chloroplast genes
 
 
 # Load all samples using the helper function
 seurat_list_raw <- load_seurat_samples(samples = samples,
                                        DATA_DIR = DATA_DIR,
-                                       mt_pattern = mt_pattern,
-                                       cp_pattern = cp_pattern)
+                                       mt_pattern = mt_pattern)
 
 plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
@@ -682,12 +764,11 @@ in this example:
 - `max_features`: maximum number of detected genes per cell.
 - `min_counts`: minimum total RNA counts per cell.
 - `max_counts`: maximum total RNA counts per cell.
-- `max_cp`: maximum chloroplast percentage.
 - `run_doubletfinder`: set to `FALSE` to skip DoubletFinder (e.g. for a quick
   test run).
 
 These extra options are useful when the QC plots show cells with very low
-complexity, unusually high gene or UMI counts, or high chloroplast signal.
+complexity or unusually high gene or UMI counts.
 
 After running the block, the pipeline saves a post-filter QC plot in
 `results/01_qc/qc_postfilter.pdf` and stores the filtered sample list in
@@ -1542,7 +1623,7 @@ Representative output from Section 20:
 Part 4 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
 object exported at the end of Part 1
 (`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
-inside the same container (Singularity):
+inside the same container:
 
 ```bash
 q()          # leave R (do not save the workspace)
@@ -1555,7 +1636,7 @@ This section starts the Python part of the pipeline. It defines the same project
 paths used earlier, loads the Python helper scripts, and creates the pseudotime
 output folder.
 
-Use this block first after leaving R and starting Python inside the Docker
+Use this block first after leaving R and starting Python inside the
 container. After it runs, the functions needed for trajectory analysis are
 available in the Python session.
 
@@ -2036,6 +2117,54 @@ Docker is not permitted)
 On a shared HPC cluster, Singularity/Apptainer is usually already installed
 system-wide — check with `singularity --version` or `apptainer --version`
 before installing anything.
+
+## Troubleshooting Singularity/Apptainer {-}
+
+**Symptom.** `singularity build` finishes, but the startup command
+(`singularity exec ... scrnaseq.sif /bin/bash`) fails with `squashfuse not
+found` followed by `Operation not permitted` during extraction.
+
+**Cause.** A `.sif` file is a compressed (squashfs) filesystem that must be
+mounted to run. Where Apptainer is installed with its setuid helper (common on
+shared clusters), this works with no further setup. In a rootless installation
+without that helper, Apptainer mounts the image through FUSE using
+`squashfuse`; if it is missing, Apptainer falls back to extracting the image,
+which fails when user namespaces are disabled or restricted, or when the
+temporary directory is unusable.
+
+**Prerequisite check.** One of the first two lines must succeed, and the last
+must print a number greater than 0:
+
+```bash
+apptainer --version
+which squashfuse fusermount
+cat /proc/sys/user/max_user_namespaces
+```
+
+**Fixes, in order of effort.**
+
+1. Install `squashfuse` and `fuse` (on a cluster, ask the administrators).
+2. Point Apptainer to a local disk with free space that is not mounted
+   `noexec`, then retry:
+
+```bash
+export APPTAINER_TMPDIR=/path/to/local/disk/tmp
+export APPTAINER_CACHEDIR=/path/to/local/disk/cache
+mkdir -p "$APPTAINER_TMPDIR" "$APPTAINER_CACHEDIR"
+```
+
+3. Avoid mounting by building a directory instead of a `.sif`, and run that:
+
+```bash
+apptainer build --sandbox scrnaseq/ docker://psblab/scrnaseq:latest
+apptainer exec --bind $(pwd):/workspace --pwd /workspace scrnaseq/ /bin/bash
+```
+
+4. If none of these work, contact your system administrators, or use Docker
+   (Option B) on a machine where it is permitted.
+
+On Ubuntu 24.04 and similar distributions, AppArmor can restrict unprivileged
+user namespaces by default; this requires an administrator to allow Apptainer.
 
 ## R packages (421) {-}
 
