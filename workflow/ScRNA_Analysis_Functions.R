@@ -93,10 +93,14 @@ plot_qc_violin_grid <- function(obj1, label, color) {
                 pt.size  = 0.1,
                 ncol     = length(features),
                 group.by = "cond",
-                cols     = color) +
-    patchwork::plot_annotation(title = paste0(label, " (", n1, " cells)"))
+                cols     = color)
 
-  return(p1)
+  title <- ggplot() +
+    ggtitle(paste0(label, " (", n1, " cells)")) +
+    theme_void() +
+    theme(plot.title = element_text(face = "bold", size = 16))
+
+  return(title / p1 + plot_layout(heights = c(0.06, 1)))
 }
 
 
