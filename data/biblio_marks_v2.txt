@@ -5,6 +5,7 @@ companion cell	AHA3	AT5G57350	Han et al. 2023 Nat Plants, Suppl. Table 4
 Epidermis Cotyledon	ATML1	AT4G21750	Han et al. 2023 Nat Plants, Suppl. Table 4
 sieve element	SEOA	AT3G01670	Han et al. 2023 Nat Plants, Suppl. Table 4
 Epidermis Hypocotyl	MDP25	AT4G20260	Han et al. 2023 Nat Plants, Suppl. Table 4
+Epidermis Hypocotyl	HIPP31	AT3G48970	Han et al. 2023 Nat Plants, Suppl. Table 4
 Mesophyll	EPFL9	AT4G12970	Han et al. 2023 Nat Plants, Suppl. Table 4
 endodermis	ADF9	AT4G34970	Han et al. 2023 Nat Plants, Suppl. Table 4
 endodermis	CASP1	AT2G36100	Han et al. 2023 Nat Plants, Suppl. Table 4
