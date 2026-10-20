@@ -203,7 +203,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 17 | `build_differential_tables` — combined classification (up/down/none) and log2FC tables across cell types |
 | 18 | `run_go_enrichment_for_contrast` — `clusterProfiler::enrichGO` per cell type on significant genes |
 | 19 | `build_logfc_heatmap` — staircase-ordered log2FC heatmap across cell types |
-| 20 | `run_tf_coexpression_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
+| 20 | `run_hdwgcna_tf_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
 
 ### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Sections 23–29)
 
@@ -475,8 +475,8 @@ Filters an edge list to pairs involving ≥1 TF, classifies each gene's directio
 #### `plot_tf_de_network(net, output_dir, layout = "stress", n_hub_label = 15, contrast_tag = "condition_1_vs_condition_2", output_pdf = "network_tf_DE_direction.pdf", output_width = 12, output_height = 10)`
 Draws the TF graph via `ggraph`, colored by DE direction (red = up, blue = down, grey = mixed), shaped by role (triangle = TF, circle = co-expression partner), labels the top hub TFs. Supports `"fr"`, `"lgl"`, or any native `ggraph` layout (e.g. `"stress"`, `"graphopt"`).
 
-#### `run_tf_coexpression_network(seurat_obj, de_table_path, tf_list_path, output_dir, annot_col, contrast_tag, sample_col = "orig.ident", n_metacells = 50, min_module_size = 20, deep_split = 2, soft_power = NULL, tom_threshold = 0.2, n_hub_label = 15)`
-Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Section 20 calls.
+#### `run_hdwgcna_tf_network(seurat_obj, de_table_path, tf_list_path, output_dir, annot_col, contrast_tag, sample_col = "orig.ident", n_metacells = 50, min_module_size = 20, deep_split = 2, soft_power = NULL, tom_threshold = 0.2, n_hub_label = 15)`
+Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Section 20 calls. The previous name, `run_tf_coexpression_network()`, still works as a deprecated alias.
 
 ---
 
@@ -566,7 +566,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `biblio_marks_v3.txt` | Same format (`celltype`, `symbol`, `ID`). Curated table: markers chosen from `FindAllMarkers` specificity (WT vs pifq run) plus published markers. Not used by default | same |
 | `biblio_marks_datos.txt` | Same format. Only the markers of v3 chosen from `FindAllMarkers` specificity (no published source checked). Not used by default | same |
 | `biblio_marks_v2_eleo.txt` | Same format. Union of `biblio_marks_v2.txt` and `biblio_marks_eleo.txt` (no repeated genes). Not used by default | same |
-| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_tf_coexpression_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
+| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
 
 ---
 
@@ -600,4 +600,4 @@ Swap the organism-specific parameters below when applying this pipeline to speci
 | *Mus musculus* | `"^mt-"` | `org.Mm.eg.db` | `"ENSEMBL"` |
 | *Oryza sativa* | organism-specific | `org.Os.eg.db` | `"GID"` |
 
-For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern` to your genome annotation's mitochondrial gene-naming convention, replace `data/biblio_marks.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_tf_coexpression_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.
+For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern` to your genome annotation's mitochondrial gene-naming convention, replace `data/biblio_marks.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_hdwgcna_tf_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.

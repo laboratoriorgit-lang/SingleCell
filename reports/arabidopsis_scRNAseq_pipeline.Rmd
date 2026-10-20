@@ -1667,26 +1667,36 @@ Representative output from Section 19:
 
 \newpage
 
-## Section 20 - Gene-gene coexpression and TF network
+## Section 20 - Gene-gene co-expression network (hdWGCNA) and TF network
 
-This section builds a gene-gene co-expression network from the significant
-differentially expressed genes, then focuses the network on transcription factor
-connections. The transcription factor list comes from `data/AtTFDB_loci.txt`,
-which was prepared from AtTFDB, the Arabidopsis transcription factor database
-available through AGRIS: https://agris-knowledgebase.org/.
+This section builds a gene-gene co-expression network with **hdWGCNA**
+(high-dimensional weighted gene co-expression network analysis; Morabito et al.,
+2023, *Cell Reports Methods*), the single-cell version of WGCNA (Langfelder and
+Horvath, 2008, *BMC Bioinformatics*). The network is built from the significant
+differentially expressed genes and then focused on transcription factor (TF)
+connections. The TF list comes from `data/AtTFDB_loci.txt`, which was prepared
+from AtTFDB, the Arabidopsis transcription factor database available through
+AGRIS: https://agris-knowledgebase.org/.
 
-The main input is the log2FC table produced in Section 17. The function uses the
-Seurat object, the differential expression results, and the annotation column to
-build metacells, estimate co-expression, keep strong gene-gene edges, and draw a
-network colored by differential expression direction.
+hdWGCNA works in four steps. It groups similar cells into **metacells** to reduce
+the sparsity of single-cell counts, chooses a **soft-thresholding power** that
+gives a network with a scale-free-like structure, computes the **topological
+overlap matrix (TOM)** between genes, and detects **modules** of co-expressed
+genes. The TOM value is the weight of each gene-gene edge.
 
-The parameters near the end of the function call control practical details such
-as the number of metacells, the minimum module size, the edge-strength threshold,
-and how many hub transcription factors are labeled. The network output is saved
-in `results/08_networks/`.
+The main input is the log2FC table produced in Section 17. The wrapper function
+`run_hdwgcna_tf_network()` (its name says which method it runs) takes the Seurat
+object, the differential expression results and the annotation column, runs
+hdWGCNA, keeps the strong gene-gene edges, and draws the TF network colored by
+differential expression direction.
+
+The parameters near the end of the call control practical details: the number of
+metacells, the minimum module size, the edge-strength threshold (a minimum TOM
+weight) and how many hub TFs are labeled. The network output is saved in
+`results/08_networks/`.
 
 ```{r section_20_tf_coexpression_network}
-run_tf_coexpression_network(
+run_hdwgcna_tf_network(
   seurat_obj      = ath_sc,
   de_table_path   = file.path(dir_06, volcano_tag, "log2FC_table_fc1_padj_005.tsv"),
   tf_list_path    = file.path(DATA_DIR, "data", "AtTFDB_loci.txt"),
@@ -1697,7 +1707,7 @@ run_tf_coexpression_network(
   min_module_size = 20,     # minimum genes per co-expression module
   deep_split      = 2,      # module-splitting sensitivity (0-4)
   soft_power      = NULL,   # NULL = auto-detect the soft power
-  tom_threshold   = 0.2,    # minimum co-expression weight to keep an edge
+  tom_threshold   = 0.2,    # minimum TOM weight to keep an edge
   n_hub_label     = 15      # number of top hub TFs to label
 )
 

@@ -5374,7 +5374,7 @@ plot_tf_de_network <- function(net, output_dir,
 }
 
 
-#' Gene-gene coexpression + TF network (one-call wrapper)
+#' hdWGCNA gene-gene co-expression + TF network (one-call wrapper)
 #'
 #' Builds the hdWGCNA gene-gene co-expression network from the significant DE
 #' genes, exports the edge list (source | target | weight), then filters to
@@ -5398,19 +5398,19 @@ plot_tf_de_network <- function(net, output_dir,
 #' @param n_hub_label    Number of top hub TFs to label (default 15).
 #' @return The TF network object (invisibly).
 #' @export
-run_tf_coexpression_network <- function(seurat_obj,
-                                        de_table_path,
-                                        tf_list_path,
-                                        output_dir,
-                                        annot_col,
-                                        contrast_tag,
-                                        sample_col      = "orig.ident",
-                                        n_metacells     = 50,
-                                        min_module_size = 20,
-                                        deep_split      = 2,
-                                        soft_power      = NULL,
-                                        tom_threshold   = 0.2,
-                                        n_hub_label     = 15) {
+run_hdwgcna_tf_network <- function(seurat_obj,
+                                     de_table_path,
+                                     tf_list_path,
+                                     output_dir,
+                                     annot_col,
+                                     contrast_tag,
+                                     sample_col      = "orig.ident",
+                                     n_metacells     = 50,
+                                     min_module_size = 20,
+                                     deep_split      = 2,
+                                     soft_power      = NULL,
+                                     tom_threshold   = 0.2,
+                                     n_hub_label     = 15) {
 
   # 1. Build the gene-gene co-expression network (no module plots)
   run_unified_hdwgcna(
@@ -5453,4 +5453,14 @@ run_tf_coexpression_network <- function(seurat_obj,
                      output_height = 22)
 
   invisible(net_tf)
+}
+
+#' Deprecated name of run_hdwgcna_tf_network()
+#'
+#' Kept so existing scripts keep working; use run_hdwgcna_tf_network().
+#' @param ... Arguments passed to run_hdwgcna_tf_network().
+#' @export
+run_tf_coexpression_network <- function(...) {
+  message("run_tf_coexpression_network() is deprecated; use run_hdwgcna_tf_network().")
+  run_hdwgcna_tf_network(...)
 }
