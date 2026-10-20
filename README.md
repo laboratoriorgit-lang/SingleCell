@@ -299,8 +299,11 @@ Merges named RNA-assay count layers into one sparse matrix (`RowMergeSparseMatri
 #### `find_markers(seurat_obj, output_file = "results/FindAllMarkers.tsv", only_pos = TRUE, min_pct = 0.25, logfc_threshold = 0.25, force = FALSE)`
 Runs `FindAllMarkers` after `JoinLayers`; caches to `output_file` and reloads from cache unless `force = TRUE`.
 
+#### `standardize_marker_table(marks)`
+Reads a marker table (file path or data frame) and returns a data frame with columns `cell.types`, `symbol` and `gene` (the gene ID). Columns are found by header name (`celltype`, `symbol`, `ID`; `cell types` and `gene` also accepted); extra columns such as `source` are ignored. A table whose headers are not recognized is read by position (column 1 = cell type, column 2 = gene ID, no symbol). Used by `annotate_by_markers` and `plot_marker_dotplot`.
+
 #### `annotate_by_markers(seurat_obj, markers, reference_file = NULL)`
-Cross-references `find_markers()` output with a two-column reference table (col 1 = cell type, col 2 = gene, read **by position**, header ignored) to pick the best match per cluster by lowest `p_val_adj`; adds `.1`/`.2` suffixes when multiple clusters share a cell type. `reference_file = NULL` opens an interactive `file.choose()`. Sets metadata `celltype`.
+Cross-references `find_markers()` output with a marker table (columns `celltype`, `symbol`, `ID`; the older two-column format also works) to pick the best match per cluster by lowest `p_val_adj`; adds `.1`/`.2` suffixes when multiple clusters share a cell type. `reference_file = NULL` opens an interactive `file.choose()`. Sets metadata `celltype`.
 
 #### `annotate_by_reference(seurat_obj, reference_obj = NULL, reference_col = NULL, dims = 1:30)`
 Label transfer via `FindTransferAnchors`/`TransferData` (CCA) from a reference Seurat object. `reference_obj = NULL` opens `file.choose()`; `reference_col = NULL` prompts interactively (`readline`). Sets metadata `celltype_reference`.
@@ -361,8 +364,8 @@ Processes every DESeq2 CSV in a contrast directory (`process_deseq2_result`), as
 #### `plot_heatmap(mat, min_genes = 1, deepSplit_val = 0, breaks = c(-5, 5))`
 Rows (genes) clustered by Euclidean distance + `cutreeDynamic`; columns (conditions) by PCA-based distance (components explaining ≥90% variance); renders a `pheatmap` with per-gene cluster color annotation.
 
-#### `plot_marker_dotplot(seurat_obj, marks, annot_col = "celltype_grouped", cell_order = NULL, clusters_remove = NULL, rename_map = NULL, outfile = NULL, width = 18, height = 18, dot_scale = 12, base_size = 18)`
-Coordinate-flipped `DotPlot` in "staircase" order — marker genes grouped under the cell type they mark, cell types ordered to match — so significant dots fall along a near-diagonal. Supports renaming, exclusion, and manual `cell_order`.
+#### `plot_marker_dotplot(seurat_obj, marks, annot_col = "celltype_grouped", cell_order = NULL, clusters_remove = NULL, rename_map = NULL, outfile = NULL, width = 18, height = 18, dot_scale = 12, base_size = 18, name_gene = TRUE)`
+Coordinate-flipped `DotPlot` in "staircase" order — marker genes grouped under the cell type they mark, cell types ordered to match — so significant dots fall along a near-diagonal. Supports renaming, exclusion, and manual `cell_order`. `marks` is a marker table with columns `celltype`, `symbol`, `ID` (see `standardize_marker_table`); `name_gene = TRUE` labels genes with their symbol, `FALSE` with the gene ID only.
 
 ---
 
@@ -557,7 +560,8 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 |---|---|---|
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
-| `biblio_marks.txt` | TSV, columns `cell types`/`gene` (read **by position**, not by header name) | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
+| `biblio_marks.txt` | TSV marker table. Preferred columns: `celltype`, `symbol`, `ID` (optional `source`), found by header name via `standardize_marker_table()`; the older two-column format (cell type, gene ID) is also accepted | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
+| `biblio_marks_v2.txt` | Same format (`celltype`, `symbol`, `ID`, `source`), markers from Han et al. 2023, Suppl. Table 4. Not used by default | same |
 | `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_tf_coexpression_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
 
 ---

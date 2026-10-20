@@ -1083,6 +1083,29 @@ The pipeline first finds marker genes for the dataset, then compares those
 markers with the bibliography table to assign a `celltype` label. The dotplot is
 used to inspect whether the expected marker genes support the assigned labels.
 
+**Marker table format.** The marker table has one row per marker gene and three
+columns: `celltype` (the cell type the gene marks), `symbol` (the gene name) and
+`ID` (the gene identifier, the AGI code for Arabidopsis, which must match the
+gene names of the Seurat object). An optional `source` column can record where
+each marker comes from; the code ignores it. The first rows of the table look
+like this:
+
+```text
+celltype                symbol    ID
+procambium/provascular  OPS       AT3G09070
+xylem                   VND2      AT4G36160
+xylem                   CESA4     AT5G44030
+parenchymal cell        SWEET11   AT3G48740
+parenchymal cell        SWEET12   AT5G23660
+companion cell          NAKR1     AT5G02600
+```
+
+The table is read with `standardize_marker_table()`, which finds the columns by
+their header names. An older two-column table (cell type and gene ID) is still
+accepted; in that case no symbol is available and the plots show the ID. In the
+dotplot, genes are labeled with their symbol by default; set `name_gene = FALSE`
+to label them with the ID only.
+
 The marker table is saved in `results/03_annotation/FindAllMarkers.tsv`, and the
 main figures are saved as `dotplot_marker_table_annotation_biblio.pdf` and
 `umap_annotation_biblio.pdf`.
@@ -1091,9 +1114,7 @@ main figures are saved as `dotplot_marker_table_annotation_biblio.pdf` and
 output_dir <- dir_03
 
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
-marker_table <- read.table(
-  biblio_marks_file, header = TRUE, sep = "\t", quote = ""
-)
+marker_table <- standardize_marker_table(biblio_marks_file)
 
 markers <- find_markers(
   ath_sc,
@@ -1109,6 +1130,7 @@ plot_marker_dotplot(
   ath_sc,
   marker_table,
   annot_col = "celltype",
+  name_gene = TRUE,
   outfile   = file.path(
     output_dir, "dotplot_marker_table_annotation_biblio.pdf"
   ),
@@ -2226,14 +2248,18 @@ without that helper, Apptainer mounts the image through FUSE using
 which fails when user namespaces are disabled or restricted, or when the
 temporary directory is unusable.
 
-**Prerequisite check.** One of the first two lines must succeed, and the last
-must print a number greater than 0:
+**Prerequisite check.** Run these three commands:
 
 ```bash
-apptainer --version
-which squashfuse fusermount
-cat /proc/sys/user/max_user_namespaces
+apptainer --version                        # must print a version number
+which squashfuse fusermount                # must print a path for both programs
+cat /proc/sys/user/max_user_namespaces     # must print a number greater than 0
 ```
+
+The first command must always work. If Apptainer was installed with its setuid
+helper (common on shared clusters), nothing else is needed. Otherwise the
+second command must print a path for both programs, and the third must print a
+number greater than 0. If either is missing, the error above is expected.
 
 **Fixes, in order of effort.**
 

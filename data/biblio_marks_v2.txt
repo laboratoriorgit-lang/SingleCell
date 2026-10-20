@@ -1,0 +1,27 @@
+celltype	symbol	ID	source
+procambium/provascular	OPS	AT3G09070	Han et al. 2023 Nat Plants, Suppl. Table 4
+xylem	VND2	AT4G36160	Han et al. 2023 Nat Plants, Suppl. Table 4
+xylem	CESA4	AT5G44030	Han et al. 2023 Nat Plants, Suppl. Table 4
+parenchymal cell	SWEET11	AT3G48740	Han et al. 2023 Nat Plants, Suppl. Table 4
+parenchymal cell	SWEET12	AT5G23660	Han et al. 2023 Nat Plants, Suppl. Table 4
+vasculature dividing cell G2-M	OPS	AT3G09070	Han et al. 2023 Nat Plants, Suppl. Table 4
+companion cell	NAKR1	AT5G02600	Han et al. 2023 Nat Plants, Suppl. Table 4
+companion cell	AHA3	AT5G57350	Han et al. 2023 Nat Plants, Suppl. Table 4
+companion cell	APL	AT1G79430	Han et al. 2023 Nat Plants, Suppl. Table 4
+vasculature dividing cell S phase	OPS	AT3G09070	Han et al. 2023 Nat Plants, Suppl. Table 4
+sieve element	SEOB	AT3G01680	Han et al. 2023 Nat Plants, Suppl. Table 4
+sieve element	SEOA	AT3G01670	Han et al. 2023 Nat Plants, Suppl. Table 4
+sieve element	APL	AT1G79430	Han et al. 2023 Nat Plants, Suppl. Table 4
+epidermal cell	ATML1	AT4G21750	Han et al. 2023 Nat Plants, Suppl. Table 4
+cotyledon epidermal cell	ATML1	AT4G21750	Han et al. 2023 Nat Plants, Suppl. Table 4
+hypocotyl epidermal cell	MDP25	AT4G20260	Han et al. 2023 Nat Plants, Suppl. Table 4
+hypocotyl epidermal cell	SAUR50	AT4G34760	Han et al. 2023 Nat Plants, Suppl. Table 4
+hypocotyl epidermal cell	ATML1	AT4G21750	Han et al. 2023 Nat Plants, Suppl. Table 4
+hypocotyl epidermal cell	HIPP31	AT3G48970	Han et al. 2023 Nat Plants, Suppl. Table 4
+mesophyll cell	EPFL9	AT4G12970	Han et al. 2023 Nat Plants, Suppl. Table 4
+cortex cell	MDP25	AT4G20260	Han et al. 2023 Nat Plants, Suppl. Table 4
+cortex cell	SAUR50	AT4G34760	Han et al. 2023 Nat Plants, Suppl. Table 4
+cortex cell	HIPP31	AT3G48970	Han et al. 2023 Nat Plants, Suppl. Table 4
+endodermis	ADF9	AT4G34970	Han et al. 2023 Nat Plants, Suppl. Table 4
+endodermis	CASP1	AT2G36100	Han et al. 2023 Nat Plants, Suppl. Table 4
+SAM	STM	AT1G62360	Han et al. 2023 Nat Plants, Suppl. Table 4

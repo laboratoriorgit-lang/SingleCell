@@ -899,6 +899,68 @@ find_markers <- function(seurat_obj,
 }
 
 
+#' Read and standardize a marker table
+#'
+#' Accepts a file path or a data frame and returns a data frame with the columns
+#' `cell.types`, `symbol` and `gene` (the gene ID, i.e. the AGI for Arabidopsis,
+#' matching the rownames of the Seurat object).
+#'
+#' Expected format (tab-separated, one row per marker gene):
+#'
+#' \preformatted{
+#' celltype                symbol   ID
+#' procambium/provascular  OPS      AT3G09070
+#' xylem                   VND2     AT4G36160
+#' xylem                   CESA4    AT5G44030
+#' }
+#'
+#' Columns are found by header name (`celltype`, `symbol`, `ID`; case and
+#' punctuation are ignored; `cell types`, `cell.types` and `gene` are also
+#' accepted). Extra columns, such as `source`, are ignored. If the header names
+#' are not recognized, the file is read by position as before: column 1 = cell
+#' type, column 2 = gene ID, with no symbol (the ID is used as the symbol).
+#'
+#' @param marks Path to a tab-separated file, or a data frame.
+#' @return Data frame with columns `cell.types`, `symbol` and `gene`.
+#' @export
+standardize_marker_table <- function(marks) {
+  if (is.character(marks) && length(marks) == 1) {
+    marks <- read.table(marks, header = TRUE, sep = "\t", quote = "",
+                        comment.char = "", check.names = FALSE,
+                        stringsAsFactors = FALSE)
+  }
+  marks <- as.data.frame(marks, stringsAsFactors = FALSE)
+
+  key  <- function(x) tolower(gsub("[^A-Za-z]", "", x))
+  nm   <- key(colnames(marks))
+  pick <- function(candidates) {
+    i <- which(nm %in% candidates)
+    if (length(i)) i[1] else NA_integer_
+  }
+
+  i_ct  <- pick(c("celltype", "celltypes"))
+  i_id  <- pick(c("id", "gene", "geneid", "agi"))
+  i_sym <- pick(c("symbol", "genesymbol"))
+
+  if (is.na(i_ct) || is.na(i_id)) {
+    if (ncol(marks) < 2) stop("Marker table needs at least two columns: cell type and gene ID.")
+    i_ct  <- 1
+    i_id  <- 2
+    i_sym <- NA_integer_
+  }
+
+  clean <- function(x) trimws(gsub("[\"\r\n]", "", as.character(x)))
+  out <- data.frame(
+    cell.types = clean(marks[[i_ct]]),
+    gene       = clean(marks[[i_id]]),
+    stringsAsFactors = FALSE
+  )
+  out$symbol <- if (is.na(i_sym)) out$gene else clean(marks[[i_sym]])
+  out$symbol[is.na(out$symbol) | out$symbol == ""] <- out$gene[is.na(out$symbol) | out$symbol == ""]
+  out[, c("cell.types", "symbol", "gene")]
+}
+
+
 #' Annotate Clusters by Marker List
 #'
 #' Crosses FindAllMarkers output with a reference marker table to assign cell
@@ -906,9 +968,9 @@ find_markers <- function(seurat_obj,
 #'
 #' @param seurat_obj     Seurat object.
 #' @param markers        Data frame from find_markers().
-#' @param reference_file Path to reference table; the first two columns are used
-#'   by position (column 1 = cell type, column 2 = gene). Header names are
-#'   ignored. If NULL, a file chooser dialog is shown.
+#' @param reference_file Path to the marker table (columns `celltype`, `symbol`,
+#'   `ID`; see standardize_marker_table(); the old two-column format also works).
+#'   If NULL, a file chooser dialog is shown.
 #' @return Seurat object with celltype metadata and updated Idents.
 #' @export
 annotate_by_markers <- function(seurat_obj,
@@ -916,15 +978,12 @@ annotate_by_markers <- function(seurat_obj,
                                 reference_file = NULL) {
 
   if (is.null(reference_file)) {
-    reference_file <- file.choose(caption = "Select reference file (col 1 = cell type, col 2 = gene)")
+    reference_file <- file.choose(caption = "Select marker table (columns: celltype, symbol, ID)")
   }
 
   cat("Using reference:", reference_file, "\n")
 
-  reference <- read.table(reference_file, header = TRUE, sep = "\t", quote = "")
-  # Only the first two columns are used, by position: column 1 is the cell type
-  # and column 2 is the gene. Header names are ignored.
-  reference <- setNames(reference[, 1:2], c("cell.types", "gene"))
+  reference <- standardize_marker_table(reference_file)[, c("cell.types", "gene")]
 
   merged <- merge(markers, reference, by.x = "gene", by.y = "gene")
   merged <- merged[order(merged$cluster, merged$p_val_adj), ]
@@ -1777,7 +1836,10 @@ plot_heatmap <- function(mat,
 #' manual cell-type order (genes are grouped to match that order too).
 #'
 #' @param seurat_obj        Seurat object with annotations in `annot_col`.
-#' @param marks             Data frame with columns `gene` and `cell.types`.
+#' @param marks             Marker table: a data frame (or file path) with
+#'                          columns `celltype`, `symbol` and `ID`; see
+#'                          standardize_marker_table(). The old two-column
+#'                          format (`cell.types`, `gene`) is also accepted.
 #' @param annot_col         Metadata column holding cell-type labels.
 #' @param cell_order        Character vector: manual order of cell types,
 #'                          overriding the automatic staircase order. Types
@@ -1790,6 +1852,10 @@ plot_heatmap <- function(mat,
 #' @param height            PDF height in inches.
 #' @param dot_scale         Dot size scaling factor.
 #' @param base_size         Base font size.
+#' @param name_gene         If TRUE (default), label genes with their symbol
+#'                          (e.g. "OPS"); if FALSE, label them with the gene ID
+#'                          only (e.g. "AT3G09070"). Tables without a symbol
+#'                          column are always labeled with the ID.
 #' @return A ggplot object.
 #' @export
 plot_marker_dotplot <- function(seurat_obj,
@@ -1802,9 +1868,11 @@ plot_marker_dotplot <- function(seurat_obj,
                                      width           = 18,
                                      height          = 18,
                                      dot_scale       = 12,
-                                     base_size       = 18) {
+                                     base_size       = 18,
+                                     name_gene       = TRUE) {
 
-  obj <- seurat_obj
+  obj   <- seurat_obj
+  marks <- standardize_marker_table(marks)
 
   # ── Rename cell types if requested ───────────────────────────────────────────
   if (!is.null(rename_map)) {
@@ -1840,6 +1908,12 @@ plot_marker_dotplot <- function(seurat_obj,
   base_types <- strip_suffix(all_types)
   gene_types <- as.character(marks$cell.types[match(genes_use, marks$gene)])
 
+  # Axis labels: gene symbol (name_gene = TRUE) or gene ID only (FALSE).
+  gene_labels <- if (name_gene) marks$symbol[match(genes_use, marks$gene)] else genes_use
+  gene_labels[is.na(gene_labels) | gene_labels == ""] <-
+    genes_use[is.na(gene_labels) | gene_labels == ""]
+  names(gene_labels) <- genes_use
+
   type_order <- if (is.null(cell_order)) unique(gene_types) else as.character(cell_order)
   ordered_levels <- unlist(
     lapply(type_order, function(ct) all_types[base_types == ct | all_types == ct]),
@@ -1863,6 +1937,7 @@ plot_marker_dotplot <- function(seurat_obj,
     dot.scale = dot_scale,
     cols      = c("yellow", "darkblue")
   ) +
+    scale_x_discrete(labels = gene_labels) +
     coord_flip() +
     theme_minimal(base_size = base_size) +
     theme(
