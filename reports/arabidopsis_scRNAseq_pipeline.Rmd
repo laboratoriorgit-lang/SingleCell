@@ -1053,7 +1053,8 @@ This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
 `data/biblio_marks.txt`.
 
-The pipeline first finds marker genes for the dataset, then compares those
+The pipeline first finds marker genes for the dataset (recomputed each time with
+`force = TRUE`, so they always match the current clusters), then compares those
 markers with the bibliography table to assign a `celltype` label. The dotplot is
 used to inspect whether the expected marker genes support the assigned labels.
 
@@ -1092,7 +1093,8 @@ marker_table <- standardize_marker_table(biblio_marks_file)
 
 markers <- find_markers(
   ath_sc,
-  output_file = file.path(output_dir, "FindAllMarkers.tsv")
+  output_file = file.path(output_dir, "FindAllMarkers.tsv"),
+  force = TRUE
 )
 
 ath_sc <- annotate_by_markers(
