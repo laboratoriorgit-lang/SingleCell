@@ -206,7 +206,8 @@ marker_table <- standardize_marker_table(biblio_marks_file)
 
 markers <- find_markers(
   ath_sc,
-  output_file = file.path(output_dir, "FindAllMarkers.tsv")
+  output_file = file.path(output_dir, "FindAllMarkers.tsv"),
+  force = TRUE
 )
 
 ath_sc <- annotate_by_markers(
