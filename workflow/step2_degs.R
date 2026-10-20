@@ -177,7 +177,7 @@ message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
 # ==============================================================================
 # Section 20 - Gene-gene coexpression and TF network
 # ==============================================================================
-run_tf_coexpression_network(
+run_hdwgcna_tf_network(
   seurat_obj      = ath_sc,
   de_table_path   = file.path(dir_06, volcano_tag, "log2FC_table_fc1_padj_005.tsv"),
   tf_list_path    = file.path(DATA_DIR, "data", "AtTFDB_loci.txt"),
