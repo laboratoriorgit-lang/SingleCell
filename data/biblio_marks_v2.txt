@@ -1,4 +1,6 @@
 celltype	symbol	ID	source
+parenchymal cell	SWEET11	AT3G48740	Han et al. 2023 Nat Plants, Suppl. Table 4
+parenchymal cell	SWEET12	AT5G23660	Han et al. 2023 Nat Plants, Suppl. Table 4
 companion cell	AHA3	AT5G57350	Han et al. 2023 Nat Plants, Suppl. Table 4
 Epidermis Cotyledon	ATML1	AT4G21750	Han et al. 2023 Nat Plants, Suppl. Table 4
 sieve element	SEOA	AT3G01670	Han et al. 2023 Nat Plants, Suppl. Table 4
