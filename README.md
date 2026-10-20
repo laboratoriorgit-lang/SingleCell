@@ -562,7 +562,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
 | `biblio_marks.txt` | TSV marker table. Preferred columns: `celltype`, `symbol`, `ID` (optional `source`), found by header name via `standardize_marker_table()`; the older two-column format (cell type, gene ID) is also accepted | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
-| `biblio_marks_v2.txt` | Same format (`celltype`, `symbol`, `ID`, `source`), markers from Han et al. 2023, Suppl. Table 4. Not used by default | same |
+| `biblio_marks_v2.txt` | Same format (`celltype`, `symbol`, `ID`), alternative marker table. Not used by default | same |
 | `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_tf_coexpression_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
 
 ---
