@@ -769,18 +769,6 @@ defaults do not filter anything:
 | `max_counts` | `Inf` | Cells with far more UMIs than the rest | Same approach on `nCount_RNA`, at the upper end |
 | `run_doubletfinder` | `TRUE` | Set to `FALSE` only to skip doublet detection in a quick test run | Not applicable |
 
-There are no universal values for these thresholds: they depend on the tissue,
-the protocol and the sequencing depth. Use the pre-filter QC plot, or compute
-percentiles, to see what is typical for your own data:
-
-```r
-quantile(seurat_list_raw[["WT"]]$nCount_RNA,   c(0.01, 0.99))
-quantile(seurat_list_raw[["WT"]]$nFeature_RNA, c(0.01, 0.99))
-```
-
-`max_features` and `max_counts` are rarely needed while DoubletFinder is
-enabled, because doublets are the most common cause of very high values.
-
 After running the block, the pipeline saves a post-filter QC plot in
 `results/01_qc/qc_postfilter.pdf` and stores the filtered sample list in
 `results/objects/seurat_list_postfilter.rds`. This saved object is used by the
@@ -1035,6 +1023,16 @@ whichever tested resolution gives a reasonable number of stable clusters.
 Lower resolutions produce fewer, broader clusters; higher resolutions produce
 more, smaller clusters. For this dataset, the elbow plot in Section 5 flattens
 around PC 15, so `elbow_dims <- 1:15` is used below.
+
+The resolution used here is `cluster_resolution <- 0.35`. In the clustree
+(Section 5), 0.35 is one of the most stable resolutions: its clusters mostly
+trace back to a single cluster of the previous resolution (solid arrows).
+Raising the resolution beyond it (0.45 and above) starts to split clusters into
+many smaller ones and cells begin to move between branches (the pale crossing
+arrows), which would give clusters that are harder to interpret as cell types.
+This is a judgment call, not a fixed rule: with another dataset, choose the
+resolution where the clustree is stable and the number of clusters still
+matches the cell populations you expect.
 
 `FindNeighbors` builds a graph that connects each cell to its `k.param = 20`
 nearest neighbors in Harmony space, and `FindClusters` then splits that graph
