@@ -1833,7 +1833,8 @@ plot_heatmap <- function(mat,
 #' so significant dots fall in diagonal blocks instead of being scattered —
 #' useful for cell-type validation figures. This staircase order is automatic
 #' whenever `cell_order` is left NULL; pass `cell_order` to override it with a
-#' manual cell-type order (genes are grouped to match that order too).
+#' manual cell-type order (genes are grouped to match that order too). Genes of
+#' cell types that are not present in the object are placed last.
 #'
 #' @param seurat_obj        Seurat object with annotations in `annot_col`.
 #' @param marks             Marker table: a data frame (or file path) with
@@ -1921,8 +1922,13 @@ plot_marker_dotplot <- function(seurat_obj,
   )
   ordered_levels <- unique(c(ordered_levels, setdiff(all_types, ordered_levels)))
 
-  # Do not reorder genes_use: marker-table row order controls the Y axis.
-  # Only annotation_orden controls the X axis ordering.
+  # Y axis follows the X axis: genes are ordered by the position of the cell
+  # type they mark among the displayed cell types, so each annotated cluster and
+  # its marker gene line up on a diagonal (first gene = first cell type). Genes
+  # of cell types that are not in the object go last; within a type, marker-table
+  # row order is kept.
+  type_rank <- match(gene_types, unique(strip_suffix(ordered_levels)))
+  genes_use <- genes_use[order(is.na(type_rank), type_rank, seq_along(genes_use))]
 
   obj@meta.data[["annotation_orden"]] <- factor(
     obj@meta.data[[annot_col]],
