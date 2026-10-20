@@ -1,0 +1,32 @@
+celltype	symbol	ID
+guard cell	FAMA	AT3G24140
+guard cell	TGG1	AT5G26000
+guard cell	EPF1	AT2G20875
+companion cell	AHA3	AT5G57350
+companion cell	APL	AT1G79430
+companion cell	PP2-A1	AT4G19840
+endodermis	ADF9	AT4G34970
+endodermis	CASP1	AT2G36100
+endodermis	CASP5	AT5G15290
+endodermis	LAZY1	AT5G14090
+Mesophyll	EPFL9	AT4G12970
+Mesophyll	RBCS2B	AT5G38420
+Mesophyll	PIFI	AT3G15840
+Epidermis Cotyledon	ATML1	AT4G21750
+Epidermis Cotyledon	DLK2	AT3G24420
+Epidermis Cotyledon	FAR1	AT5G22500
+Epidermis Hypocotyl	GGL22	AT4G18970
+Epidermis Hypocotyl	PRP4	AT4G38770
+Epidermis Hypocotyl	GRP23	AT2G32690
+cortex	JKD	AT5G03150
+cortex	AT3G05150	AT3G05150
+vascular parenchyma	AT3G11930	AT3G11930
+vascular parenchyma	PDF2.3	AT2G02130
+vascular parenchyma	SWEET11	AT3G48740
+SAM	GIF1	AT5G28640
+SAM	KLU	AT1G13710
+SAM	STM	AT1G62360
+extensin-peroxidase cells	PER27	AT3G01190
+extensin-peroxidase cells	EXT16	AT3G28550
+extensin-peroxidase cells	LTPG28	AT4G22666
+extensin-peroxidase cells	TIP4;1	AT2G25810
