@@ -136,7 +136,7 @@ reads to a reference genome and counts, for every gene, how many transcripts
 were detected in each individual cell -- is used to generate a per-cell count
 matrix (Part 1): this matrix (genes x cells) is the starting point for
 everything else in this workflow. These matrices are then loaded into R, where cells are
-filtered, doublets are removed, samples are merged and batch-corrected with
+filtered, doublets are removed, samples are merged and integrated with
 Harmony, and clusters are annotated to cell types using literature-curated
 marker genes (Part 2). From the annotated object, the pipeline builds
 pseudobulk profiles per cell type to identify differentially expressed genes
@@ -758,17 +758,28 @@ Internally, this calls `doubletfinder_pipeline()`, which normalizes, scales,
 runs PCA, sweeps DoubletFinder's `pK` parameter, and removes any cells it
 classifies as doublets.
 
-The filtering function also accepts extra variables that are not used explicitly
-in this example:
+The filtering function also accepts extra options that are not used in this
+example (which filters only by `min_features = 200` and `max_mt = 5`). Their
+defaults do not filter anything:
 
-- `max_features`: maximum number of detected genes per cell.
-- `min_counts`: minimum total RNA counts per cell.
-- `max_counts`: maximum total RNA counts per cell.
-- `run_doubletfinder`: set to `FALSE` to skip DoubletFinder (e.g. for a quick
-  test run).
+| Option | Default | When to use it | How to choose a value |
+|---|---|---|---|
+| `max_features` | `Inf` | Cells with far more detected genes than the rest, often doublets | In the pre-filter violin of `nFeature_RNA`, cut where the upper tail separates from the main body of cells (for example, near the 99th percentile) |
+| `min_counts` | `0` | Cells with very few UMIs even though they pass `min_features` | Same approach on `nCount_RNA`, at the lower end |
+| `max_counts` | `Inf` | Cells with far more UMIs than the rest | Same approach on `nCount_RNA`, at the upper end |
+| `run_doubletfinder` | `TRUE` | Set to `FALSE` only to skip doublet detection in a quick test run | Not applicable |
 
-These extra options are useful when the QC plots show cells with very low
-complexity or unusually high gene or UMI counts.
+There are no universal values for these thresholds: they depend on the tissue,
+the protocol and the sequencing depth. Use the pre-filter QC plot, or compute
+percentiles, to see what is typical for your own data:
+
+```r
+quantile(seurat_list_raw[["WT"]]$nCount_RNA,   c(0.01, 0.99))
+quantile(seurat_list_raw[["WT"]]$nFeature_RNA, c(0.01, 0.99))
+```
+
+`max_features` and `max_counts` are rarely needed while DoubletFinder is
+enabled, because doublets are the most common cause of very high values.
 
 After running the block, the pipeline saves a post-filter QC plot in
 `results/01_qc/qc_postfilter.pdf` and stores the filtered sample list in
@@ -797,17 +808,84 @@ Representative output from Section 2:
 
 ## Section 3 - Merge and initial preprocessing
 
-This section combines the filtered samples into one Seurat object and performs
-the first standard preprocessing steps. At this point, the samples are merged but
-not yet batch-corrected.
+This section merges the two filtered samples into a single Seurat object and runs
+the standard preprocessing steps on it. The result is a merged object that has
+**not** yet been integrated across samples (that is Section 4).
 
-The workflow normalizes the data, identifies informative genes, scales the
-expression matrix, summarizes the main sources of variation with PCA, and creates
-a first UMAP visualization. This UMAP is useful for checking how the samples look
-before Harmony correction.
+**What the data look like.** At this point every sample is a matrix with one row
+per gene and one column per cell; each entry is the number of transcripts (UMIs)
+detected for that gene in that cell. Most entries are zero, so Seurat stores the
+matrix in a sparse format and prints zeros as `.`. You can inspect the top-left
+corner of the WT matrix yourself (6 genes by 4 cells):
+
+```{r section_03_peek_counts}
+GetAssayData(seurat_list[["WT"]], layer = "counts")[1:6, 1:4]
+```
+
+**Expected output:**
+
+```text
+6 x 4 sparse Matrix of class "dgCMatrix"
+          AAACCCAGTGATAGAT-1 AAACCCATCAGTGCGC-1 AAACGAAAGGCAGCTA-1 AAACGAACAAGCGGAT-1
+AT1G01010                  .                  .                  .                  .
+AT1G01020                  .                  .                  .                  1
+AT1G01030                  .                  .                  .                  .
+AT1G01040                  .                  .                  .                  .
+AT1G01050                  1                  .                  .                  .
+AT1G01060                  2                  .                  .                  .
+```
+
+Each row is a gene (TAIR identifier) and each column is a cell (identified by its
+barcode, with the suffix `-1` added by Cell Ranger). A number is how many
+transcripts of that gene were detected in that cell: for example, `AT1G01060`
+has 2 in the first cell. A dot means zero. Even in this small corner most
+entries are zero, which is typical of single-cell data and the reason the sparse
+format is used.
+
+Everything below transforms this matrix. The steps are chained in one pipe, in
+this order:
+
+1. **Merge** (`reduce(seurat_list, merge)`) joins the samples into one object
+   that keeps the sample of origin of each cell in `orig.ident`.
+2. **Normalize** (`NormalizeData`) divides each cell's counts by its total and
+   multiplies by 10,000, then log-transforms the result (`LogNormalize`). This
+   makes cells with different sequencing depth comparable.
+3. **Select highly variable genes (HVGs)** (`FindVariableFeatures`) keeps the
+   2,000 genes (`nfeatures = 2000`) whose expression varies most across cells
+   after accounting for their average level (`selection.method = "vst"`). Most
+   genes are expressed similarly in all cells and add mostly noise; the variable
+   ones carry the differences between cell types, so the next steps use only
+   them. This is the feature selection step of the workflow.
+4. **Scale** (`ScaleData`) centers and scales each selected gene to mean 0 and
+   variance 1 (values are capped at 10), so that highly expressed genes do not
+   dominate the next step. By default only the HVGs are scaled.
+5. **PCA** (`RunPCA(npcs = 30)`) summarizes the scaled HVGs into 30 principal
+   components (PCs), new axes that capture the main sources of variation. The
+   later steps work on these PCs instead of on thousands of genes.
+6. **UMAP** (`RunUMAP(dims = 1:30)`) projects those 30 PCs into two dimensions
+   for visualization. It is useful to see how the samples look before Harmony.
+
+**How many PCs?** Here 30 is a generous upper bound, used so that the elbow plot
+in Section 5 has enough components to show where the signal ends. The number
+of PCs actually used for clustering is chosen there (Section 5) and set in
+`elbow_dims` in Section 6.
+
+**Default parameters used here.** Several important settings are not written in
+the code because they are Seurat defaults (Seurat 5.5.1). Change them if your
+data call for it:
+
+| Step | Parameter | Value | What it does |
+|---|---|---|---|
+| `NormalizeData` | `scale.factor` | 10,000 | Total counts per cell after normalization, before the log transform |
+| `FindVariableFeatures` | `nfeatures` | 2,000 | Number of HVGs kept (set explicitly here) |
+| `ScaleData` | `scale.max` | 10 | Cap on scaled values, to limit the effect of outliers |
+| `RunPCA` | `npcs` | 30 | Number of PCs computed (set explicitly here) |
+| `RunUMAP` | `n.neighbors` | 30 | Neighbors used to build the map; lower values emphasize local structure |
+| `RunUMAP` | `min.dist` | 0.3 | How tightly cells are allowed to pack together in the plot |
+| `FindNeighbors` (Section 6) | `k.param` | 20 | Neighbors per cell in the graph used for clustering |
 
 The output is saved as `results/objects/ath_sc_preharmony.rds`, and the UMAP
-before batch correction is saved as `results/01_qc/umap_preharmony.pdf`.
+before Harmony integration is saved as `results/01_qc/umap_preharmony.pdf`.
 
 ```{r section_03_merge_and_initial_preprocessing}
 output_dir <- dir_01
@@ -837,15 +915,24 @@ Representative output from Section 3:
 
 \newpage
 
-## Section 4 - Harmony batch correction
+## Section 4 - Harmony integration
 
-Samples processed and captured separately (even from the same experiment) can
-end up looking different in ways that have nothing to do with biology --
-technical noise from sample handling or sequencing depth, for example. Left
-uncorrected, this can make cells cluster by *sample* rather than by *cell
-type*. This section applies **Harmony**, a widely used batch-correction
-algorithm, to remove that technical variation after the initial merge. The
-correction is done using the sample identity stored in `orig.ident`.
+The two samples in this guide are different genotypes (WT and pifq), so they
+differ for biological reasons as well as for technical ones. Left as they are,
+cells can cluster by *sample* instead of by *cell type*, which would hide the
+cell populations that both samples share. This section applies **Harmony** to
+reduce those sample-associated differences in the PCA representation calculated
+in Section 3, so that cells of the same type from both samples are placed
+together. The correction is done using the sample identity stored in
+`orig.ident`.
+
+Harmony is one of several integration methods (others include Seurat's
+CCA/RPCA integration, fastMNN, Scanorama and scVI); we use it here because it is
+fast, works directly on the PCA embedding and is widely used. Harmony only
+changes the embedding used for UMAP and clustering; it does not modify the gene
+counts. Because each genotype is a single sample here, Harmony cannot tell
+technical differences from genotype effects, so check that the biological
+differences you care about are still visible after correction.
 
 After Harmony, the UMAP is recalculated using the corrected representation. This
 second UMAP helps check whether samples mix better while still preserving
@@ -877,15 +964,16 @@ Representative output from Section 4:
 
 \newpage
 
-## Section 5 - Resolution optimization
+## Section 5 - Choosing the number of PCs and the clustering resolution
 
-By this point the samples are merged and batch-corrected, so this is where it
-makes sense to check two things before assigning final clusters: how many
-principal components actually carry signal, and what clustering resolution to
-use.
+By this point the samples are merged and integrated with Harmony, so this is where it
+makes sense to make two choices before assigning final clusters: how many
+principal components to use, and which clustering resolution to use. Nothing is
+optimized automatically here; the section produces two diagnostic plots, one for
+each choice, and you decide from them. The elbow plot is used only to choose the
+number of PCs, and the clustree is used to choose the resolution.
 
-The section generates two diagnostic plots: an elbow plot and a clustree. The
-elbow plot shows the standard deviation explained by each principal component,
+The elbow plot shows the standard deviation explained by each principal component,
 from PC1 onward. The first few PCs carry most of the real biological signal, so
 the curve drops fast; past a certain point, each extra PC adds almost nothing
 and the curve flattens out -- that bend is the "elbow", and it marks a
@@ -895,7 +983,10 @@ noise). The clustree shows, across the candidate resolutions in
 settle into stable clusters or keep reshuffling between them as resolution
 changes -- a resolution where cell membership stops moving around much is a
 safer choice than one still fragmenting. Lower resolutions produce fewer,
-broader clusters; higher resolutions produce more, smaller ones.
+broader clusters; higher resolutions produce more, smaller ones. The values in
+`resolutions_test` are simply the range of candidate resolutions to compare, not
+a result; widen or narrow the range if the clustree shows that the useful
+region lies outside it.
 
 The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
 `clustree2.pdf`. Read the elbow plot's flattening point here, then set that
@@ -944,6 +1035,11 @@ whichever tested resolution gives a reasonable number of stable clusters.
 Lower resolutions produce fewer, broader clusters; higher resolutions produce
 more, smaller clusters. For this dataset, the elbow plot in Section 5 flattens
 around PC 15, so `elbow_dims <- 1:15` is used below.
+
+`FindNeighbors` builds a graph that connects each cell to its `k.param = 20`
+nearest neighbors in Harmony space, and `FindClusters` then splits that graph
+into communities. A smaller `k.param` gives finer, more local clusters; a larger
+one gives smoother, broader ones.
 
 After running this block, each cell receives a final Seurat cluster ID stored in
 `seurat_clusters`. These numeric clusters are the starting point for cell-type
