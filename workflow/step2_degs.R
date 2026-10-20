@@ -55,9 +55,7 @@ ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
 # this script is self-contained). Used by the Section 19 heatmap row/column
 # ordering and the Section 20 network.
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
-marker_table <- read.table(
-  biblio_marks_file, header = TRUE, sep = "\t", quote = ""
-)
+marker_table <- standardize_marker_table(biblio_marks_file)
 
 # ==============================================================================
 # Section 13 - Cell-type subsets

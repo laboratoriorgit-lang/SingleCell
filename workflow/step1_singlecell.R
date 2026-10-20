@@ -203,13 +203,9 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 output_dir <- dir_03
 
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
-# Only the first two columns are used, by position: column 1 is the cell type
-# and column 2 is the gene. The header row is skipped but its names are ignored,
-# so the marker file can use any header labels.
-marker_table <- read.table(
-  biblio_marks_file, header = TRUE, sep = "\t", quote = ""
-)
-marker_table <- setNames(marker_table[, 1:2], c("cell.types", "gene"))
+# Marker table with columns: celltype, symbol, ID (see standardize_marker_table()).
+# The old two-column format (cell type, gene ID) is also accepted.
+marker_table <- standardize_marker_table(biblio_marks_file)
 
 markers <- find_markers(
   ath_sc,
@@ -225,6 +221,7 @@ plot_marker_dotplot(
   ath_sc,
   marker_table,
   annot_col = "celltype",
+  name_gene = TRUE,
   outfile   = file.path(
     output_dir, "dotplot_marker_table_annotation_biblio.pdf"
   ),
