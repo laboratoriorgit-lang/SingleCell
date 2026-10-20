@@ -564,6 +564,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `biblio_marks.txt` | TSV marker table. Preferred columns: `celltype`, `symbol`, `ID` (optional `source`), found by header name via `standardize_marker_table()`; the older two-column format (cell type, gene ID) is also accepted | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
 | `biblio_marks_v2.txt` | Same format (`celltype`, `symbol`, `ID`), alternative marker table. Not used by default | same |
 | `biblio_marks_v3.txt` | Same format (`celltype`, `symbol`, `ID`). Curated table: markers chosen from `FindAllMarkers` specificity (WT vs pifq run) plus published markers. Not used by default | same |
+| `biblio_marks_v4.txt` | Same format. One cell type per cluster of the WT vs pifq run, using the marker genes of an external annotation table, keeping only genes that are specific to that cluster in `FindAllMarkers`. Not used by default | same |
 | `biblio_marks_datos.txt` | Same format. Only the markers of v3 chosen from `FindAllMarkers` specificity (no published source checked). Not used by default | same |
 | `biblio_marks_v2_eleo.txt` | Same format. Union of `biblio_marks_v2.txt` and `biblio_marks_eleo.txt` (no repeated genes). Not used by default | same |
 | `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
