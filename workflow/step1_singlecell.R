@@ -199,7 +199,7 @@ message("\nOK SECTION 6 COMPLETE: final clustering complete")
 # ==============================================================================
 output_dir <- dir_03
 
-biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
+biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks_v3.txt")
 # Marker table with columns: celltype, symbol, ID (see standardize_marker_table()).
 # The old two-column format (cell type, gene ID) is also accepted.
 marker_table <- standardize_marker_table(biblio_marks_file)
