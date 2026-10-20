@@ -137,7 +137,7 @@ SingleCell/
 ├── data/
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
-│   ├── biblio_marks_v3.txt             # cell-type marker table (celltype, symbol, ID)
+│   ├── biblio_marks.txt             # cell-type marker table (celltype, symbol, ID)
 │   └── AtTFDB_loci.txt                 # Arabidopsis transcription-factor loci, one per line
 ├── workflow/
 │   ├── step0_cellranger.sh             # Part 0: FASTQ download + mkref + cellranger count
@@ -185,7 +185,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 4 | `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP |
 | 5 | `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
 | 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution |
-| 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks_v3.txt` + `plot_marker_dotplot` |
+| 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
 | 8 | Annotated `clustree` (cluster tree labeled by majority cell type) |
 | 9 | Gene expression violin + feature plots for genes of interest |
 | 10 | *[optional]* Merge duplicate cluster labels into `celltype_grouped` |
@@ -561,7 +561,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 |---|---|---|
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
-| `biblio_marks_v3.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 31 genes, 10 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
+| `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 31 genes, 10 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
 | `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
 
 ---
@@ -596,4 +596,4 @@ Swap the organism-specific parameters below when applying this pipeline to speci
 | *Mus musculus* | `"^mt-"` | `org.Mm.eg.db` | `"ENSEMBL"` |
 | *Oryza sativa* | organism-specific | `org.Os.eg.db` | `"GID"` |
 
-For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern` to your genome annotation's mitochondrial gene-naming convention, replace `data/biblio_marks_v3.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_hdwgcna_tf_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.
+For any new organism: install the matching `org.*.eg.db` package, update `mt_pattern` to your genome annotation's mitochondrial gene-naming convention, replace `data/biblio_marks.txt` with your own marker table, and update the `universo`/background gene vector used by the GO enrichment functions to reflect your target organism's full gene set. `get_tfs_from_orgdb()` works unmodified for any OrgDb with GO annotations; for the TF-network functions (`run_hdwgcna_tf_network`, `plot_hdwgcna_network_tf`), replace `data/AtTFDB_loci.txt` with an equivalent flat TF locus list for your organism.
