@@ -5,9 +5,7 @@ xylem	CESA4	AT5G44030	Han et al. 2023 Nat Plants, Suppl. Table 4
 parenchymal cell	SWEET11	AT3G48740	Han et al. 2023 Nat Plants, Suppl. Table 4
 parenchymal cell	SWEET12	AT5G23660	Han et al. 2023 Nat Plants, Suppl. Table 4
 vasculature dividing cell G2-M	OPS	AT3G09070	Han et al. 2023 Nat Plants, Suppl. Table 4
-companion cell	NAKR1	AT5G02600	Han et al. 2023 Nat Plants, Suppl. Table 4
 companion cell	AHA3	AT5G57350	Han et al. 2023 Nat Plants, Suppl. Table 4
-companion cell	APL	AT1G79430	Han et al. 2023 Nat Plants, Suppl. Table 4
 vasculature dividing cell S phase	OPS	AT3G09070	Han et al. 2023 Nat Plants, Suppl. Table 4
 sieve element	SEOB	AT3G01680	Han et al. 2023 Nat Plants, Suppl. Table 4
 sieve element	SEOA	AT3G01670	Han et al. 2023 Nat Plants, Suppl. Table 4
