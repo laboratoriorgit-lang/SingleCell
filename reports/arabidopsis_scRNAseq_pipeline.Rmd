@@ -180,7 +180,7 @@ exactly as in the methods paper (not executed inline); the figures below are the
 `workflow/step2_degs.R` and `workflow/step3_pseudotime.py`, written to a separate
 `results_rerun/` directory using the bibliography annotation (`celltype`).
 
-The active annotation path is bibliography-based (`biblio_marks.txt` ->
+The active annotation path is bibliography-based (`biblio_marks_v3.txt` ->
 `celltype_curated`). Reference-transfer annotation is not part of this draft.
 
 ## Minimum computing requirements {-}
@@ -281,7 +281,7 @@ SingleCell/
 |-- README.md
 |-- data/
 |   |-- AtTFDB_loci.txt
-|   |-- biblio_marks.txt
+|   |-- biblio_marks_v3.txt
 |   |-- Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz
 |   `-- Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
 `-- workflow/
@@ -295,7 +295,7 @@ SingleCell/
     `-- step3_pseudotime.py              # Part 4 - pseudotime (Python)
 ```
 
-The bibliography marker table (`data/biblio_marks.txt`) is part of the
+The bibliography marker table (`data/biblio_marks_v3.txt`) is part of the
 repository for this WT vs pifq run (see Section 1).
 
 ## Container startup (Docker or Singularity)
@@ -1051,7 +1051,7 @@ Representative output from Section 6:
 
 This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
-`data/biblio_marks.txt`.
+`data/biblio_marks_v3.txt`.
 
 The pipeline first finds marker genes for the dataset (recomputed each time with
 `force = TRUE`, so they always match the current clusters), then compares those
@@ -1066,13 +1066,13 @@ each marker comes from; the code ignores it. The first rows of the table look
 like this:
 
 ```text
-celltype                symbol    ID
-procambium/provascular  OPS       AT3G09070
-xylem                   VND2      AT4G36160
-xylem                   CESA4     AT5G44030
-parenchymal cell        SWEET11   AT3G48740
-parenchymal cell        SWEET12   AT5G23660
-companion cell          NAKR1     AT5G02600
+celltype        symbol   ID
+guard cell      FAMA     AT3G24140
+guard cell      TGG1     AT5G26000
+guard cell      EPF1     AT2G20875
+companion cell  AHA3     AT5G57350
+companion cell  APL      AT1G79430
+companion cell  PP2-A1   AT4G19840
 ```
 
 The table is read with `standardize_marker_table()`, which finds the columns by
@@ -1088,7 +1088,7 @@ main figures are saved as `dotplot_marker_table_annotation_biblio.pdf` and
 ```{r section_07_cell_type_annotation}
 output_dir <- dir_03
 
-biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
+biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks_v3.txt")
 marker_table <- standardize_marker_table(biblio_marks_file)
 
 markers <- find_markers(
