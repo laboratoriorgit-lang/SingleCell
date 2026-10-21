@@ -1269,23 +1269,23 @@ cell_type_subsets <- create_cell_type_subsets(
 message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
 ```
 
-Cells per cell type (bibliography annotation `celltype`; the three epidermis
-hypocotyl subclusters and the still-numeric unannotated clusters are kept
-separate at this stage):
+Cells per cell type (annotation `celltype`; Mesophyll is split into two
+subclusters, and the still-numeric unannotated cluster `6` is kept separate at
+this stage):
 
 | Cell type | Cells |
 |---|---:|
-| Mesophyll | 1739 |
-| Epidermis Cotyledon | 1569 |
-| Epidermis Hypocotyl.1 | 1691 |
-| Epidermis Hypocotyl.2 | 752 |
-| Epidermis Hypocotyl.3 | 498 |
-| PHLOEM | 127 |
-| ENDO1 | 67 |
+| Mesophyll.1 | 1733 |
+| cortex | 1697 |
+| Mesophyll.2 | 1584 |
+| Epidermis Cotyledon | 1568 |
+| vascular parenchyma | 751 |
+| 6 | 502 |
+| SAM | 437 |
+| companion cell | 127 |
+| extensin-peroxidase cells | 78 |
+| endodermis | 67 |
 | guard cell | 31 |
-| 3 | 1586 |
-| 7 | 437 |
-| 9 | 78 |
 
 ## Section 11 - Pseudo-replicate assignment
 
@@ -1319,19 +1319,30 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 )
 
 # Inspect cells per pseudo-replicate for one cell type
-table(cell_type_subsets_replicates[["Epidermis Cotyledon"]]$replicate)
+table(cell_type_subsets_replicates[["Epidermis_Cotyledon"]]$replicate)
 
 message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
 ```
 
 Cell types present in only one condition are dropped, since a WT vs pifq
-contrast needs both conditions represented.
+contrast needs both conditions represented. Here `extensin-peroxidase cells` (78
+cells, all from pifq) are dropped, and ten cell types are retained. In
+`cell_type_subsets_replicates`, spaces and dots in the cell-type names are
+replaced by `_`, so `Epidermis Cotyledon` is `Epidermis_Cotyledon`.
 
-The last line of the block prints the number of cells in each pseudo-replicate of
-`Epidermis Cotyledon`: three groups per condition (`pifq_rep1` to `pifq_rep3` and
-`WT_rep1` to `WT_rep3`). Cells are assigned to the groups at random, so the three
+The last line of the block prints the cells in each pseudo-replicate of
+`Epidermis_Cotyledon`. Cells are assigned to the groups at random, so the three
 groups of one condition have similar sizes, while the two conditions can have very
-different numbers of cells.
+different numbers of cells (WT has fewer here):
+
+| Cell type | Replicate | Cells |
+|---|---|---:|
+| Epidermis Cotyledon | pifq_rep1 | 351 |
+| Epidermis Cotyledon | pifq_rep2 | 397 |
+| Epidermis Cotyledon | pifq_rep3 | 376 |
+| Epidermis Cotyledon | WT_rep1 | 155 |
+| Epidermis Cotyledon | WT_rep2 | 147 |
+| Epidermis Cotyledon | WT_rep3 | 142 |
 
 ## Section 12 - Pseudobulk tables and DESeq2
 

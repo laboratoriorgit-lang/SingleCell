@@ -569,7 +569,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 |---|---|---|
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
-| `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 31 genes, 10 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
+| `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 28 genes, 9 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
 | `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 17) |
 
 ---
