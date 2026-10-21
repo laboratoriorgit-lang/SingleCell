@@ -47,18 +47,18 @@ output_dir <- base_dir
 # =============================================================================
 
 # ==============================================================================
-# Section 12 - Export the curated object
+# Section 9 - Export the curated object
 # ==============================================================================
-ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
+ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 
 # Bibliography marker table (defined during Step 1 annotation; reloaded here so
-# this script is self-contained). Used by the Section 19 heatmap row/column
-# ordering and the Section 20 network.
+# this script is self-contained). Used by the Section 16 heatmap row/column
+# ordering and the Section 17 network.
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
 marker_table <- standardize_marker_table(biblio_marks_file)
 
 # ==============================================================================
-# Section 13 - Cell-type subsets
+# Section 10 - Cell-type subsets
 # ==============================================================================
 pseudobulk_annot_col <- "celltype"
 
@@ -69,10 +69,10 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
+message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
 
 # ==============================================================================
-# Section 14 - Pseudo-replicate assignment
+# Section 11 - Pseudo-replicate assignment
 # ==============================================================================
 pseudobulk_conditions <- NULL
 n_pseudoreps          <- 3
@@ -86,10 +86,10 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
 
-message("\nOK SECTION 14 COMPLETE: pseudo-replicates assigned")
+message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
 
 # ==============================================================================
-# Section 15 - Pseudobulk tables and DESeq2
+# Section 12 - Pseudobulk tables and DESeq2
 # ==============================================================================
 comparisons <- list(
   list(conds = c("WT", "pifq"), tag = "WT_vs_pifq")
@@ -105,10 +105,10 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 
 # ==============================================================================
-# Section 16 - Volcano plots
+# Section 13 - Volcano plots
 # ==============================================================================
 volcano_tag <- "WT_vs_pifq"
 padj_cut    <- 0.05
@@ -122,10 +122,10 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK SECTION 16 COMPLETE: volcano plots saved")
+message("\nOK SECTION 13 COMPLETE: volcano plots saved")
 
 # ==============================================================================
-# Section 17 - Differential gene tables
+# Section 14 - Differential gene tables
 # ==============================================================================
 diff_prefix <- paste0("diff_table_", volcano_tag)
 
@@ -137,10 +137,10 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK SECTION 17 COMPLETE: differential gene tables saved")
+message("\nOK SECTION 14 COMPLETE: differential gene tables saved")
 
 # ==============================================================================
-# Section 18 - GO enrichment
+# Section 15 - GO enrichment
 # ==============================================================================
 go_space    <- "BP"
 go_orgdb    <- org.At.tair.db
@@ -157,10 +157,10 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK SECTION 18 COMPLETE: GO enrichment complete")
+message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
 
 # ==============================================================================
-# Section 19 - Log2FC heatmap
+# Section 16 - Log2FC heatmap
 # ==============================================================================
 heatmap_limits <- c(-5, 5)
 
@@ -172,10 +172,10 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
+message("\nOK SECTION 16 COMPLETE: log2FC heatmap saved")
 
 # ==============================================================================
-# Section 20 - Gene-gene coexpression and TF network
+# Section 17 - Gene-gene coexpression and TF network
 # ==============================================================================
 run_hdwgcna_tf_network(
   seurat_obj      = ath_sc,
@@ -192,4 +192,4 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK SECTION 20 COMPLETE: TF coexpression network saved")
+message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")

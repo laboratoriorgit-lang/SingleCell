@@ -4933,8 +4933,8 @@ generate_cluster_profile_report <- function(cluster_assignments,
 # Returns all results in a named list for downstream use.
 #
 # Parameters:
-#   heatmap_results      : cluster assignments from Section 20
-#   pseudobulk_dir       : directory with pseudobulk replicates (Section 9)
+#   heatmap_results      : cluster assignments from Section 17
+#   pseudobulk_dir       : directory with pseudobulk replicates (Section 8)
 #   output_base_dir      : base directory for results (dir_08/<contrast>)
 #   methods              : vector of methods to run ("GENIE3", "WGCNA", "SYNERGY")
 #   orgdb, keytype, custom_tfs : for GENIE3/SYNERGY

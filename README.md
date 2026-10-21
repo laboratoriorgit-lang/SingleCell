@@ -24,7 +24,7 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Part 1 — Single-cell analysis (R)  ·  Sections 1-12                    │
+│  Part 1 — Single-cell analysis (R)  ·  Sections 1-9                     │
 │                                          workflow/step1_singlecell.R    │
 │                                                                          │
 │   load + QC → filter → doublets → merge → Harmony integration           │
@@ -34,13 +34,13 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
 │   Helpers: ScRNA_Analysis_Functions.R                                   │
 │   Output:  results/01_qc … 05_curation/, results/objects/               │
 └───────────────────────────────┬──────────────────────────────────────────┘
-                                 │  ath_sc_curated.rds / ath_sc_curated.h5ad
+                                 │  ath_sc_annotated.rds / ath_sc_annotated.h5ad
               ┌──────────────────┴───────────────────┐
               ▼                                       ▼
 ┌─────────────────────────────────────┐   ┌─────────────────────────────────┐
 │ Part 2 — Pseudobulk DE / GO /        │   │ Part 3 — Pseudotime (Python)    │
-│  co-expression networks (R)          │   │  Sections 23-29                 │
-│  Sections 13-20                      │   │  workflow/step3_pseudotime.py   │
+│  co-expression networks (R)          │   │  Sections 18-24                 │
+│  Sections 10-17                      │   │  workflow/step3_pseudotime.py   │
 │  workflow/step2_degs.R               │   │                                 │
 │                                       │   │  cell-type selection            │
 │  pseudobulk per cell type            │   │    → Palantir diffusion maps    │
@@ -141,9 +141,10 @@ SingleCell/
 │   └── AtTFDB_loci.txt                 # Arabidopsis transcription-factor loci, one per line
 ├── workflow/
 │   ├── step0_cellranger.sh             # Part 0: FASTQ download + mkref + cellranger count
-│   ├── step1_singlecell.R              # Part 1: Sections 1-12 (QC → curated object)
-│   ├── step2_degs.R                    # Part 2: Sections 13-20 (pseudobulk DE → networks)
-│   ├── step3_pseudotime.py             # Part 3: Sections 23-29 (pseudotime trajectory)
+│   ├── step1_singlecell.R              # Part 1: Sections 1-9 (QC → annotated object)
+│   ├── step1_supplementary.R           # Optional steps S1-S3 (annotated clustree, grouping, curation)
+│   ├── step2_degs.R                    # Part 2: Sections 10-17 (pseudobulk DE → networks)
+│   ├── step3_pseudotime.py             # Part 3: Sections 18-24 (pseudotime trajectory)
 │   ├── load_libraries.R                # loads every R package the pipeline needs
 │   ├── load_libraries_python.py        # loads every Python package Part 3 needs
 │   ├── ScRNA_Analysis_Functions.R      # 75 R functions backing Parts 1-2 (documented below)
@@ -162,7 +163,7 @@ results/
 ├── 01_qc/            02_clustering/     03_annotation/     04_expression/
 ├── 05_curation/       06_de_results/     07_go/             08_networks/
 ├── 09_pseudotime/     (created directly by step3_pseudotime.py)
-└── objects/           # .rds / .h5ad checkpoints (ath_sc_curated.rds, ath_sc_curated.h5ad, ...)
+└── objects/           # .rds / .h5ad checkpoints (ath_sc_annotated.rds, ath_sc_annotated.h5ad, ...)
 ```
 
 `results/` itself is not tracked in git — it is generated fresh by running the pipeline against your own data.
@@ -175,7 +176,7 @@ results/
 
 Reference script (not meant to run unattended): install Cell Ranger 9.0.1, download FASTQ for accession CRA010863 (WT = CRR775298, *pifq* = CRR775297) from the BIG Data Center, build the Cell Ranger reference from the bundled TAIR10.1 genome + Araport11 GTF (`cellranger mkref`), then run `cellranger count` per sample. Requires a signed, account-tied 10x download URL that cannot be hard-coded — copy it from the 10x Genomics downloads page.
 
-### Part 1 — Single-cell analysis (`workflow/step1_singlecell.R`, Sections 1–12)
+### Part 1 — Single-cell analysis (`workflow/step1_singlecell.R`, Sections 1–9)
 
 | Section | What happens |
 |---|---|
@@ -186,36 +187,43 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 5 | `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
 | 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution |
 | 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
-| 8 | Annotated `clustree` (cluster tree labeled by majority cell type) |
-| 9 | Gene expression violin + feature plots for genes of interest |
-| 10 | *[optional]* Merge duplicate cluster labels into `celltype_grouped` |
-| 11 | *[optional]* Subcluster inspection and curation (`inspect_subcluster_markers`, `curate_clusters`) → `celltype_curated` |
-| 12 | Export the curated object as `.rds` and, via `export_to_scanpy`, as `.h5ad` for Part 3 |
+| 8 | Gene expression violin + feature plots for genes of interest |
+| 9 | Export the annotated object as `.rds` and, via `export_to_scanpy`, as `.h5ad` for Part 3 |
 
-### Part 2 — Pseudobulk DE, GO enrichment, networks (`workflow/step2_degs.R`, Sections 13–20)
+### Supplementary steps (optional, `workflow/step1_supplementary.R`)
+
+These steps start from the annotation of Section 7. They are not needed by the rest of the workflow.
+
+| Step | What happens |
+|---|---|
+| S1 | Annotated `clustree` (cluster tree labeled by majority cell type) |
+| S2 | Merge duplicate cluster labels into `celltype_grouped` |
+| S3 | Subcluster inspection and curation (`inspect_subcluster_markers`, `curate_clusters`) → `celltype_curated` |
+
+### Part 2 — Pseudobulk DE, GO enrichment, networks (`workflow/step2_degs.R`, Sections 10–17)
 
 | Section | What happens |
 |---|---|
-| 13 | `create_cell_type_subsets` — one Seurat subset per curated cell type |
-| 14 | `assign_pseudoreplicates_batch` — random pseudo-replicate groups per condition (no biological replicates needed) |
-| 15 | `run_pseudobulk_deseq2_analysis` — pseudobulk count tables + `run_deseq2` per cell type, per comparison (WT vs *pifq*) |
-| 16 | `render_volcano_plots` — per-cell-type volcano plots + combined PDF |
-| 17 | `build_differential_tables` — combined classification (up/down/none) and log2FC tables across cell types |
-| 18 | `run_go_enrichment_for_contrast` — `clusterProfiler::enrichGO` per cell type on significant genes |
-| 19 | `build_logfc_heatmap` — staircase-ordered log2FC heatmap across cell types |
-| 20 | `run_hdwgcna_tf_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
+| 10 | `create_cell_type_subsets` — one Seurat subset per annotated cell type |
+| 11 | `assign_pseudoreplicates_batch` — random pseudo-replicate groups per condition (no biological replicates needed) |
+| 12 | `run_pseudobulk_deseq2_analysis` — pseudobulk count tables + `run_deseq2` per cell type, per comparison (WT vs *pifq*) |
+| 13 | `render_volcano_plots` — per-cell-type volcano plots + combined PDF |
+| 14 | `build_differential_tables` — combined classification (up/down/none) and log2FC tables across cell types |
+| 15 | `run_go_enrichment_for_contrast` — `clusterProfiler::enrichGO` per cell type on significant genes |
+| 16 | `build_logfc_heatmap` — staircase-ordered log2FC heatmap across cell types |
+| 17 | `run_hdwgcna_tf_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
 
-### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Sections 23–29)
+### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Sections 18–24)
 
 | Section | What happens |
 |---|---|
-| 23 | Setup: load `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, create `results/09_pseudotime/` |
-| 24 | `load_curated_object` — read the Part 1 `.h5ad`, fix Seurat→scanpy `obsm` key names, plot overview UMAP |
-| 25 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
-| 26 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → automatic root-cell selection → pseudotime assignment; supports sweeping multiple parameter sets in one call |
-| 27 | Gene expression plotted directly on the force-directed trajectory graph |
-| 28 | `run_step29_gene_trends` — `scFates.tl.test_association` + `.fit`, top-N and custom-gene trend plots along pseudotime |
-| 29 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
+| 18 | Setup: load `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, create `results/09_pseudotime/` |
+| 19 | `load_curated_object` — read the Part 1 `.h5ad`, fix Seurat→scanpy `obsm` key names, plot overview UMAP |
+| 20 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
+| 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → automatic root-cell selection → pseudotime assignment; supports sweeping multiple parameter sets in one call |
+| 22 | Gene expression plotted directly on the force-directed trajectory graph |
+| 23 | `run_step29_gene_trends` — `scFates.tl.test_association` + `.fit`, top-N and custom-gene trend plots along pseudotime |
+| 24 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
 
 ---
 
@@ -476,17 +484,17 @@ Filters an edge list to pairs involving ≥1 TF, classifies each gene's directio
 Draws the TF graph via `ggraph`, colored by DE direction (red = up, blue = down, grey = mixed), shaped by role (triangle = TF, circle = co-expression partner), labels the top hub TFs. Supports `"fr"`, `"lgl"`, or any native `ggraph` layout (e.g. `"stress"`, `"graphopt"`).
 
 #### `run_hdwgcna_tf_network(seurat_obj, de_table_path, tf_list_path, output_dir, annot_col, contrast_tag, sample_col = "orig.ident", n_metacells = 50, min_module_size = 20, deep_split = 2, soft_power = NULL, tom_threshold = 0.2, n_hub_label = 15)`
-Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Section 20 calls. The previous name, `run_tf_coexpression_network()`, still works as a deprecated alias.
+Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Section 17 calls. The previous name, `run_tf_coexpression_network()`, still works as a deprecated alias.
 
 ---
 
 ### 13. Chapter-Level Pipelines
 
 #### `run_pseudobulk_pipeline(obj, comparisons, orgdb, keytype, annot_col = "celltype_grouped", n_reps = 3, padj_cut = 0.05, lfc_cut = 1, go_space = "BP", qval = 0.05, nivel_poda = 6, dir_pseudobulk, dir_deseq2, dir_volcano, dir_heatmaps, dir_go)`
-Runs Sections 14–20 in one call: replicate correlation → per-cell-type subsets + pseudo-replicates → DESeq2 → volcano → DE tables + heatmaps → GO enrichment (full + simplified, raw + level-pruned).
+Runs Sections 11–17 in one call: replicate correlation → per-cell-type subsets + pseudo-replicates → DESeq2 → volcano → DE tables + heatmaps → GO enrichment (full + simplified, raw + level-pruned).
 
 #### `run_pseudobulk_deseq2_analysis(cell_type_subsets_replicates, comparisons, output_dir, cell_types = NULL, pseudobulk_dir = NULL)`
-Intermediate orchestrator: writes pseudobulk count tables (`save_pseudobulk_tables`), filters to requested cell types, runs `run_deseq2` for each with progress separators. This is what `step2_degs.R` Section 15 calls.
+Intermediate orchestrator: writes pseudobulk count tables (`save_pseudobulk_tables`), filters to requested cell types, runs `run_deseq2` for each with progress separators. This is what `step2_degs.R` Section 12 calls.
 
 #### `run_network_inference_pipeline(...)` — see section 11 (GENIE3/WGCNA/SYNERGY orchestrator).
 
@@ -562,7 +570,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
 | `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 31 genes, 10 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
-| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 20) |
+| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 17) |
 
 ---
 

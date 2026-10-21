@@ -1136,33 +1136,7 @@ Representative outputs from Section 7:
 
 \newpage
 
-## Section 8 - Annotated clustree
-
-This section adds the cell-type labels from Section 7 onto the clustering tree
-from Section 5. Instead of showing only numeric clusters, each node is labeled
-with the most common cell type found in that cluster.
-
-This makes it easier to see how stable the annotated cell types are across
-different clustering resolutions. The output is saved as
-`results/03_annotation/clustree_annotated.pdf`.
-
-```{r section_08_annotated_clustree}
-output_dir <- dir_03
-
-plot_annotated_clustree(
-  ath_sc, clu, annot_col = "celltype", output_dir = output_dir
-)
-
-message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
-```
-
-Representative output from Section 8:
-
-![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated.png){width=30%}
-
-\newpage
-
-## Section 9 - Gene expression visualization
+## Section 8 - Gene expression visualization
 
 This section plots the expression of one selected gene across the annotated
 cell types. The gene to inspect is set in the `gene` variable.
@@ -1175,7 +1149,7 @@ population.
 The outputs are saved in `results/04_expression/` with filenames based on the
 selected gene.
 
-```{r section_09_gene_expression_visualization}
+```{r section_08_gene_expression_visualization}
 gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
@@ -1197,10 +1171,10 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
+message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
 ```
 
-Representative outputs from Section 9:
+Representative outputs from Section 8:
 
 ```{=latex}
 \begin{center}
@@ -1212,147 +1186,34 @@ Representative outputs from Section 9:
 
 \newpage
 
-## Section 10 - Cell-type grouping [optional]
-
-This optional section simplifies annotation labels by merging selected cell types
-or subclusters into broader groups. It uses the `grouping` object as a small
-renaming table: the names on the left are the current labels, and the values on
-the right are the new labels.
-
-For example, in this report `Epidermis Cotyledon.1` and `.2` are renamed as
-`Epidermis Cotyledon`. Any cell type that is not listed in `grouping` keeps its
-original label.
-
-Use this section when the detailed annotation is useful for inspection but a
-simpler grouping is better for figures or downstream summaries. The grouped
-labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
-`results/05_curation/umap_grouped.pdf`.
-
-```{r section_10_cell_type_grouping_optional, strip_comments=FALSE}
-# Merge the two epidermis cotyledon subclusters into a single label
-grouping <- c(
-  "Epidermis Cotyledon.1" = "Epidermis Cotyledon",
-  "Epidermis Cotyledon.2" = "Epidermis Cotyledon"
-)
-
-output_dir <- dir_05
-
-if (length(grouping) > 0) {
-  ath_sc$celltype_grouped <- recode(ath_sc$celltype, !!!grouping)
-} else {
-  ath_sc$celltype_grouped <- ath_sc$celltype
-}
-
-save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype_grouped",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
-  "umap_grouped.pdf"
-)
-
-message("\nOK SECTION 10 COMPLETE: cell-type grouping complete")
-```
-
-Representative output from Section 10:
-
-![UMAP colored by grouped cell-type labels.](assets/umap_grouped_epidermis_hypocotyl.png){width=30%}
-
-\newpage
-
-## Section 11 - Subcluster marker inspection [optional]
-
-This optional section is for manual curation when one annotated cluster needs a
-closer look. First, `inspect_subcluster_markers()` takes one cluster, splits it
-into smaller subclusters, and saves a figure with the subcluster UMAP and marker
-gene patterns. This helps decide whether the original label should be kept or
-refined.
-
-If refinement is needed, `reassign` is edited as a small mapping table. The outer
-name is the cluster being curated, the names inside are subcluster IDs, and the
-values are the new labels. The special label `others` is used for any subcluster
-not listed explicitly.
-
-Then `curate_clusters()` applies those manual labels and stores the result in
-`celltype_curated`. The final curated UMAP is saved as
-`results/05_curation/umap_curated.pdf`. This block is not executed automatically
-because the label choices depend on inspecting the figures.
-
-```{r section_11_interactive_cell_type_curation_optional, eval=FALSE, strip_comments=FALSE}
-output_dir <- dir_05
-Idents(ath_sc) <- "celltype"
-
-# 1. Inspect a cluster (saves the combined subcluster + marker figure)
-inspect_subcluster_markers(
-  ath_sc, cluster_id = "Mesophyll",
-  marker_table = marker_table, output_dir = output_dir
-)
-
-# 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
-#    then curate them in one call. Here Mesophyll's subclusters all map back
-#    to "Mesophyll" (no relabeling), which is the pattern to use when the
-#    subcluster inspection confirms the original label was already correct:
-reassign <- list(
-  "Mesophyll" = c("others" = "Mesophyll")
-)
-ath_sc <- curate_clusters(
-  ath_sc, reassign,
-  marker_table = marker_table, output_dir = output_dir
-)
-
-# 3. Save the curated annotation UMAP
-save_pdf(
-  DimPlot(ath_sc, group.by = "celltype_curated",
-          label = TRUE, repel = TRUE, raster = FALSE),
-  "umap_curated.pdf"
-)
-
-message("\nOK SECTION 11 COMPLETE: curation complete")
-```
-
-Representative output from Section 11 — subcluster inspection of the
-Mesophyll population (UMAP of its subclusters plus marker-gene panels used to
-decide whether to keep or split the label):
-
-![Mesophyll subcluster inspection: subcluster UMAP, marker dotplot, and per-gene marker panels.](assets/subcluster_markers_mesophyll.png){width=45%}
-
-*This example was executed in a validation run of this pipeline on the
-bibliography-annotated Mesophyll population. Its subclusters were mapped back
-to `others = "Mesophyll"` (no relabeling), which is why `celltype_curated`
-matches `celltype` for Mesophyll in that run — this demonstrates the
-inspect-then-curate mechanism without changing any label. The rest of this
-document (from Section 13 on) uses the reference run's `celltype_curated`
-labels shown in the table below, which came from curating its own
-unresolved clusters (`1`, `2`, `8`, `10`, `11`) individually.*
-
-## Section 12 - Export the curated object
+## Section 9 - Export the annotated object
 
 This section closes the R part of the workflow by saving the final object in two
 formats. The `.rds` file is used to continue working in R, and the `.h5ad` file
 is used by the Python sections of the pipeline.
 
-The outputs are saved in `results/objects/` as `ath_sc_curated.rds` and
-`ath_sc_curated.h5ad`.
+The outputs are saved in `results/objects/` as `ath_sc_annotated.rds` and
+`ath_sc_annotated.h5ad`.
 
-```{r section_12_export, strip_comments=FALSE}
+```{r section_09_export, strip_comments=FALSE}
 # Checkpoint - restore with:
-#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
-saveRDS(ath_sc, file.path(dir_objects, "ath_sc_curated.rds"))
+#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
 
-# Export the curated object to AnnData h5ad format for Python-based
+# Export the annotated object to AnnData h5ad format for Python-based
 # trajectory and velocity analyses.
 export_to_scanpy(
   ath_sc,
-  file.path(dir_objects, "ath_sc_curated.h5ad")
+  file.path(dir_objects, "ath_sc_annotated.h5ad")
 )
 
 # To export a specific cell type only:
 # export_to_scanpy(
-#   subset(ath_sc, subset = celltype_curated == "GC"),
+#   subset(ath_sc, subset = celltype == "guard cell"),
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK SECTION 12 COMPLETE: curated object saved (.rds + .h5ad)")
+message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 \newpage
@@ -1365,19 +1226,19 @@ for the WT vs pifq contrast, and summarizes results with volcano plots,
 differential tables, GO enrichment, a log2FC heatmap, and co-expression
 networks.
 
-```{r part3_load_curated}
-ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
+```{r part3_load_annotated}
+ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 ```
 
-## Section 13 - Cell-type subsets
+## Section 10 - Cell-type subsets
 
 The annotation column used to define cell types is a user choice. Depending on
 how Part 1 was run, this is one of `celltype` (bibliography annotation),
-`celltype_grouped` (broad groups from Section 10), or `celltype_curated`
-(manual curation from Section 11). All downstream sections in this part use
+`celltype_grouped` (broad groups from Supplementary Section S2), or `celltype_curated`
+(manual curation from Supplementary Section S3). All downstream sections in this part use
 whichever column is set here.
 
-```{r section_13_cell_type_subsets}
+```{r section_10_cell_type_subsets}
 pseudobulk_annot_col <- "celltype"
 
 # Inspect how many cells each cell type has before subsetting
@@ -1387,7 +1248,7 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK SECTION 13 COMPLETE: cell-type subsets created")
+message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
 ```
 
 Cells per cell type (bibliography annotation `celltype`; the three epidermis
@@ -1408,7 +1269,7 @@ separate at this stage):
 | 7 | 437 |
 | 9 | 78 |
 
-## Section 14 - Pseudo-replicate assignment
+## Section 11 - Pseudo-replicate assignment
 
 This section creates pseudo-replicates for the pseudobulk analysis. Instead of
 treating each single cell as an independent replicate, cells from the same cell
@@ -1429,7 +1290,7 @@ The output is `cell_type_subsets_replicates`, which is the same set of cell-type
 subsets but with pseudo-replicate labels added. This object is used in the next
 section to build pseudobulk count tables.
 
-```{r section_14_pseudoreplicate_assignment}
+```{r section_11_pseudoreplicate_assignment}
 pseudobulk_conditions <- NULL
 n_pseudoreps          <- 3
 
@@ -1442,7 +1303,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
 
-message("\nOK SECTION 14 COMPLETE: pseudo-replicates assigned")
+message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
 ```
 
 Cell types present in only one condition (here cluster `9`, with only 78
@@ -1463,7 +1324,7 @@ Cells per pseudo-replicate (first two cell types shown):
 | Epidermis Cotyledon | pifq_rep2 | ... |
 | ... | ... | ... |
 
-## Section 15 - Pseudobulk tables and DESeq2
+## Section 12 - Pseudobulk tables and DESeq2
 
 Testing every single cell as its own replicate overstates statistical
 confidence, since cells from the same sample are not independent. This
@@ -1487,7 +1348,7 @@ one row per gene. The main columns are `log2FoldChange`, `pvalue`, and `padj`.
 For the `WT_vs_pifq` comparison used here, positive log2FC means higher
 expression in `pifq`, while negative log2FC means higher expression in `WT`.
 
-```{r section_15_pseudobulk_deseq2}
+```{r section_12_pseudobulk_deseq2}
 comparisons <- list(
   list(conds = c("WT", "pifq"), tag = "WT_vs_pifq")
 )
@@ -1502,7 +1363,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK SECTION 15 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 ```
 
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
@@ -1517,7 +1378,7 @@ AT1G01020   119.88      0.204           0.168      1.212   2.3e-01     3.6e-01
 AT1G01030   417.65     -0.605           0.172     -3.521   4.3e-04     1.8e-03
 ```
 
-## Section 16 - Volcano plots
+## Section 13 - Volcano plots
 
 This section creates volcano plots from the DESeq2 result tables generated in
 Section 15. Each plot summarizes one cell type for the selected comparison.
@@ -1530,7 +1391,7 @@ the plots. In this report, genes are highlighted when adjusted p-value is below
 The volcano plots are saved inside the corresponding comparison folder under
 `results/06_de_results/`.
 
-```{r section_16_volcano_plots}
+```{r section_13_volcano_plots}
 volcano_tag <- "WT_vs_pifq"
 padj_cut    <- 0.05
 lfc_cut     <- 1
@@ -1543,14 +1404,14 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK SECTION 16 COMPLETE: volcano plots saved")
+message("\nOK SECTION 13 COMPLETE: volcano plots saved")
 ```
 
-Representative output from Section 16:
+Representative output from Section 13:
 
 ![Volcano plot for Mesophyll, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
 
-## Section 17 - Differential gene tables
+## Section 14 - Differential gene tables
 
 This section summarizes the DESeq2 results into combined differential gene
 tables. It uses the same significance thresholds defined for the volcano plots:
@@ -1564,7 +1425,7 @@ log2FC values for the significant genes.
 These tables are useful for quickly checking which genes are shared across cell
 types and which responses are cell-type specific.
 
-```{r section_17_differential_gene_tables}
+```{r section_14_differential_gene_tables}
 diff_prefix <- paste0("diff_table_", volcano_tag)
 
 diff_tables <- build_differential_tables(
@@ -1575,7 +1436,7 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK SECTION 17 COMPLETE: differential gene tables saved")
+message("\nOK SECTION 14 COMPLETE: differential gene tables saved")
 ```
 
 This writes two combined matrices (genes x cell types). The class matrix
@@ -1593,7 +1454,7 @@ AT1G01060     1      1     0          AT1G01060     1.47    4.55    NA
 AT1G01120    -1      1     0          AT1G01120    -1.72    1.22    NA
 ```
 
-## Section 18 - GO enrichment
+## Section 15 - GO enrichment
 
 This section tests whether the significant genes from each cell type are
 enriched for Gene Ontology terms. In simple terms, it asks whether the genes that
@@ -1610,7 +1471,7 @@ The adjusted p-value cutoff is controlled by `padj_cutoff`. The GO result tables
 and bubble plots are saved in `results/07_go/` under the selected comparison
 name.
 
-```{r section_18_go_enrichment}
+```{r section_15_go_enrichment}
 go_space    <- "BP"
 go_orgdb    <- org.At.tair.db
 go_keytype  <- "TAIR"
@@ -1626,14 +1487,14 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK SECTION 18 COMPLETE: GO enrichment complete")
+message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
 ```
 
-Representative output from Section 18:
+Representative output from Section 15:
 
 ![GO enrichment (BP) for Mesophyll, WT vs pifq.](assets/go_mesophyll.png){width=30%}
 
-## Section 19 - Log2FC heatmap
+## Section 16 - Log2FC heatmap
 
 This section turns the differential expression tables into a heatmap of log2FC
 values. It is used to compare how strongly genes change across cell types in the
@@ -1647,7 +1508,7 @@ changes are shown on the same scale.
 The heatmap is saved in the comparison folder inside
 `results/06_de_results/`.
 
-```{r section_19_log2fc_heatmap}
+```{r section_16_log2fc_heatmap}
 heatmap_limits <- c(-5, 5)
 
 build_logfc_heatmap(
@@ -1658,16 +1519,16 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK SECTION 19 COMPLETE: log2FC heatmap saved")
+message("\nOK SECTION 16 COMPLETE: log2FC heatmap saved")
 ```
 
-Representative output from Section 19:
+Representative output from Section 16:
 
 ![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](assets/heatmap_wt_pifq.png){width=30%}
 
 \newpage
 
-## Section 20 - Gene-gene co-expression network (hdWGCNA) and TF network
+## Section 17 - Gene-gene co-expression network (hdWGCNA) and TF network
 
 This section builds a gene-gene co-expression network with **hdWGCNA**
 (high-dimensional weighted gene co-expression network analysis; Morabito et al.,
@@ -1695,7 +1556,7 @@ metacells, the minimum module size, the edge-strength threshold (a minimum TOM
 weight) and how many hub TFs are labeled. The network output is saved in
 `results/08_networks/`.
 
-```{r section_20_tf_coexpression_network}
+```{r section_17_tf_coexpression_network}
 run_hdwgcna_tf_network(
   seurat_obj      = ath_sc,
   de_table_path   = file.path(dir_06, volcano_tag, "log2FC_table_fc1_padj_005.tsv"),
@@ -1711,10 +1572,10 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK SECTION 20 COMPLETE: TF coexpression network saved")
+message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")
 ```
 
-Representative output from Section 20:
+Representative output from Section 17:
 
 ![TF co-expression network, colored by DE direction.](assets/network_tf_DE_direction.png){width=30%}
 
@@ -1724,7 +1585,7 @@ Representative output from Section 20:
 
 Part 4 runs in Python (scanpy, Palantir, scFates), starting from the h5ad
 object exported at the end of Part 1
-(`results/objects/ath_sc_curated.h5ad`). Exit R and start Python
+(`results/objects/ath_sc_annotated.h5ad`). Exit R and start Python
 inside the same container:
 
 ```bash
@@ -1732,7 +1593,7 @@ q()          # leave R (do not save the workspace)
 python3
 ```
 
-## Section 23 - Setup
+## Section 18 - Setup
 
 This section starts the Python part of the pipeline. It defines the same project
 paths used earlier, loads the Python helper scripts, and creates the pseudotime
@@ -1742,7 +1603,7 @@ Use this block first after leaving R and starting Python inside the
 container. After it runs, the functions needed for trajectory analysis are
 available in the Python session.
 
-```{python section_23_setup, eval=FALSE}
+```{python section_18_setup, eval=FALSE}
 import os
 
 PIPELINE_DIR = "/workspace/workflow"
@@ -1755,35 +1616,36 @@ exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), g
 dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
 os.makedirs(dir_pseudotime, exist_ok=True)
 
-print("SECTION 23 COMPLETE: setup done")
+print("SECTION 18 COMPLETE: setup done")
 ```
 
 \newpage
 
-## Section 24 - Load curated object
+## Section 19 - Load annotated object
 
 This section loads the `.h5ad` object exported at the end of the R workflow. The
 `INPUT_H5AD` path points to that file, and `ANNOTATION_COL` selects which cell
 type annotation column will be used for plotting and selecting cells.
 
 Up to three annotation columns can be present, depending on which optional
-sections were run in Step 1:
+(supplementary) steps were run in Step 1:
 
 - `celltype` -- the direct output of Section 7 (bibliography-marker annotation).
   The rawest of the three, and always present.
-- `celltype_grouped` -- present only if Section 10 was run. Same as `celltype`,
+- `celltype_grouped` -- present only if Supplementary Section S2 was run. Same as `celltype`,
   but with related subclusters merged into a single label (e.g. the two
   epidermis cotyledon subclusters collapsed into one).
-- `celltype_curated` -- present only if Section 11 was run. The manually
+- `celltype_curated` -- present only if Supplementary Section S3 was run. The manually
   curated annotation, built by inspecting and relabeling subclusters.
 
-Set `ANNOTATION_COL` to whichever of these matches how far the curation went in
-Step 1: `celltype` if Section 10/11 were skipped, `celltype_grouped` if only
-Section 10 was used, `celltype_curated` if Section 11 was used.
+Set `ANNOTATION_COL` to whichever of these matches how far the optional steps
+went in Step 1: `celltype` if Supplementary Sections S2 and S3 were skipped,
+`celltype_grouped` if only Supplementary Section S2 was used, and
+`celltype_curated` if Supplementary Section S3 was used.
 
 The example below uses `celltype`, the rawest of the three. Under this column,
 epidermis cotyledon is split into `Epidermis Cotyledon.1` and `.2` -- both
-options for handling this are shown in Sections 25-26 below.
+options for handling this are shown in Sections 20-21 below.
 
 The function also standardizes coordinate names so the object works cleanly with
 Scanpy. It prints the annotation columns available in the loaded object -- use
@@ -1791,10 +1653,10 @@ this to confirm `ANNOTATION_COL` is set correctly -- then saves an overview UMAP
 and prints the available cell types, which are used to choose the trajectory
 cells in the next section.
 
-```{python section_24_load_object, eval=FALSE}
-INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
+```{python section_19_load_object, eval=FALSE}
+INPUT_H5AD     = "/workspace/results/objects/ath_sc_annotated.h5ad"
 # "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
-# Section 10 was used, or "celltype_curated" if Section 11 was used.
+# Supplementary Section S2 was used, or "celltype_curated" if Supplementary Section S3 was used.
 ANNOTATION_COL = "celltype"
 N_JOBS         = 4
 
@@ -1806,13 +1668,13 @@ adata, N_JOBS = load_curated_object(
 )
 ```
 
-Representative output from Section 24:
+Representative output from Section 19:
 
-![Overview UMAP colored by curated cell type.](assets/pseudotime_umap_overview.pdf){width=30%}
+![Overview UMAP colored by annotated cell type.](assets/pseudotime_umap_overview.pdf){width=30%}
 
 \newpage
 
-## Section 25 - Cell type selection
+## Section 20 - Cell type selection
 
 This section selects which cell types will be used for trajectory inference. The
 list is set in `TRAJECTORY_CLUSTERS`, and the names must match the cell-type
@@ -1823,11 +1685,11 @@ these cells before fitting the trajectory, which helps confirm that the intended
 population was chosen.
 
 The exact label(s) to use here depend on which `ANNOTATION_COL` was set in
-Section 24:
+Section 19:
 
 - With `ANNOTATION_COL = "celltype"` (raw), the two cotyledon subclusters are
   told apart and both must be listed.
-- With `ANNOTATION_COL = "celltype_grouped"` (Section 10), all cotyledon cells
+- With `ANNOTATION_COL = "celltype_grouped"` (Supplementary Section S2), all cotyledon cells
   are already one population.
 
 **Tip:** if the goal is to evaluate the trajectory across the whole cell type
@@ -1836,7 +1698,7 @@ here.
 
 Option A -- with `ANNOTATION_COL = "celltype"` (raw, subclusters told apart):
 
-```{python section_25_cell_selection_celltype, eval=FALSE}
+```{python section_20_cell_selection_celltype, eval=FALSE}
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
 
 adata_sub = preview_trajectory_selection(
@@ -1846,13 +1708,13 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 25 COMPLETE: cell type selection saved")
+print("SECTION 20 COMPLETE: cell type selection saved")
 ```
 
 Option B -- with `ANNOTATION_COL = "celltype_grouped"` (all cotyledon cells as
 one population; preferred when subclusters should not be told apart):
 
-```{python section_25_cell_selection_grouped, eval=FALSE}
+```{python section_20_cell_selection_grouped, eval=FALSE}
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
@@ -1862,16 +1724,16 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 25 COMPLETE: cell type selection saved")
+print("SECTION 20 COMPLETE: cell type selection saved")
 ```
 
-Representative output from Section 25:
+Representative output from Section 20:
 
 ![UMAP of the epidermis cotyledon cells selected for the trajectory.](assets/pseudotime_umap_selection.pdf){width=30%}
 
 \newpage
 
-## Section 26 - Trajectory inference
+## Section 21 - Trajectory inference
 
 This section fits the pseudotime trajectory for the selected cells. The
 `ROOT_CLUSTER` defines where pseudotime starts, and must be a single existing
@@ -1891,7 +1753,7 @@ visualization, and selected root cell plot inside `results/09_pseudotime/`.
 Option A -- with `ANNOTATION_COL = "celltype"` (raw, pick one of the two
 cotyledon subclusters as root -- the larger one, `.1`, is used here):
 
-```{python section_26_trajectory_celltype, eval=FALSE}
+```{python section_21_trajectory_celltype, eval=FALSE}
 ROOT_CLUSTER = "Epidermis Cotyledon.1"
 
 TRAJECTORY_RUNS = [
@@ -1907,13 +1769,13 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 26 COMPLETE: trajectory inference saved")
+print("SECTION 21 COMPLETE: trajectory inference saved")
 ```
 
 Option B -- with `ANNOTATION_COL = "celltype_grouped"` (preferred when
 evaluating the trajectory across the whole cell type):
 
-```{python section_26_trajectory_grouped, eval=FALSE}
+```{python section_21_trajectory_grouped, eval=FALSE}
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
@@ -1929,10 +1791,10 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 26 COMPLETE: trajectory inference saved")
+print("SECTION 21 COMPLETE: trajectory inference saved")
 ```
 
-Representative outputs from Section 26 for the epidermis-cotyledon-only trajectory using
+Representative outputs from Section 21 for the epidermis-cotyledon-only trajectory using
 `nodes=50`, `sigma=0.3`, `lambda=200`, and `eigs=3`:
 
 ```{=latex}
@@ -1949,18 +1811,18 @@ Representative outputs from Section 26 for the epidermis-cotyledon-only trajecto
 \clearpage
 ```
 
-## Section 27 - Plot genes on trajectory
+## Section 22 - Plot genes on trajectory
 
 This section plots selected genes on the fitted epidermis cotyledon trajectory.
 The gene list is controlled by `GENES`, so changing that vector is the only
 thing needed to inspect another marker.
 
-For this version, Section 27 is focused only on ATML1. In the count matrix ATML1
+For this version, Section 22 is focused only on ATML1. In the count matrix ATML1
 is stored as the locus `AT4G21750`, so the code uses `AT4G21750` while the text
 and figure label report it as ATML1. The plot shows where ATML1 expression falls
 on the epidermis cotyledon trajectory layout.
 
-```{python section_27_gene_plots, eval=FALSE}
+```{python section_22_gene_plots, eval=FALSE}
 GENES = ["AT4G21750"]  # AT4G21750 = ATML1
 name  = os.path.basename(selected_trajectory_dir)
 
@@ -1979,10 +1841,10 @@ fig = sc.pl.draw_graph(
 save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
 plt.close(fig)
 
-print("SECTION 27 COMPLETE: gene trajectory plots saved")
+print("SECTION 22 COMPLETE: gene trajectory plots saved")
 ```
 
-Representative output from Section 27:
+Representative output from Section 22:
 
 ```{=latex}
 \begin{center}
@@ -1996,7 +1858,7 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 \clearpage
 ```
 
-## Section 28 - Gene trends
+## Section 23 - Gene trends
 
 This section fits gene-expression trends along pseudotime for the epidermis
 cotyledon trajectory calculated above. The function first tests genes for
@@ -2009,7 +1871,7 @@ cotyledon trajectory: `nodes=50`, `sigma=0.3`, `lambda=200`, `eigs=3`, and
 `HIGHLIGHT_GENES = ["AT3G24140"]` highlights the selected marker using the same fitted trend
 workflow.
 
-```{python section_28_gene_trends, eval=FALSE}
+```{python section_23_gene_trends, eval=FALSE}
 TOP_N           = 10
 HIGHLIGHT_GENES = ["AT3G24140"]
 ORDERING        = "max"
@@ -2032,10 +1894,10 @@ top_path, highlight_path = run_step29_gene_trends(
     spline_df    = SPLINE_DF,
 )
 
-print("SECTION 28 COMPLETE: epidermis cotyledon gene trends saved")
+print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
 ```
 
-Representative outputs from Section 28 — epidermis cotyledon gene trends:
+Representative outputs from Section 23 — epidermis cotyledon gene trends:
 
 ```{=latex}
 \begin{center}
@@ -2048,7 +1910,7 @@ Representative outputs from Section 28 — epidermis cotyledon gene trends:
 Left: top 10 ranked genes along pseudotime for the epidermis cotyledon trajectory.
 Right: `AT3G24140` highlighted from the same fitted trend workflow.
 
-## Section 29 - Final export
+## Section 24 - Final export
 
 This section saves the final pseudotime object after trajectory inference and
 gene-trend analysis. The exported `.h5ad` file keeps the trajectory results,
@@ -2057,12 +1919,12 @@ pseudotime values, and layout coordinates for later reuse.
 The final object is saved in `results/objects/` as
 `ath_sc_pseudotime_final.h5ad`.
 
-```{python section_29_final_export, eval=FALSE}
+```{python section_24_final_export, eval=FALSE}
 final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"SECTION 29 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 ```
 
 This is the last step of the pipeline. Leave the Python REPL the same way
@@ -2111,8 +1973,8 @@ results/
 |   |-- seurat_list_postfilter.rds
 |   |-- ath_sc_preharmony.rds
 |   |-- ath_sc_postharmony.rds
-|   |-- ath_sc_curated.rds
-|   |-- ath_sc_curated.h5ad
+|   |-- ath_sc_annotated.rds
+|   |-- ath_sc_annotated.h5ad
 |   |-- pseudobulk_replicates/
 |   `-- ath_sc_pseudotime_final.h5ad
 |-- 06_de_results/<comparison_tag>/       # e.g. WT_vs_pifq/
@@ -2153,15 +2015,163 @@ results/
 ```
 
 `01_qc`-`05_curation` and `objects/` come from Part 2 (`step1_singlecell.R`);
-`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Section 15) and
+`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Section 12) and
 `08_networks` from Part 3 (`step2_degs.R`); `09_pseudotime` from Part 4
 (`step3_pseudotime.py`), one `trajectory/<run_name>/` per entry in
-`TRAJECTORY_RUNS` (Section 26). `<gene>`, `<cluster>`, `<cell_type>`, and
+`TRAJECTORY_RUNS` (Section 21). `<gene>`, `<cluster>`, `<cell_type>`, and
 `<tag>` depend on the values used when running each section, not on fixed
 names.
 ```{=latex}
 \normalsize
 ```
+
+\newpage
+
+# Supplementary methods {-}
+
+The three steps below are optional. They start from the annotation of Section 7
+and write their results to separate columns (`celltype_grouped`,
+`celltype_curated`) or figures, so the main workflow runs without them. If you
+use one of them, set the annotation column of Supplementary Section S2 accordingly. The code is
+also available in `workflow/step1_supplementary.R`.
+
+## Supplementary Section S1 - Annotated clustree {-}
+
+This section adds the cell-type labels from Section 7 onto the clustering tree
+from Section 5. Instead of showing only numeric clusters, each node is labeled
+with the most common cell type found in that cluster.
+
+This makes it easier to see how stable the annotated cell types are across
+different clustering resolutions. The output is saved as
+`results/03_annotation/clustree_annotated.pdf`.
+
+```{r supp_s1_annotated_clustree}
+output_dir <- dir_03
+
+plot_annotated_clustree(
+  ath_sc, clu, annot_col = "celltype", output_dir = output_dir
+)
+
+message("\nOK SUPPLEMENTARY S1 COMPLETE: annotated clustree saved")
+```
+
+Representative output from Supplementary Section S1:
+
+![Cluster tree labeled by the dominant bibliography-based annotation in each node.](assets/clustree_annotated.png){width=30%}
+
+
+
+## Supplementary Section S2 - Cell-type grouping {-}
+
+This optional section simplifies annotation labels by merging selected cell types
+or subclusters into broader groups. It uses the `grouping` object as a small
+renaming table: the names on the left are the current labels, and the values on
+the right are the new labels.
+
+For example, in this report the two mesophyll subclusters, `Mesophyll.1` and
+`.2`, are renamed as `Mesophyll`. Any cell type that is not listed in `grouping` keeps its
+original label.
+
+Use this section when the detailed annotation is useful for inspection but a
+simpler grouping is better for figures or downstream summaries. The grouped
+labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
+`results/05_curation/umap_grouped.pdf`.
+
+```{r supp_s2_cell_type_grouping_optional, strip_comments=FALSE}
+# Merge the two mesophyll subclusters into a single label
+grouping <- c(
+  "Mesophyll.1" = "Mesophyll",
+  "Mesophyll.2" = "Mesophyll"
+)
+
+output_dir <- dir_05
+
+if (length(grouping) > 0) {
+  current <- as.character(ath_sc$celltype)
+  ath_sc$celltype_grouped <- ifelse(current %in% names(grouping), grouping[current], current)
+} else {
+  ath_sc$celltype_grouped <- ath_sc$celltype
+}
+
+save_pdf(
+  DimPlot(
+    ath_sc, group.by = "celltype_grouped",
+    label = TRUE, repel = TRUE, raster = FALSE
+  ),
+  "umap_grouped.pdf"
+)
+
+message("\nOK SUPPLEMENTARY S2 COMPLETE: cell-type grouping complete")
+```
+
+Representative output from Supplementary Section S2:
+
+![UMAP colored by grouped cell-type labels.](assets/umap_grouped_epidermis_hypocotyl.png){width=30%}
+
+
+
+## Supplementary Section S3 - Subcluster inspection and manual curation {-}
+
+This optional section is for manual curation when one annotated cluster needs a
+closer look. First, `inspect_subcluster_markers()` takes one cluster, splits it
+into smaller subclusters, and saves a figure with the subcluster UMAP and marker
+gene patterns. This helps decide whether the original label should be kept or
+refined.
+
+If refinement is needed, `reassign` is edited as a small mapping table. The outer
+name is the cluster being curated, the names inside are subcluster IDs, and the
+values are the new labels. The special label `others` is used for any subcluster
+not listed explicitly.
+
+Then `curate_clusters()` applies those manual labels and stores the result in
+`celltype_curated`. The final curated UMAP is saved as
+`results/05_curation/umap_curated.pdf`. This block is not executed automatically
+because the label choices depend on inspecting the figures.
+
+```{r supp_s3_interactive_cell_type_curation_optional, eval=FALSE, strip_comments=FALSE}
+output_dir <- dir_05
+Idents(ath_sc) <- "celltype"
+
+# 1. Inspect a cluster (saves the combined subcluster + marker figure)
+inspect_subcluster_markers(
+  ath_sc, cluster_id = "Mesophyll",
+  marker_table = marker_table, output_dir = output_dir
+)
+
+# 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
+#    then curate them in one call. Here Mesophyll's subclusters all map back
+#    to "Mesophyll" (no relabeling), which is the pattern to use when the
+#    subcluster inspection confirms the original label was already correct:
+reassign <- list(
+  "Mesophyll" = c("others" = "Mesophyll")
+)
+ath_sc <- curate_clusters(
+  ath_sc, reassign,
+  marker_table = marker_table, output_dir = output_dir
+)
+
+# 3. Save the curated annotation UMAP
+save_pdf(
+  DimPlot(ath_sc, group.by = "celltype_curated",
+          label = TRUE, repel = TRUE, raster = FALSE),
+  "umap_curated.pdf"
+)
+
+message("\nOK SUPPLEMENTARY S3 COMPLETE: curation complete")
+```
+
+Representative output from Supplementary Section S3 — subcluster inspection of the
+Mesophyll population (UMAP of its subclusters plus marker-gene panels used to
+decide whether to keep or split the label):
+
+![Mesophyll subcluster inspection: subcluster UMAP, marker dotplot, and per-gene marker panels.](assets/subcluster_markers_mesophyll.png){width=45%}
+
+*In this example the Mesophyll subclusters are mapped back to `Mesophyll` (no
+relabeling), which shows the inspect-then-curate mechanism without changing any
+label. The main workflow does not need this step: it continues with the labels
+from Section 7.*
+
+\newpage
 
 # Supplementary Table — Software dependencies and versions {-}
 
