@@ -184,8 +184,8 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 | 2 | Filter cells (`filter_seurat_samples`/`filter_sample`), save post-filter QC, checkpoint `.rds` |
 | 3 | Merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony) |
 | 4 | `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP |
-| 5 | `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
-| 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution |
+| 5 | Optional elbow plot (`plot_resolution_elbow`) to check how many PCs to use, and `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
+| 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution, on `cluster_dims` (default `1:30`) |
 | 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
 | 8 | Gene expression violin + feature plots for genes of interest |
 | 9 | Export the annotated object as `.rds` and, via `export_to_scanpy`, as `.h5ad` for Part 3 |
@@ -241,7 +241,7 @@ Violin grid for `nFeature_RNA`, `nCount_RNA`, and `percent.mt` for one Seurat ob
 Boxplot + jitter of `nFeature_RNA` across a list of Seurat objects, combined with printed quartile/quintile summary tables (`cowplot::plot_grid`). `labels` auto-generates `"Group1"`, `"Group2"`, … if `NULL`; `colores` defaults to a 5-color palette.
 
 #### `plot_resolution_elbow(seurat_obj, output_dir, filename = "elbow_plot.pdf", ndims = 30)`
-Optional utility, not used in the main workflow (all steps use `dims = 1:30`).
+Used in Section 5 as an optional check of how many PCs to use. All steps use `dims = 1:30` by default; fewer dimensions change the UMAP and the clusters.
 Standard Deviation per principal component (`Seurat::ElbowPlot`, `reduction = "pca"`), saved as a PDF. Read the flattening point manually to pick how many PCs (`elbow_dims`) to carry into clustering in Section 6 — this does not decide the number of clusters, see `run_resolution_sweep()` below for that.
 
 #### `run_resolution_sweep(seurat_obj, resolutions, output_dir, filename = "clustree2.pdf", pca_dims = 1:30, knn_k = 20)`

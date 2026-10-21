@@ -161,28 +161,31 @@ saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
 # ==============================================================================
-# Section 5 - Choosing the clustering resolution
+# Section 5 - Elbow plot (optional) and clustering resolution
 # ==============================================================================
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
 
+plot_resolution_elbow(ath_sc, output_dir = output_dir)
+
 clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: clustree saved")
+message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 
 # ==============================================================================
 # Section 6 - Final clustering
 # ==============================================================================
 cluster_resolution <- 0.35
+cluster_dims       <- 1:30   # default; fewer dimensions change the UMAP and clusters (see the elbow plot)
 output_dir <- dir_02
 
 ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = cluster_dims, verbose = FALSE) %>%
   FindNeighbors(
-    reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE
+    reduction = "harmony", dims = cluster_dims, k.param = 20, verbose = FALSE
   ) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
