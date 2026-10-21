@@ -220,10 +220,38 @@ These steps start from the annotation of Section 7. They are not needed by the r
 | 18 | Setup: load `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, create `results/09_pseudotime/` |
 | 19 | `load_curated_object` — read the Part 1 `.h5ad`, fix Seurat→scanpy `obsm` key names, plot overview UMAP |
 | 20 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
-| 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → automatic root-cell selection → pseudotime assignment; supports sweeping multiple parameter sets in one call |
+| 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → root selection (see [Root selection for pseudotime](#root-selection-for-pseudotime)) → pseudotime assignment; supports sweeping multiple parameter sets in one call |
 | 22 | Gene expression plotted directly on the force-directed trajectory graph |
 | 23 | `run_step29_gene_trends` — `scFates.tl.test_association` + `.fit`, top-N and custom-gene trend plots along pseudotime |
 | 24 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
+
+### Root selection for pseudotime
+
+Pseudotime is measured from a **root**. A trajectory tree has no direction of its own: the same tree read from one end or from the other fits the data equally well, so the start has to be anchored to something outside the tree. Trajectory tools ask for a start cell or population based on biological knowledge (Haghverdi et al. 2016; Setty et al. 2019; Saelens et al. 2019). `build_pseudotime_trajectory()` (called by `run_trajectory_runs()`) sets the root as follows, with `root_method = "auto"` (the default):
+
+| Trajectory | Root |
+|---|---|
+| **Two or more cell types** | The most-connected cell of the cell type selected in `root_cluster` (for example `guard cell`). |
+| **A single cell type** | The tip of the tree with the highest mean of `root_score` (default: the number of detected genes per cell, `nFeature_RNA`). The root cell is the cell of that tip with the lowest pseudotime. |
+
+**Why this rule for a single cell type.** With one cell type there is no population to name as the root, and the most-connected cell is the center of the cloud: it falls in the middle of the tree and moves when the graph parameters change. Instead, the root is anchored to a score that tells how "early" a cell looks. The default score is the number of detected genes per cell, which correlates with developmental potential in single-cell data (Gulati et al. 2020, the basis of CytoTRACE), and scFates supports choosing the root tip automatically from an `obs` column or a gene (Faure et al. 2023).
+
+**What to keep in mind**
+
+- It is an assumption, not a measurement. The number of detected genes was established as a potency proxy in animal datasets and has not been validated broadly in plants. The direction of pseudotime is conventional, and the function prints a note when it applies the rule.
+- It can be set from your own biology: `root_score` (an `obs` column or a gene ID, for example a progenitor marker; `root_lowest = True` for an end-state marker), `root_method = "tip"` with `root_tip` (the node number shown in the tree figure), or `root_method = "score"` to use the tip rule also with several cell types.
+- Always look at the tree: `plot_root_cell()` and `plot_pseudotime_trajectory()` mark the root with a red star.
+- `summarize_along_pseudotime()` (optional, not called by the workflow) gives the mean of numeric columns and genes, and the share of each group (for example `condition`), along pseudotime bins. Use it to check what the axis mixes with.
+- In the WT vs *pifq* epidermis example, the rule put the root at the same end in 12 of 12 settings of seed, number of nodes, `eigs`, neighbors, `sigma` and `lambda` (position 0.06-0.15 of the main axis, the first principal component of the Harmony embedding; pseudotime correlation with the base run of at least 0.93), and at the same transcriptional end when WT and *pifq* cells were analyzed separately. The most-connected cell moved between 0.49 and 0.88 of the axis. Stability does not prove that the direction is right: in that example the axis also separated a WT-enriched end from a *pifq*-enriched region.
+- The previous behaviour (the most-connected cell of `root_cluster`, also with a single cell type) remains available as `root_method = "most_connected"` to reproduce older results. It is not used by the workflow.
+
+**References**
+
+- Faure L, Soldatov R, Kharchenko PV, Adameyko I (2023). scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. *Bioinformatics* 39(1): btac746.
+- Gulati GS, et al. (2020). Single-cell transcriptional diversity is a hallmark of developmental potential. *Science* 367(6476): 405-411. doi:10.1126/science.aax0249
+- Haghverdi L, Büttner M, Wolf FA, Buettner F, Theis FJ (2016). Diffusion pseudotime robustly reconstructs lineage branching. *Nature Methods* 13: 845-848. doi:10.1038/nmeth.3971
+- Saelens W, Cannoodt R, Todorov H, Saeys Y (2019). A comparison of single-cell trajectory inference methods. *Nature Biotechnology* 37: 547-554. doi:10.1038/s41587-019-0071-9
+- Setty M, et al. (2019). Characterization of cell fate probabilities in single-cell data with Palantir. *Nature Biotechnology* 37: 451-460. doi:10.1038/s41587-019-0068-4
 
 ---
 
@@ -547,14 +575,16 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4)` | Step 25: loads the Part 1 `.h5ad`, remaps Seurat-style `obsm` keys (`UMAP`→`X_umap`, `PCA`→`X_pca`, `HARMONY`→`X_harmony`), plots overview UMAP with a side legend, prints per-cell-type counts |
 | `preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime)` | Step 26: subsets to selected cell types, plots a preview UMAP; `raise`s if a requested cluster name doesn't exist |
 | `trajectory_run(nodes=50, sigma=0.2, lambda_value=60, eigs=20, seed=3)` | Builds a named parameter-set dict for `run_trajectory_runs`; the name encodes every parameter so identical configs share a folder |
-| `build_pseudotime_trajectory(adata, clusters, root_cluster, annotation_col, nodes=150, sigma=0.2, ppt_lambda=60, n_components=50, n_eigs=20, n_neighbors=50, seed=3)` | Core Step 27 pipeline: subset → Palantir diffusion maps → neighbors graph → `scFates.tl.tree` (PPT) → root selection (most-connected cell in `root_cluster`) → `scFates.tl.pseudotime` |
+| `build_pseudotime_trajectory(adata, clusters, root_cluster, annotation_col, nodes=150, sigma=0.2, ppt_lambda=60, n_components=50, n_eigs=20, n_neighbors=50, seed=3, root_method="auto", root_score="nFeature_RNA", root_lowest=False, root_tip=None)` | Core Step 27 pipeline: subset → Palantir diffusion maps → neighbors graph → `scFates.tl.tree` (PPT) → root selection → `scFates.tl.pseudotime`. Root: with several cell types, the most-connected cell of `root_cluster`; with a single cell type, the tip of the tree with the highest mean of `root_score` (see [Root selection for pseudotime](#root-selection-for-pseudotime)) |
 | `build_dendrogram(adata)` | Adds a dendrogram to a tree-fitted `adata` (`scFates.tl.dendrogram`) |
 | `draw_graph_basis(adata)` | Returns whichever `X_draw_graph_{fa,fr}` embedding scanpy actually computed (`fa` = ForceAtlas2 if `fa2-modified` is installed, else falls back to `fr`) |
 | `plot_trajectory_graphs(adata, name, output_dir, annotation_col, show_inline=False, param_label=None)` | Saves the force-directed tree graph colored by cell type |
 | `export_pseudotime_table(adata, name, output_dir, annotation_col=None)` | Writes a per-cell pseudotime TSV (`t` + optional annotation column) |
 | `plot_pseudotime_trajectory(adata, name, output_dir, annotation_col, show_inline=False, param_label=None)` | Overlays the principal graph + pseudotime coloring on the force-directed layout |
-| `plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)` | QC plot: highlights the auto-selected root cell in red on the FA1/FA2 embedding |
-| `run_trajectory_runs(adata, clusters, root_cluster, annotation_col, output_base_dir, runs, selected_run=None, show_inline=True)` | Step 27 entry point: runs one or more parameter sets from `trajectory_run()`, saves each to its own folder (h5ad, plots, pseudotime table), returns the selected run's `adata` + folder + all runs |
+| `plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)` | QC plot: marks the root cell with a large red star on the FA1/FA2 embedding |
+| `mark_root_cell(ax, adata, basis)` | Draws the root cell as a large red star on an existing axis; used by `plot_pseudotime_trajectory()` and `plot_root_cell()` |
+| `summarize_along_pseudotime(adata, columns=("nFeature_RNA",), genes=None, group_col=None, n_bins=10)` | Optional diagnostic, not called by the workflow: mean of numeric columns and genes, and share of each group, along pseudotime bins |
+| `run_trajectory_runs(adata, clusters, root_cluster, annotation_col, output_base_dir, runs, selected_run=None, show_inline=True, root_method="auto", root_score="nFeature_RNA", root_lowest=False, root_tip=None)` | Step 27 entry point: runs one or more parameter sets from `trajectory_run()`, saves each to its own folder (h5ad, plots, pseudotime table), returns the selected run's `adata` + folder + all runs. The `root_*` arguments are passed to `build_pseudotime_trajectory()` and can also be set per run |
 | `strip_segment_frames(ax)` | Removes stray unfilled rectangle artifacts scFates leaves behind on trend plots |
 | `save_trends_plot(axes_list, pdf_path)` | Saves gene-trend axes at 24×18 in (wider than the standard 18×18 — the dendrogram panel needs the extra width) |
 | `run_step29_gene_trends(adata, run_dir, name="trajectory", custom_genes=None, top_n=50, ordering="max", n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001)` | Step 28/29: `scFates.tl.test_association` + `.fit`, then two trend heatmaps — top-N most variable genes and a custom highlighted gene list (force-included even if not significant) |

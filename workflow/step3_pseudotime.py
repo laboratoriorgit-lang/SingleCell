@@ -52,6 +52,11 @@ print("SECTION 20 COMPLETE: cell type selection saved")
 # ==============================================================================
 # Section 21 - Trajectory inference
 # ==============================================================================
+# ROOT_CLUSTER is the root cell type when the trajectory has two or more cell types
+# (the root is its most-connected cell). With a single cell type, as here, the root
+# is set automatically at the tip of the tree with the most detected genes (see
+# "Root selection for pseudotime" in the README); root_score, root_lowest, root_tip
+# and root_method of run_trajectory_runs() change it.
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
