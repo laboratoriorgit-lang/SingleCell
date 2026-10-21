@@ -620,16 +620,23 @@ def run_trajectory_runs(
 # =============================================================================
 # STEP 28 — Plot genes on trajectory
 # =============================================================================
-# Draws one or more genes on the force-directed trajectory graph and saves them
-# as <output_dir>/<name>_gene_plots.pdf (18x18 in). Puts the expression in .X if
-# needed, creates output_dir, and closes the figure.
-def plot_genes_on_trajectory(adata, genes, output_dir, name, titles=None):
+# Draws one or more genes on the force-directed trajectory graph and saves them in
+# <run_dir>/gene_plots/<run name>_gene_plots.pdf (18x18 in), where run_dir is the
+# trajectory run folder (selected_trajectory_dir). The file name comes from the run
+# folder name unless name is given. Puts the expression in .X if needed, creates the
+# folder, closes the figure, and returns the saved path.
+def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, name=None):
     ensure_expression_in_X(adata)
-    os.makedirs(output_dir, exist_ok=True)
+    name    = name or os.path.basename(os.path.normpath(run_dir))
+    out_dir = os.path.join(run_dir, "gene_plots")
+    os.makedirs(out_dir, exist_ok=True)
     fig = sc.pl.draw_graph(adata, color=genes, title=titles if titles is not None else genes,
                            show=False, return_fig=True)
-    save_plot_18x18(fig, os.path.join(output_dir, f"{name}_gene_plots.pdf"))
+    path = os.path.join(out_dir, f"{name}_gene_plots.pdf")
+    save_plot_18x18(fig, path)
     plt.close(fig)
+    print(f"✓ Gene plots saved: {path}")
+    return path
 
 
 def strip_segment_frames(ax):
