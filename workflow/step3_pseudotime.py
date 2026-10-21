@@ -77,19 +77,12 @@ print("SECTION 21 COMPLETE: trajectory inference saved")
 # ==============================================================================
 # Section 22 - Plot genes on trajectory
 # ==============================================================================
-GENES = ["AT3G24140", "AT4G21750", "AT4G20260"]
-name  = os.path.basename(selected_trajectory_dir)
-
-ensure_expression_in_X(adata_traj)
-
-gene_plots_dir = os.path.join(selected_trajectory_dir, "gene_plots")
-os.makedirs(gene_plots_dir, exist_ok=True)
-
-fig = sc.pl.draw_graph(
-    adata_traj, color=GENES, title=GENES, show=False, return_fig=True
+plot_genes_on_trajectory(
+    adata_traj,
+    genes      = ["AT3G24140", "AT4G21750", "AT4G20260"],
+    output_dir = os.path.join(selected_trajectory_dir, "gene_plots"),
+    name       = os.path.basename(selected_trajectory_dir),
 )
-save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
-plt.close(fig)
 
 print("SECTION 22 COMPLETE: gene trajectory plots saved")
 

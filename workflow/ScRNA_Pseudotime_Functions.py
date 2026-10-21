@@ -616,9 +616,16 @@ def run_trajectory_runs(
 # =============================================================================
 # STEP 28 — Plot genes on trajectory
 # =============================================================================
-# No wrapper function — this step is now just 3 lines of plain scanpy in the
-# notebook cell itself (gene_plots/ folder + figdir + sc.pl.draw_graph).
-# Kept out of this file on purpose so the notebook cell is fully self-contained.
+# Draws one or more genes on the force-directed trajectory graph and saves them
+# as <output_dir>/<name>_gene_plots.pdf (18x18 in). Puts the expression in .X if
+# needed, creates output_dir, and closes the figure.
+def plot_genes_on_trajectory(adata, genes, output_dir, name, titles=None):
+    ensure_expression_in_X(adata)
+    os.makedirs(output_dir, exist_ok=True)
+    fig = sc.pl.draw_graph(adata, color=genes, title=titles if titles is not None else genes,
+                           show=False, return_fig=True)
+    save_plot_18x18(fig, os.path.join(output_dir, f"{name}_gene_plots.pdf"))
+    plt.close(fig)
 
 
 def strip_segment_frames(ax):
