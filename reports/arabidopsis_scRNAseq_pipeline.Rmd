@@ -853,8 +853,9 @@ this order:
 6. **UMAP** (`RunUMAP(dims = 1:30)`) projects those 30 PCs into two dimensions
    for visualization. It is useful to see how the samples look before Harmony.
 
-**Number of PCs.** All 30 PCs are used in every later step (Harmony, UMAP and
-clustering use `dims = 1:30`).
+**Number of PCs.** By default all 30 PCs are used in every later step (Harmony,
+UMAP and clustering use `dims = 1:30`). The elbow plot in Section 5 shows how many
+of them carry signal.
 
 **Default parameters used here.** Several important settings are not written in
 the code because they are Seurat defaults (Seurat 5.5.1). Change them if your
@@ -950,10 +951,23 @@ Representative output from Section 4:
 
 \newpage
 
-## Section 5 - Choosing the clustering resolution
+## Section 5 - Elbow plot (optional) and clustering resolution
 
-This section compares several candidate clustering resolutions with a
-**clustree**. The clustree shows, for each resolution in `resolutions_test`, how
+This section has two parts: an optional check of how many principal components
+to use for clustering, and the choice of the clustering resolution.
+
+**Elbow plot (optional).** The elbow plot shows the variance explained by each
+principal component. By default this guide keeps `dims = 1:30` in every step after
+Harmony, which includes all the informative components. If the curve flattens
+earlier (for example around PC 15), you can use fewer dimensions by changing
+`cluster_dims` in Section 6. This is optional, and it has consequences: using
+fewer dimensions changes how the UMAP is laid out and can change the clusters,
+and so everything that comes after Harmony (annotation, differential expression,
+networks and pseudotime). Decide it here, before continuing, and keep the same
+value from then on.
+
+**Clustree.** The clustree compares several candidate clustering resolutions. It
+shows, for each resolution in `resolutions_test`, how
 many clusters it produces and whether cells stay in stable clusters or keep
 moving between them as the resolution changes. A resolution where cell
 membership stops moving is a safer choice than one that is still fragmenting.
@@ -961,27 +975,29 @@ Lower resolutions produce fewer, broader clusters; higher resolutions produce
 more, smaller ones. The values in `resolutions_test` are only the range of
 candidates to compare; widen or narrow it if the useful region lies outside it.
 
-The output is saved in `results/02_clustering/` as `clustree2.pdf`. Use it to
-choose `cluster_resolution` in Section 6.
+The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
+`clustree2.pdf`. Use the clustree to choose `cluster_resolution` in Section 6.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
 
+plot_resolution_elbow(ath_sc, output_dir = output_dir)
+
 clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: clustree saved")
+message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
 ```
 
-Representative output from Section 5:
+Representative outputs from Section 5:
 
 ```{=latex}
 \begin{center}
 ```
-![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
+![Elbow plot: variance explained by each principal component.](assets/elbow_plot.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -996,8 +1012,9 @@ community-detection method for single-cell data. Each cluster is a candidate
 cell population; cell-type labels are only assigned afterward, in Section 7.
 The resolution is set in `cluster_resolution`, chosen from the clustree in
 Section 5. Lower resolutions produce fewer, broader clusters; higher resolutions
-produce more, smaller ones. Clustering uses the first 30 Harmony dimensions
-(`dims = 1:30`).
+produce more, smaller ones. Clustering uses the Harmony dimensions in
+`cluster_dims`, which by default are the first 30 (`1:30`); change it only if you
+decided on fewer after looking at the elbow plot in Section 5.
 
 The resolution used here is `cluster_resolution <- 0.35`. In the clustree
 (Section 5), 0.35 is one of the most stable resolutions: its clusters mostly
@@ -1023,12 +1040,13 @@ The output figure is a UMAP colored by final cluster number, saved as
 
 ```{r section_06_final_clustering}
 cluster_resolution <- 0.35
+cluster_dims       <- 1:30     # default; fewer dimensions change the UMAP and clusters
 output_dir <- dir_02
 
 ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE) %>%
+  RunUMAP(reduction = "harmony", dims = cluster_dims, verbose = FALSE) %>%
   FindNeighbors(
-    reduction = "harmony", dims = 1:30, k.param = 20, verbose = FALSE
+    reduction = "harmony", dims = cluster_dims, k.param = 20, verbose = FALSE
   ) %>%
   FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
 
@@ -1955,6 +1973,7 @@ results/
 |   |-- umap_preharmony.pdf
 |   `-- umap_postharmony.pdf
 |-- 02_clustering/
+|   |-- elbow_plot.pdf
 |   |-- clustree2.pdf
 |   `-- umap_seuratclusters.pdf
 |-- 03_annotation/
