@@ -587,6 +587,17 @@ R
 The next two steps, Configuration and Initialization, set up the paths and
 helper functions used by every section that follows.
 
+**Note: the processed matrices are already in the repository.** The Cell Ranger
+output of both samples is included in the repository, so this part can be started
+directly from here, without running Part 1 (FASTQ download and Cell Ranger). The
+files read by the sample manifest of Section 1 are:
+
+- `ScWT/outs/filtered_feature_bc_matrix/` (`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`)
+- `Scpifq/outs/filtered_feature_bc_matrix/` (`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`)
+
+The Cell Ranger summaries (`outs/metrics_summary.csv` and `outs/web_summary.html`)
+of each sample are in the same folders.
+
 ## Configuration
 
 
