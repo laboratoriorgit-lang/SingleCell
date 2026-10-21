@@ -451,6 +451,16 @@ The single-cell workflow starts from Cell Ranger output, specifically the
 files are available, first download or stage the FASTQs, then run Cell Ranger
 for each sample before starting the R workflow.
 
+**Shortcut for a quick test.** The repository already includes the Cell Ranger
+output of the two samples, so the FASTQ download and Cell Ranger steps can be
+skipped. `ScWT/` and `Scpifq/` sit at the top level of the repository and contain
+only the files the workflow needs: `outs/filtered_feature_bc_matrix/`
+(`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`), plus
+`outs/metrics_summary.csv` and `outs/web_summary.html`. They are the exact paths
+read by the sample manifest of Section 2, so after cloning the repository you can
+go directly to Part 1. The rest of this section is only needed to reproduce these
+matrices from the FASTQ files or to process other samples.
+
 The WT vs pifq FASTQ files used in this guide are public data from
 [Han et al., 2023, *Nature Plants*](https://www.nature.com/articles/s41477-023-01544-4#data-availability),
 deposited at the CNCB Genome Sequence Archive under BioProject
