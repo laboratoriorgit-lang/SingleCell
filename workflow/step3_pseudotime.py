@@ -3,7 +3,7 @@
 # are Python-only, so this step is .py. Run with the container python.
 
 # ==============================================================================
-# Section 23 - Setup
+# Section 18 - Setup
 # ==============================================================================
 import os
 
@@ -17,14 +17,14 @@ exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), g
 dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
 os.makedirs(dir_pseudotime, exist_ok=True)
 
-print("SECTION 23 COMPLETE: setup done")
+print("SECTION 18 COMPLETE: setup done")
 
 # ==============================================================================
-# Section 24 - Load curated object
+# Section 19 - Load curated object
 # ==============================================================================
-INPUT_H5AD     = "/workspace/results/objects/ath_sc_curated.h5ad"
+INPUT_H5AD     = "/workspace/results/objects/ath_sc_annotated.h5ad"
 # "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
-# Section 10 was used, or "celltype_curated" if Section 11 was used.
+# Supplementary Section S2 was used, or "celltype_curated" if Supplementary Section S3 was used.
 ANNOTATION_COL = "celltype"
 N_JOBS         = 4
 
@@ -36,7 +36,7 @@ adata, N_JOBS = load_curated_object(
 )
 
 # ==============================================================================
-# Section 25 - Cell type selection
+# Section 20 - Cell type selection
 # ==============================================================================
 # Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart):
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
@@ -52,10 +52,10 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 25 COMPLETE: cell type selection saved")
+print("SECTION 20 COMPLETE: cell type selection saved")
 
 # ==============================================================================
-# Section 26 - Trajectory inference
+# Section 21 - Trajectory inference
 # ==============================================================================
 # Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart -- pick one):
 ROOT_CLUSTER = "Epidermis Cotyledon.1"
@@ -77,10 +77,10 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 26 COMPLETE: trajectory inference saved")
+print("SECTION 21 COMPLETE: trajectory inference saved")
 
 # ==============================================================================
-# Section 27 - Plot genes on trajectory
+# Section 22 - Plot genes on trajectory
 # ==============================================================================
 GENES = ["AT3G24140", "AT4G21750", "AT4G20260"]
 name  = os.path.basename(selected_trajectory_dir)
@@ -96,10 +96,10 @@ fig = sc.pl.draw_graph(
 save_plot_18x18(fig, os.path.join(gene_plots_dir, f"{name}_gene_plots.pdf"))
 plt.close(fig)
 
-print("SECTION 27 COMPLETE: gene trajectory plots saved")
+print("SECTION 22 COMPLETE: gene trajectory plots saved")
 
 # ==============================================================================
-# Section 28 - Gene trends
+# Section 23 - Gene trends
 # ==============================================================================
 TOP_N           = 10
 HIGHLIGHT_GENES = ["AT3G24140", "AT4G21750", "AT4G20260"]
@@ -117,10 +117,10 @@ top_path, highlight_path = run_step29_gene_trends(
     spline_df    = SPLINE_DF,
 )
 
-print("SECTION 28 COMPLETE: gene trend plots saved")
+print("SECTION 23 COMPLETE: gene trend plots saved")
 
 # ==============================================================================
-# Section 29 - Final export
+# Section 24 - Final export
 # ==============================================================================
 # Save the fully processed pseudotime object (trajectory tree, pseudotime `t`,
 # milestones, segments and the force-directed layout) as the pipeline's final
@@ -129,4 +129,4 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"SECTION 29 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")

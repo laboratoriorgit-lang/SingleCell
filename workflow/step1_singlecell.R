@@ -143,7 +143,7 @@ saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
 # ==============================================================================
-# Section 4 - Harmony batch correction
+# Section 4 - Harmony integration
 # ==============================================================================
 output_dir <- dir_01
 
@@ -161,7 +161,7 @@ saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
 
 # ==============================================================================
-# Section 5 - Resolution optimization
+# Section 5 - Choosing the clustering resolution
 # ==============================================================================
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
@@ -237,18 +237,7 @@ save_pdf(
 message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
 
 # ==============================================================================
-# Section 8 - Annotated clustree
-# ==============================================================================
-output_dir <- dir_03
-
-plot_annotated_clustree(
-  ath_sc, clu, annot_col = "celltype", output_dir = output_dir
-)
-
-message("\nOK SECTION 8 COMPLETE: annotated clustree saved")
-
-# ==============================================================================
-# Section 9 - Gene expression visualization
+# Section 8 - Gene expression visualization
 # ==============================================================================
 gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
 
@@ -271,87 +260,26 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
+message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
 
 # ==============================================================================
-# Section 10 - Cell-type grouping [optional]
-# ==============================================================================
-# Merge the two epidermis cotyledon subclusters into a single label.
-# Set grouping <- c() to skip this step (celltype_grouped == celltype).
-grouping <- c(
-  "Epidermis Cotyledon.1" = "Epidermis Cotyledon",
-  "Epidermis Cotyledon.2" = "Epidermis Cotyledon"
-)
-
-output_dir <- dir_05
-
-if (length(grouping) > 0) {
-  ath_sc$celltype_grouped <- recode(ath_sc$celltype, !!!grouping)
-} else {
-  ath_sc$celltype_grouped <- ath_sc$celltype
-}
-
-save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype_grouped",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
-  "umap_grouped.pdf"
-)
-
-message("\nOK SECTION 10 COMPLETE: cell-type grouping complete")
-
-# ==============================================================================
-# Section 11 - Subcluster marker inspection [optional]
-# ==============================================================================
-output_dir <- dir_05
-Idents(ath_sc) <- "celltype"
-
-# 1. Inspect a cluster (saves the combined subcluster + marker figure)
-inspect_subcluster_markers(
-  ath_sc, cluster_id = "Mesophyll",
-  marker_table = marker_table, output_dir = output_dir
-)
-
-# 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
-#    then curate them in one call. Here Mesophyll's subclusters all map back
-#    to "Mesophyll" (no relabeling) -- use this pattern when inspection
-#    confirms the original label was already correct:
-reassign <- list(
-  "Mesophyll" = c("others" = "Mesophyll")
-)
-ath_sc <- curate_clusters(
-  ath_sc, reassign,
-  marker_table = marker_table, output_dir = output_dir
-)
-
-# 3. Save the curated annotation UMAP
-save_pdf(
-  DimPlot(ath_sc, group.by = "celltype_curated",
-          label = TRUE, repel = TRUE, raster = FALSE),
-  "umap_curated.pdf"
-)
-
-message("\nOK SECTION 11 COMPLETE: curation complete")
-
-# ==============================================================================
-# Section 12 - Export the curated object
+# Section 9 - Export the annotated object
 # ==============================================================================
 # Checkpoint - restore with:
-#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_curated.rds"))
-saveRDS(ath_sc, file.path(dir_objects, "ath_sc_curated.rds"))
+#   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
 
-# Export the curated object to AnnData h5ad format for Python-based
+# Export the annotated object to AnnData h5ad format for Python-based
 # trajectory and velocity analyses.
 export_to_scanpy(
   ath_sc,
-  file.path(dir_objects, "ath_sc_curated.h5ad")
+  file.path(dir_objects, "ath_sc_annotated.h5ad")
 )
 
 # To export a specific cell type only:
 # export_to_scanpy(
-#   subset(ath_sc, subset = celltype_curated == "guard cell"),
+#   subset(ath_sc, subset = celltype == "guard cell"),
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK SECTION 12 COMPLETE: curated object saved (.rds + .h5ad)")
+message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
