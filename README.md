@@ -134,6 +134,8 @@ SingleCell/
 ├── docker-compose.yml                  # pulls psblab/scrnaseq:latest, mounts repo at /workspace
 ├── .Rprofile                           # sets RETICULATE_PYTHON for the container's venv
 ├── README.md
+├── ScWT/outs/                          # Cell Ranger output of the WT sample (filtered matrix + summaries), ready to use
+├── Scpifq/outs/                        # Cell Ranger output of the pifq sample, same layout
 ├── data/
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
@@ -173,6 +175,8 @@ results/
 ## Pipeline walkthrough
 
 ### Part 0 — Cell Ranger (`workflow/step0_cellranger.sh`)
+
+**Quick test without Part 0:** `ScWT/` and `Scpifq/` are already in the repository (only `outs/filtered_feature_bc_matrix/`, `metrics_summary.csv` and `web_summary.html` of each sample, about 110 MB in total), at the paths read by `step1_singlecell.R`. Clone the repository and start directly at Part 1. Part 0 is only needed to reproduce these matrices from the FASTQ files or to process other samples.
 
 Reference script (not meant to run unattended): install Cell Ranger 9.0.1, download FASTQ for accession CRA010863 (WT = CRR775298, *pifq* = CRR775297) from the BIG Data Center, build the Cell Ranger reference from the bundled TAIR10.1 genome + Araport11 GTF (`cellranger mkref`), then run `cellranger count` per sample. Requires a signed, account-tied 10x download URL that cannot be hard-coded — copy it from the 10x Genomics downloads page.
 
