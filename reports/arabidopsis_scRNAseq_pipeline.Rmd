@@ -1654,7 +1654,7 @@ Up to three annotation columns can be present, depending on which optional
   The rawest of the three, and always present.
 - `celltype_grouped` -- present only if Supplementary Section S2 was run. Same as `celltype`,
   but with related subclusters merged into a single label (e.g. the two
-  epidermis cotyledon subclusters collapsed into one).
+  mesophyll subclusters collapsed into one).
 - `celltype_curated` -- present only if Supplementary Section S3 was run. The manually
   curated annotation, built by inspecting and relabeling subclusters.
 
@@ -1663,9 +1663,9 @@ went in Step 1: `celltype` if Supplementary Sections S2 and S3 were skipped,
 `celltype_grouped` if only Supplementary Section S2 was used, and
 `celltype_curated` if Supplementary Section S3 was used.
 
-The example below uses `celltype`, the rawest of the three. Under this column,
-epidermis cotyledon is split into `Epidermis Cotyledon.1` and `.2` -- both
-options for handling this are shown in Sections 20-21 below.
+The example below uses `celltype`. With the current marker table the cotyledon
+epidermis is a single label, `Epidermis Cotyledon`, which is the one used in
+Sections 20 and 21.
 
 The function also standardizes coordinate names so the object works cleanly with
 Scanpy. It prints the annotation columns available in the loaded object -- use
@@ -1698,43 +1698,16 @@ Representative output from Section 19:
 
 This section selects which cell types will be used for trajectory inference. The
 list is set in `TRAJECTORY_CLUSTERS`, and the names must match the cell-type
-labels printed in Section 24.
+labels printed in Section 19.
 
-In this report, only epidermis cotyledon is selected. The preview UMAP shows
-these cells before fitting the trajectory, which helps confirm that the intended
-population was chosen.
+In this report, only the cotyledon epidermis is selected. With the current marker
+table it is a single label, `Epidermis Cotyledon`. The preview UMAP shows these
+cells before fitting the trajectory, which helps confirm that the intended
+population was chosen. If you used the optional grouping or curation
+(Supplementary Sections S2 and S3), set `ANNOTATION_COL` in Section 19 to that
+column and use its labels here.
 
-The exact label(s) to use here depend on which `ANNOTATION_COL` was set in
-Section 19:
-
-- With `ANNOTATION_COL = "celltype"` (raw), the two cotyledon subclusters are
-  told apart and both must be listed.
-- With `ANNOTATION_COL = "celltype_grouped"` (Supplementary Section S2), all cotyledon cells
-  are already one population.
-
-**Tip:** if the goal is to evaluate the trajectory across the whole cell type
-without splitting it into subclusters, `celltype_grouped` is the better choice
-here.
-
-Option A -- with `ANNOTATION_COL = "celltype"` (raw, subclusters told apart):
-
-```{python section_20_cell_selection_celltype, eval=FALSE}
-TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
-
-adata_sub = preview_trajectory_selection(
-    adata          = adata,
-    clusters       = TRAJECTORY_CLUSTERS,
-    annotation_col = ANNOTATION_COL,
-    dir_pseudotime = dir_pseudotime,
-)
-
-print("SECTION 20 COMPLETE: cell type selection saved")
-```
-
-Option B -- with `ANNOTATION_COL = "celltype_grouped"` (all cotyledon cells as
-one population; preferred when subclusters should not be told apart):
-
-```{python section_20_cell_selection_grouped, eval=FALSE}
+```{python section_20_cell_selection, eval=FALSE}
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
@@ -1757,9 +1730,7 @@ Representative output from Section 20:
 
 This section fits the pseudotime trajectory for the selected cells. The
 `ROOT_CLUSTER` defines where pseudotime starts, and must be a single existing
-label (not a list): with raw `celltype` this means picking one of the two
-cotyledon subclusters (the larger one, `.1`, is used below); with
-`celltype_grouped` it is simply the merged `Epidermis Cotyledon` label.
+label (not a list): here, `Epidermis Cotyledon`.
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
@@ -1770,32 +1741,7 @@ Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
 visualization, and selected root cell plot inside `results/09_pseudotime/`.
 
-Option A -- with `ANNOTATION_COL = "celltype"` (raw, pick one of the two
-cotyledon subclusters as root -- the larger one, `.1`, is used here):
-
-```{python section_21_trajectory_celltype, eval=FALSE}
-ROOT_CLUSTER = "Epidermis Cotyledon.1"
-
-TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
-]
-
-adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
-    adata           = adata,
-    clusters        = TRAJECTORY_CLUSTERS,
-    root_cluster    = ROOT_CLUSTER,
-    annotation_col  = ANNOTATION_COL,
-    output_base_dir = dir_pseudotime,
-    runs            = TRAJECTORY_RUNS,
-)
-
-print("SECTION 21 COMPLETE: trajectory inference saved")
-```
-
-Option B -- with `ANNOTATION_COL = "celltype_grouped"` (preferred when
-evaluating the trajectory across the whole cell type):
-
-```{python section_21_trajectory_grouped, eval=FALSE}
+```{python section_21_trajectory, eval=FALSE}
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
