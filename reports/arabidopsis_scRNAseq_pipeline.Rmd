@@ -1785,18 +1785,20 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 print("SECTION 21 COMPLETE: trajectory inference saved")
 ```
 
+\newpage
+
 Representative outputs from Section 21 for the epidermis-cotyledon-only trajectory using
 `nodes=50`, `sigma=0.3`, `lambda=200`, and `eigs=3`:
 
 ```{=latex}
 \begin{center}
 ```
-![Trajectory graph for the epidermis-cotyledon-only run (`nodes=50`, `sigma=0.3`, `lambda=200`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=30%} ![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=30%}
+![Trajectory graph for the epidermis-cotyledon-only run (`nodes=50`, `sigma=0.3`, `lambda=200`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=46%} ![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=46%}
 ```{=latex}
 \end{center}
 ```
 
-![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=30%}
+![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=46%}
 
 ```{=latex}
 \clearpage
@@ -1829,7 +1831,7 @@ Representative output from Section 22:
 
 ```{=latex}
 \begin{center}
-\includegraphics[width=0.45\linewidth]{assets/pseudotime_gene_plots.pdf}
+\includegraphics[width=0.6\linewidth]{assets/pseudotime_gene_plots.pdf}
 \end{center}
 ```
 

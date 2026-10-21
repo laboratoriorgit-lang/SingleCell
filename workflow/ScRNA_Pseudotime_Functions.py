@@ -388,7 +388,8 @@ def summarize_along_pseudotime(adata, columns=("nFeature_RNA",), genes=None, gro
     return res
 
 
-# Marks the root cell with a large red star on a plot that uses a draw_graph basis.
+# Marks the root cell with a red dot, 30% larger than the cells already drawn on the
+# axis, on a plot that uses a draw_graph basis.
 def mark_root_cell(ax, adata, basis):
     if "is_root" not in adata.obs.columns:
         return
@@ -397,8 +398,11 @@ def mark_root_cell(ax, adata, basis):
     if len(idx) == 0 or key not in adata.obsm:
         return
     xy = np.asarray(adata.obsm[key])
-    ax.scatter(xy[idx, 0], xy[idx, 1], s=900, marker="*", c="red",
-               edgecolor="black", linewidth=2, zorder=10)
+    sizes = [np.median(c.get_sizes()) for c in ax.collections
+             if hasattr(c, "get_sizes") and len(c.get_sizes()) > 0]
+    base  = float(np.median(sizes)) if sizes else 26
+    ax.scatter(xy[idx, 0], xy[idx, 1], s=1.3 * base, marker="o", c="red",
+               edgecolor="black", linewidth=0.5, zorder=10)
 
 
 def plot_pseudotime_trajectory(
@@ -431,7 +435,7 @@ def plot_pseudotime_trajectory(
         show       = False,
     )
     mark_root_cell(ax, adata, basis)
-    title = f"{name} — pseudotime trajectory (red star = root cell)"
+    title = f"{name} — pseudotime trajectory (red dot = root cell)"
     if param_label:
         title += f"\n{param_label}"
     ax.set_title(title)
