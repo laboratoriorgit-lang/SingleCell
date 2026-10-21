@@ -1319,28 +1319,19 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 )
 
 # Inspect cells per pseudo-replicate for one cell type
-table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
+table(cell_type_subsets_replicates[["Epidermis Cotyledon"]]$replicate)
 
 message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
 ```
 
-Cell types present in only one condition (here cluster `9`, with only 78
-cells) are dropped, since a WT vs pifq contrast needs both conditions
-represented. Ten cell types are retained.
+Cell types present in only one condition are dropped, since a WT vs pifq
+contrast needs both conditions represented.
 
-Cells per pseudo-replicate (first two cell types shown):
-
-| Cell type | Replicate | Cells |
-|---|---|---:|
-| Mesophyll | pifq_rep1 | 499 |
-| Mesophyll | pifq_rep2 | 527 |
-| Mesophyll | pifq_rep3 | 488 |
-| Mesophyll | WT_rep1 | 72 |
-| Mesophyll | WT_rep2 | 76 |
-| Mesophyll | WT_rep3 | 77 |
-| Epidermis Cotyledon | pifq_rep1 | ... |
-| Epidermis Cotyledon | pifq_rep2 | ... |
-| ... | ... | ... |
+The last line of the block prints the number of cells in each pseudo-replicate of
+`Epidermis Cotyledon`: three groups per condition (`pifq_rep1` to `pifq_rep3` and
+`WT_rep1` to `WT_rep3`). Cells are assigned to the groups at random, so the three
+groups of one condition have similar sizes, while the two conditions can have very
+different numbers of cells.
 
 ## Section 12 - Pseudobulk tables and DESeq2
 

@@ -84,7 +84,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 )
 
 # Inspect cells per pseudo-replicate for one cell type
-table(cell_type_subsets_replicates[["Mesophyll"]]$replicate)
+table(cell_type_subsets_replicates[["Epidermis Cotyledon"]]$replicate)
 
 message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
 
