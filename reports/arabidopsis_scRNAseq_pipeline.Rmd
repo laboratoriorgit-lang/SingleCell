@@ -1728,9 +1728,30 @@ Representative output from Section 20:
 
 ## Section 21 - Trajectory inference
 
-This section fits the pseudotime trajectory for the selected cells. The
-`ROOT_CLUSTER` defines where pseudotime starts, and must be a single existing
-label (not a list): here, `Epidermis Cotyledon`.
+This section fits the pseudotime trajectory for the selected cells and sets its
+root. A trajectory tree has no direction of its own: read from one end or from
+the other it fits the data equally well, so the start has to be anchored to
+something outside the tree. Trajectory tools therefore ask for a start cell or
+population based on biological knowledge. The root is set as follows (`root_method = "auto"`):
+
+- **Two or more cell types in the trajectory:** the root is the most-connected
+  cell of the cell type given in `ROOT_CLUSTER` (a single existing label, not a
+  list).
+- **A single cell type (this report):** there is no population to name as the
+  root, and the most-connected cell is the center of the cloud, so it falls in
+  the middle of the tree and moves with the graph parameters. Instead, the root
+  is the tip of the tree with the highest mean number of detected genes per
+  cell. The number of detected genes is a proxy of developmental potential in
+  single-cell data, and scFates supports choosing the root
+  tip from a cell-level score. The root cell is the cell of
+  that tip with the lowest pseudotime.
+
+The single-cell rule is an assumption, not a measurement: the number of detected
+genes has not been validated broadly in plants, and the direction of pseudotime
+is conventional. The function prints a note when it applies the rule. The root
+can be set from other biology with `root_score` (an `obs` column or a gene ID;
+`root_lowest = TRUE` for an end-state marker) or with `root_method = "tip"` and
+`root_tip` (a node number of the principal tree).
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
@@ -1739,9 +1760,13 @@ overwriting previous results. The run shown here uses 50 nodes, `sigma = 0.3`,
 
 Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
-visualization, and selected root cell plot inside `results/09_pseudotime/`.
+visualization, and root cell plot inside `results/09_pseudotime/`.
 
 ```{python section_21_trajectory, eval=FALSE}
+# ROOT_CLUSTER is the root cell type when the trajectory has two or more cell
+# types. With a single cell type, as here, the root is set automatically at the
+# tip of the tree with the most detected genes (root_score, root_lowest,
+# root_tip and root_method of run_trajectory_runs() change it).
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
@@ -1771,7 +1796,7 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 \end{center}
 ```
 
-![Root cell (red) automatically selected within the epidermis cotyledon population as the most-connected cell — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=30%}
+![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=30%}
 
 ```{=latex}
 \clearpage
