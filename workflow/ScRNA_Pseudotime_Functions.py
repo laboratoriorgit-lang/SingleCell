@@ -179,6 +179,19 @@ def trajectory_run(nodes=50, sigma=0.2, lambda_value=60, eigs=20, seed=3):
     }
 
 
+# Hidden legacy helper, not called by the main workflow unless root_method is
+# "auto" with several cell types or "most_connected": the most-connected cell of the
+# root_cluster population (largest summed connectivity within that population).
+# With a single cell type this is the center of the cloud and it changes with the
+# graph parameters, which is why the single-type case uses the tip rule instead.
+def _most_connected_cell(adata, annotation_col, root_cluster):
+    mask          = (adata.obs[annotation_col] == root_cluster).to_numpy()
+    cluster_cells = adata.obs_names[mask]
+    sub_conn      = adata.obsp["connectivities"][mask][:, mask]
+    degrees       = np.array(sub_conn.sum(axis=1)).flatten()
+    return cluster_cells[degrees.argmax()]
+
+
 # =============================================================================
 # STEP 27 — build_pseudotime_trajectory
 # =============================================================================
@@ -197,6 +210,10 @@ def build_pseudotime_trajectory(
     n_eigs      = 20,   # dimensions retained (must be strictly < n_components)
     n_neighbors = 50,   # neighbors for final graph (higher = smoother layout)
     seed        = 3,    # random seed for reproducibility across runs
+    root_method = "auto",           # "auto" (default), "score" or "tip"; see the root selection notes below
+    root_score  = "nFeature_RNA",   # obs column or gene ID that anchors the root (single cell type)
+    root_lowest = False,            # True = the root is where root_score is lowest
+    root_tip    = None,             # "tip": node number of the tip (see the tree figure)
 ):
     # Subset to selected cell types
     if clusters:
@@ -230,16 +247,63 @@ def build_pseudotime_trajectory(
         ppt_sigma  = sigma,
     )
 
-    # Root selection: most-connected cell within root_cluster
-    mask          = (adata.obs[annotation_col] == root_cluster).to_numpy()
-    cluster_cells = adata.obs_names[mask]
-    sub_conn      = adata.obsp["connectivities"][mask][:, mask]
-    degrees       = np.array(sub_conn.sum(axis=1)).flatten()
-    root_cell     = cluster_cells[degrees.argmax()]
+    # Root selection (see "Root selection for pseudotime" in the README).
+    #   "auto" (default):
+    #       - more than one cell type in the trajectory: the root is the most-connected
+    #         cell of the selected root_cluster (the root cell type chosen by the user).
+    #       - a single cell type: the root is placed automatically at the TIP of the
+    #         tree where the mean of root_score is highest (lowest if root_lowest).
+    #         root_score defaults to the number of detected genes per cell, a proxy of
+    #         developmental potential (Gulati et al. 2020). It is an assumption, so a
+    #         message is printed; the direction of pseudotime is conventional.
+    #   "score": always use the tip rule above, even with several cell types.
+    #   "tip": the root is the tip with node number root_tip.
+    #   "most_connected": hidden legacy option, the most-connected cell of root_cluster
+    #         (see _most_connected_cell); not used by the main workflow.
+    n_types = adata.obs[annotation_col].nunique()
+    method  = root_method
+    if method == "auto":
+        method = "most_connected" if n_types > 1 else "score"
+        label  = "selected root cell type" if n_types > 1 else "automatic tip rule (single cell type)"
+    else:
+        label  = method
 
-    adata.obs["is_root"] = adata.obs_names == root_cell
-    scf.tl.root(adata, root="is_root")
-    scf.tl.pseudotime(adata)
+    if method == "most_connected":
+        root_cell = _most_connected_cell(adata, annotation_col, root_cluster)
+        adata.obs["is_root"] = adata.obs_names == root_cell
+        scf.tl.root(adata, root="is_root")
+        scf.tl.pseudotime(adata)
+    else:
+        if method == "tip":
+            if root_tip is None:
+                raise ValueError("root_method = 'tip' needs root_tip (a tip node number).")
+            scf.tl.root(adata, root=int(root_tip))
+        elif method == "score":
+            ensure_expression_in_X(adata)
+            if root_score not in adata.obs.columns and root_score not in adata.var_names:
+                # number of detected genes per cell, computed from the expression matrix
+                adata.obs[root_score] = np.asarray((adata.X > 0).sum(axis=1)).ravel()
+            tip_means = None
+            if root_score in adata.obs.columns:
+                # mean of the score at each tip node (soft cell-to-node assignment, as scFates does)
+                R = adata.obsm["X_R"]
+                R = R.toarray() if hasattr(R, "toarray") else np.asarray(R)
+                node_means = (R.T @ adata.obs[root_score].values.astype(float)) / np.maximum(R.sum(0), 1e-9)
+                tip_means  = {int(t): float(node_means[int(t)]) for t in adata.uns["graph"]["tips"]}
+            scf.tl.root(adata, root=root_score, tips_only=True, min_val=root_lowest)
+        else:
+            raise ValueError(f"Unknown root_method '{root_method}'.")
+        scf.tl.pseudotime(adata)
+        # root cell = the cell with the smallest pseudotime (closest to the root tip)
+        root_cell = adata.obs["t"].idxmin()
+        adata.obs["is_root"] = adata.obs_names == root_cell
+    print(f"✓ Root: {label} | root node {int(adata.uns['graph']['root'])}")
+    if method == "score":
+        if tip_means:
+            print(f"  mean {root_score} per tip: " + ", ".join(f"tip {t} = {m:.1f}" for t, m in tip_means.items()))
+        print("  NOTE: with a single cell type the data do not say where the trajectory starts. "
+              "The root was set by an automatic rule (an assumption), so the direction of pseudotime "
+              "is conventional. Use root_score, root_tip or the tree figure to set it from your biology.")
 
     print(f"✓ Trajectory built — root cell: {root_cell}")
     return adata
@@ -303,6 +367,40 @@ def export_pseudotime_table(adata, name, output_dir, annotation_col=None):
 
 
 # Overlay the principal graph and pseudotime trajectory on the FA layout.
+# Optional diagnostic (not called by the main workflow): mean of numeric obs columns
+# and of selected genes along pseudotime, in n_bins equal-size bins, plus the share of
+# each group of group_col (for example "condition"). Use it to check what the pseudotime
+# axis mixes with, and how well supported the chosen root is.
+def summarize_along_pseudotime(adata, columns=("nFeature_RNA",), genes=None, group_col=None, n_bins=10):
+    t   = adata.obs["t"].values
+    out = pd.DataFrame({"bin": pd.qcut(t, n_bins, labels=False)}, index=adata.obs_names)
+    for c in columns:
+        out[c] = adata.obs[c].values
+    layer = adata.layers["logcounts"] if "logcounts" in adata.layers else adata.X
+    for name, gid in (genes or {}).items():
+        col = layer[:, list(adata.var_names).index(gid)]
+        out[name] = np.asarray(col.todense() if hasattr(col, "todense") else col).ravel()
+    if group_col is not None:
+        for grp in adata.obs[group_col].astype(str).unique():
+            out[f"{group_col}={grp}"] = (adata.obs[group_col].astype(str).values == grp).astype(float)
+    res = out.groupby("bin").mean().round(2)
+    res.insert(0, "n", out.groupby("bin").size())
+    return res
+
+
+# Marks the root cell with a large red star on a plot that uses a draw_graph basis.
+def mark_root_cell(ax, adata, basis):
+    if "is_root" not in adata.obs.columns:
+        return
+    idx = np.where(adata.obs["is_root"].values)[0]
+    key = f"X_{basis}"
+    if len(idx) == 0 or key not in adata.obsm:
+        return
+    xy = np.asarray(adata.obsm[key])
+    ax.scatter(xy[idx, 0], xy[idx, 1], s=900, marker="*", c="red",
+               edgecolor="black", linewidth=2, zorder=10)
+
+
 def plot_pseudotime_trajectory(
     adata,
     name,
@@ -332,7 +430,8 @@ def plot_pseudotime_trajectory(
         ax         = ax,
         show       = False,
     )
-    title = f"{name} — pseudotime trajectory"
+    mark_root_cell(ax, adata, basis)
+    title = f"{name} — pseudotime trajectory (red star = root cell)"
     if param_label:
         title += f"\n{param_label}"
     ax.set_title(title)
@@ -378,6 +477,7 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)
         show               = False,
         return_fig         = True,
     )
+    mark_root_cell(fig.axes[0], plot_data, draw_graph_basis(plot_data))
     out_file = os.path.join(output_dir, f"{name}_root_cell.pdf")
     save_plot_18x18(fig, out_file)
 
@@ -402,6 +502,10 @@ def run_trajectory_runs(
     runs,
     selected_run=None,
     show_inline=True,
+    root_method="auto",
+    root_score="nFeature_RNA",
+    root_lowest=False,
+    root_tip=None,
 ):
     trajectory_runs = {}
 
@@ -419,6 +523,10 @@ def run_trajectory_runs(
         n_eigs      = run.get("eigs", run.get("n_eigs", 20))
         n_neighbors = run.get("n_neighbors", 50)
         seed        = run.get("seed", 3)
+        r_method    = run.get("root_method", root_method)
+        r_score     = run.get("root_score", root_score)
+        r_lowest    = run.get("root_lowest", root_lowest)
+        r_tip       = run.get("root_tip", root_tip)
 
         param_label = (
             f"nodes={nodes}, sigma={sigma}, lambda={ppt_lambda}, eigs={n_eigs}"
@@ -439,10 +547,15 @@ def run_trajectory_runs(
             n_components   = 50,
             n_neighbors    = n_neighbors,
             seed           = seed,
+            root_method    = r_method,
+            root_score     = r_score,
+            root_lowest    = r_lowest,
+            root_tip       = r_tip,
         )
 
         params = dict(run)
-        params.update({"root_cluster": root_cluster})
+        params.update({"root_cluster": root_cluster, "root_method": r_method,
+                       "root_score": r_score, "root_lowest": r_lowest})
         adata_run.write_h5ad(os.path.join(run_dir, f"{run_name}_trajectory.h5ad"))
         pd.Series(params).to_csv(os.path.join(run_dir, "parameters.tsv"), sep="\t", header=False)
 
