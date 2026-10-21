@@ -1809,8 +1809,9 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 This section plots selected genes on the fitted epidermis cotyledon trajectory.
 `plot_genes_on_trajectory()` takes the genes (and optional panel titles), so
 changing `genes` is the only thing needed to inspect another marker. The figure
-is saved automatically in the run folder, as
-`gene_plots/<run name>_gene_plots.pdf`, and the path is printed.
+is saved automatically in the run folder and named after the plotted genes
+(`gene_plots/trajectory_gene_AT4G21750.pdf` here; several genes are joined with
+`_`), and the path is printed.
 
 For this version, Section 22 is focused only on ATML1. In the count matrix ATML1
 is stored as the locus `AT4G21750`, so the code uses `AT4G21750` while the text
@@ -1993,7 +1994,7 @@ results/
         |-- <run_name>_root_cell.pdf
         |-- <run_name>_pseudotime_by_cell.tsv
         |-- <run_name>_trajectory.h5ad
-        |-- gene_plots/<run_name>_gene_plots.pdf
+        |-- gene_plots/trajectory_gene_<gene>.pdf
         `-- gene_trends/
             |-- step29_gene_trends_top10_FINAL_24x18.pdf
             `-- step29_gene_trends_highlight_list_FINAL_24x18.pdf
