@@ -38,12 +38,7 @@ adata, N_JOBS = load_curated_object(
 # ==============================================================================
 # Section 20 - Cell type selection
 # ==============================================================================
-# Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart):
-TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon.1", "Epidermis Cotyledon.2"]
-
-# Option B -- ANNOTATION_COL = "celltype_grouped" (all cotyledon cells as one
-# population; preferred when subclusters should not be told apart):
-# TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
 adata_sub = preview_trajectory_selection(
     adata          = adata,
@@ -57,12 +52,7 @@ print("SECTION 20 COMPLETE: cell type selection saved")
 # ==============================================================================
 # Section 21 - Trajectory inference
 # ==============================================================================
-# Option A -- ANNOTATION_COL = "celltype" (raw, subclusters told apart -- pick one):
-ROOT_CLUSTER = "Epidermis Cotyledon.1"
-
-# Option B -- ANNOTATION_COL = "celltype_grouped" (preferred when evaluating
-# the trajectory across the whole cell type):
-# ROOT_CLUSTER = "Epidermis Cotyledon"
+ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
     trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
