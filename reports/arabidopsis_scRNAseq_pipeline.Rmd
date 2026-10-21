@@ -1808,7 +1808,9 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 
 This section plots selected genes on the fitted epidermis cotyledon trajectory.
 `plot_genes_on_trajectory()` takes the genes (and optional panel titles), so
-changing `genes` is the only thing needed to inspect another marker.
+changing `genes` is the only thing needed to inspect another marker. The figure
+is saved automatically in the run folder, as
+`gene_plots/<run name>_gene_plots.pdf`, and the path is printed.
 
 For this version, Section 22 is focused only on ATML1. In the count matrix ATML1
 is stored as the locus `AT4G21750`, so the code uses `AT4G21750` while the text
@@ -1818,10 +1820,9 @@ on the epidermis cotyledon trajectory layout.
 ```{python section_22_gene_plots, eval=FALSE}
 plot_genes_on_trajectory(
     adata_traj,
-    genes      = ["AT4G21750"],        # AT4G21750 = ATML1
-    titles     = ["ATML1 (AT4G21750)"],
-    output_dir = os.path.join(selected_trajectory_dir, "gene_plots"),
-    name       = os.path.basename(selected_trajectory_dir),
+    genes   = ["AT4G21750"],           # AT4G21750 = ATML1
+    titles  = ["ATML1 (AT4G21750)"],
+    run_dir = selected_trajectory_dir,
 )
 
 print("SECTION 22 COMPLETE: gene trajectory plots saved")

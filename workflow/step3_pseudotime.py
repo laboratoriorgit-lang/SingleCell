@@ -79,9 +79,8 @@ print("SECTION 21 COMPLETE: trajectory inference saved")
 # ==============================================================================
 plot_genes_on_trajectory(
     adata_traj,
-    genes      = ["AT3G24140", "AT4G21750", "AT4G20260"],
-    output_dir = os.path.join(selected_trajectory_dir, "gene_plots"),
-    name       = os.path.basename(selected_trajectory_dir),
+    genes   = ["AT3G24140", "AT4G21750", "AT4G20260"],
+    run_dir = selected_trajectory_dir,
 )
 
 print("SECTION 22 COMPLETE: gene trajectory plots saved")
