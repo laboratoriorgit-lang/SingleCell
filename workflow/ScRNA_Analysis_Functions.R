@@ -209,7 +209,7 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 #' @return A ggplot object.
 #' @export
 plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
-                      pt_size = 2.5, legend_text_size = NULL,
+                      pt_size = 3.5, legend_text_size = NULL,
                       legend_key_cm = NULL, legend_point_size = NULL,
                       axis_title_size = 51, axis_text_size = 41,
                       label = NULL, label_size = NULL,
@@ -217,10 +217,10 @@ plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
   is_celltype <- grepl("^celltype", group_by)
 
   if (is.null(label))             label             <- is_celltype || group_by == "seurat_clusters"
-  if (is.null(legend_text_size))  legend_text_size  <- if (is_celltype) 48   else 54
-  if (is.null(legend_key_cm))     legend_key_cm     <- if (is_celltype) 2.5  else 3.5
-  if (is.null(legend_point_size)) legend_point_size <- if (is_celltype) 10   else 17
-  if (is.null(label_size))        label_size        <- if (is_celltype) 14   else 20
+  if (is.null(legend_text_size))  legend_text_size  <- if (is_celltype) 65   else 73
+  if (is.null(legend_key_cm))     legend_key_cm     <- if (is_celltype) 3.4  else 4.7
+  if (is.null(legend_point_size)) legend_point_size <- if (is_celltype) 14   else 23
+  if (is.null(label_size))        label_size        <- if (is_celltype) 19   else 27
   if (is.null(repel))             repel             <- is_celltype
   if (is.null(raster) && is_celltype) raster <- FALSE
 
