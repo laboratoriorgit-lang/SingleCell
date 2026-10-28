@@ -217,7 +217,7 @@ plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
   is_celltype <- grepl("^celltype", group_by)
 
   if (is.null(label))             label             <- is_celltype || group_by == "seurat_clusters"
-  if (is.null(legend_text_size))  legend_text_size  <- if (is_celltype) 48   else 54
+  if (is.null(legend_text_size))  legend_text_size  <- if (is_celltype) 30   else 54
   if (is.null(legend_key_cm))     legend_key_cm     <- if (is_celltype) 2.5  else 3.5
   if (is.null(legend_point_size)) legend_point_size <- if (is_celltype) 10   else 17
   if (is.null(label_size))        label_size        <- if (is_celltype) 11   else 16
