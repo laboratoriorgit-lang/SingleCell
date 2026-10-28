@@ -682,6 +682,9 @@ set.seed(1807)
 # Enable compatibility behavior required by Seurat 5.
 options(Seurat.allow.s4 = FALSE)
 
+# Suppress ComplexHeatmap messages about raster mode.
+ComplexHeatmap::ht_opt$message <- FALSE
+
 # Set the working directory for the analysis.
 # From this point, relative paths are interpreted from DATA_DIR.
 setwd(DATA_DIR)
