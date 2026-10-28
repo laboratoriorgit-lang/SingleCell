@@ -499,9 +499,11 @@ def plot_pseudotime_trajectory(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=360,
-    node_size=80,
+    cell_size=540,
+    node_size=0,
     axis_title_size=29,
+    trajectory_s=75,
+    trajectory_scale=0.9,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -521,8 +523,8 @@ def plot_pseudotime_trajectory(
         color_seg  = "t",
         basis      = basis,
         frameon    = False,
-        s          = 50,
-        scale_path = 0.6,
+        s          = trajectory_s,
+        scale_path = trajectory_scale,
         ax         = ax,
         show       = False,
     )
