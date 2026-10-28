@@ -726,8 +726,9 @@ def run_trajectory_runs(
 # plotted genes, as in Section 8: one gene -> trajectory_gene_AT4G21750.pdf, several
 # -> trajectory_gene_AT3G24140_AT4G21750.pdf. Puts the expression in .X if needed,
 # creates the folder, closes the figure, and returns the saved path.
-def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=22,
-                             sort_order=True, filename=None, ncols=None):
+def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=36,
+                             sort_order=True, filename=None, ncols=None,
+                             point_size=120, axis_title_size=36, axis_text_size=29):
     ensure_expression_in_X(adata)
     out_dir = os.path.join(run_dir, "gene_plots")
     os.makedirs(out_dir, exist_ok=True)
@@ -735,10 +736,14 @@ def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=22,
     # equivalent of order = TRUE in Seurat's FeaturePlot).
     kw = {"ncols": ncols} if ncols else {}
     fig = sc.pl.draw_graph(adata, color=genes, title=titles if titles is not None else genes,
-                           sort_order=sort_order, show=False, return_fig=True, **kw)
+                           sort_order=sort_order, show=False, return_fig=True,
+                           size=point_size, **kw)
     for ax in fig.axes:
         if ax.get_title():
             ax.set_title(ax.get_title(), fontsize=title_size)
+        ax.xaxis.label.set_fontsize(axis_title_size)
+        ax.yaxis.label.set_fontsize(axis_title_size)
+        ax.tick_params(axis='both', labelsize=axis_text_size)
     # filename: optional output name (default: trajectory_gene_<genes joined with _>.pdf)
     path = os.path.join(out_dir, filename or f"trajectory_gene_{'_'.join(genes)}.pdf")
     save_plot_18x18(fig, path)
