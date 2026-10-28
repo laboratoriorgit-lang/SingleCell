@@ -1,8 +1,10 @@
 ---
-title: "Results Report: WT vs pifq single-cell RNA-seq pipeline"
-subtitle: "Executed results — real figures from a fresh run using the bibliography annotation (celltype); code shown as in the methods paper"
-author: "SingleCell Pipeline"
-date: "2026-07-28"
+title: "A stepwise procedure for inferring gene regulatory networks and pseudotime-based trajectories from single-cell RNA-sequencing data"
+subtitle: "Riveras E.^1†^, Vergara M.^1†^, Moreno-Ramirez S.^2^, Gutiérrez RA^1^*"
+author: |
+  ^1^Facultad de Ciencias Biológicas, Pontificia Universidad Católica de Chile. Millennium Institute for Integrative Biology – Fundación Ciencia y Vida, Millennium Institute Center for Genome Regulation. Santiago, Chile.
+  ^2^Sainsbury Laboratory, University of Cambridge, Bateman Street, Cambridge CB2 1LR, UK.
+date: "2026"
 output:
   html_document:
     toc: true
@@ -92,11 +94,12 @@ trajectories from scRNA-seq data. To facilitate the implementation and
 reproducibility of these analyses, we provide a Docker image and a GitHub
 repository (github.com/laboratoriorgit-lang/SingleCell) containing all
 scripts, helper functions, reference files, container configuration, and
-environment YAML files. The workflow was applied to publicly available
+environment YAML files (plain-text configuration files that store settings
+in a human-readable format). The workflow was applied to publicly available
 scRNA-seq data from *Arabidopsis thaliana* seedlings and enables the
 identification of differentially expressed genes (DEGs) across cell types,
 gene regulatory networks, and developmental trajectories associated with
-epidermal differentiation. Although this guide focuses on scRNA-seq analysis
+ATML1-driven epidermal cell differentiation in cotyledons. Although this guide focuses on scRNA-seq analysis
 in *A. thaliana*, the workflow can be adapted to other organisms using
 appropriate reference genomes, genome annotations, and experimental designs.
 
@@ -154,10 +157,10 @@ To illustrate the complete workflow end to end, this document applies it to a
 public scRNA-seq dataset comparing wild-type and *pifq* mutant *Arabidopsis
 thaliana* seedlings, from raw Cell Ranger processing through cell-type
 annotation, differential expression, regulatory network inference, and a
-pseudotime trajectory of epidermal differentiation. Although the example
-organism is *A. thaliana*, none of the workflow logic is specific to it: the
-same steps apply to other species by substituting the reference genome,
-annotation, and marker gene set used for cell-type calling.
+pseudotime trajectory of ATML1-driven epidermal differentiation in cotyledons.
+Although the example organism is *A. thaliana*, none of the workflow logic is
+specific to it: the same steps apply to other species by substituting the
+reference genome, annotation, and marker gene set used for cell-type calling.
 
 ## About this document {-}
 
@@ -198,9 +201,17 @@ PCA/UMAP) risk stalling or exhausting memory.
 | Disk space | 80 GB free | 100 GB free |
 | Container runtime | Docker or Singularity/Apptainer (choose one; see "Container startup") | Singularity/Apptainer on a cluster; Docker Desktop on a personal computer |
 
+These requirements were estimated from test runs of the two-sample WT vs pifq
+dataset on a Linux server (Intel Xeon, 2.3 GHz). The exact CPU model matters
+less than the number of cores and available RAM: Cell Ranger and Seurat
+parallelize across cores, so more cores reduce runtime linearly up to a point.
+The RAM requirement is dominated by the merged Seurat object size, which scales
+with total cell count.
+
 This workflow is packaged as a single public image (`psblab/scrnaseq:latest`,
-on Docker Hub); the `docker-compose` YAML used to build and run it is kept in
-the repository. Any container runtime able to run that image works; the setup
+available at [hub.docker.com/r/psblab/scrnaseq](https://hub.docker.com/r/psblab/scrnaseq));
+the `docker-compose` YAML (a configuration file that defines how to build and
+run the container) used to build and run it is kept in the repository. Any container runtime able to run that image works; the setup
 below covers both Docker and Singularity/Apptainer (the latter common on HPC
 clusters, where Docker is usually not permitted).
 
@@ -342,10 +353,15 @@ may be installed but unusable if you are not in the `docker` group.
   (Singularity) available so I can run the public image
   `docker://psblab/scrnaseq:latest`."
 
-A container image is a single portable package holding a fixed, pre-installed
-set of R and Python libraries -- exactly the versions this pipeline was tested
-with. Anyone who runs the same image gets an identical environment, with no
-version-mismatch problems across machines, operating systems, or clusters.
+**What is a container?** A container is an isolated software environment that
+bundles an application with all its dependencies (libraries, packages, settings)
+so it runs the same way on any machine. A *container image* is the packaged
+snapshot you download; when you run it, it becomes a *container*. Think of the
+image as a recipe and the container as the dish you cook from it. This pipeline's
+image holds a fixed, pre-installed set of R and Python libraries — exactly the
+versions this pipeline was tested with. Anyone who runs the same image gets an
+identical environment, with no version-mismatch problems across machines,
+operating systems, or clusters.
 The container mounts the cloned repository itself as `/workspace`, so results
 are written back into the repository (`results/`). Since results are not
 pushed upstream, this is not a problem. The same public image (`psblab/scrnaseq`
@@ -463,7 +479,8 @@ matrices from the FASTQ files or to process other samples.
 
 The WT vs pifq FASTQ files used in this guide are public data from
 [Han et al., 2023, *Nature Plants*](https://www.nature.com/articles/s41477-023-01544-4#data-availability),
-deposited at the CNCB Genome Sequence Archive under BioProject
+deposited at the **CNCB** (China National Center for Bioinformation) Genome
+Sequence Archive — not NCBI — under BioProject
 [PRJCA016521](https://ngdc.cncb.ac.cn/bioproject/browse/PRJCA016521), run
 accession `CRA010863`. **Only two of the samples in that study are used here**
 (WT and pifq, listed below), not the full dataset, so results will differ from
@@ -531,6 +548,15 @@ cellranger count --localcores=10 --id=Scpifq --fastqs=/workspace/fastq/CRA010863
   --sample=Scpifq --transcriptome=Ara --create-bam false
 ```
 
+**What each option does:**
+
+- `--localcores=10`: number of CPU cores to use (adjust to your machine)
+- `--id=ScWT`: output folder name (one per sample)
+- `--fastqs=...`: directory containing the FASTQ files
+- `--sample=ScWT`: sample name prefix in the FASTQ filenames
+- `--transcriptome=Ara`: path to the reference built by `mkref`
+- `--create-bam false`: skip BAM file generation (saves disk space; not needed for this workflow)
+
 **Expected output:** each run creates a folder named after `--id` (`ScWT/`,
 `Scpifq/`) containing `outs/`, and ends with `Pipestance completed
 successfully!`. Inside `outs/`, `web_summary.html` is a self-contained QC
@@ -548,8 +574,12 @@ guidance).
 
 **Check the Cell Ranger output before moving on.** A poor run is much easier to
 diagnose here than after clustering. Open `ScWT/outs/web_summary.html` and
-`Scpifq/outs/web_summary.html` in a browser (the same numbers are in
-`outs/metrics_summary.csv`) and look at the following:
+`Scpifq/outs/web_summary.html` in a browser. To do this: if working on a local
+machine, double-click the file or drag it into a browser window; if working on
+a remote server, copy the file to your local machine with `scp` or mount the
+remote directory, then open it locally. The same numbers are in
+`outs/metrics_summary.csv` (plain text, viewable with `cat` or any text editor).
+Look at the following:
 
 | Metric | What it tells you | What to look for |
 |---|---|---|
@@ -2338,6 +2368,14 @@ user namespaces by default; this requires an administrator to allow Apptainer.
 
 ## R packages (421) {-}
 
+**Note on package versions:** The tables below list the package versions installed
+in the `psblab/scrnaseq:latest` container image at the time of writing. These
+versions are locked inside the container, so anyone who pulls the image gets
+exactly these versions — there is nothing to install manually. **The authoritative
+source is the container itself**, not this list; if the image is updated in the
+future, the container's installed versions take precedence. To inspect the current
+versions inside a running container, use `R -e "installed.packages()[,3]"` for R
+or `pip list` for Python.
 
 ```{=latex}
 \footnotesize
