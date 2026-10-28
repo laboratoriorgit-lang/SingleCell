@@ -561,7 +561,7 @@ def plot_pseudotime_trajectory(
 
 # QC plot: show the automatically selected root cell as a bright green point on FA1/FA2.
 def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None,
-                   cell_size=800, root_size_factor=2.0, axis_title_size=29, title_size=38):
+                   cell_size=800, root_size_factor=4.0, axis_title_size=29, title_size=38):
     os.makedirs(output_dir, exist_ok=True)
     if "is_root" not in adata.obs.columns:
         print("Root-cell plot skipped: is_root not found.")
@@ -598,8 +598,14 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None,
     ax = fig.axes[0]
     ax.set_title(title, fontsize=title_size)
     mark_root_cell(ax, plot_data, basis, size_factor=root_size_factor, color="lime")
-    # Add axes labels
+    # Add axes with FA1/FA2 labels
     layout = basis.replace("draw_graph_", "").upper()
+    ax.set_axis_on()
+    ax.set_frame_on(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_xlabel(f"{layout}1", fontsize=axis_title_size)
     ax.set_ylabel(f"{layout}2", fontsize=axis_title_size)
     fit_legend_inside(fig, ax)
