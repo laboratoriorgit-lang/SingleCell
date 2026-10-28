@@ -392,15 +392,16 @@ def plot_trajectory_graphs(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=300,
+    cell_size=360,
     node_size=80,
+    node_label_size=20,
 ):
     os.makedirs(output_dir, exist_ok=True)
     title_suffix = f"\n{param_label}" if param_label else ""
 
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False,
-                 size=cell_size, size_nodes=node_size)
+                 size=cell_size, size_nodes=node_size, fontsize_nodes=node_label_size)
     ax.set_title(f"{ax.get_title()}{title_suffix}")
     fit_legend_inside(fig, ax)
     fig.savefig(os.path.join(output_dir, f"{name}_annotation.pdf"), dpi=PLOT_DPI, facecolor="white")
