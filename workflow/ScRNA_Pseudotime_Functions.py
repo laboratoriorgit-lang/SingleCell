@@ -490,6 +490,9 @@ def plot_pseudotime_trajectory(
     annotation_col,
     show_inline=False,
     param_label=None,
+    cell_size=120,
+    node_size=300,
+    edge_width=3,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -501,6 +504,9 @@ def plot_pseudotime_trajectory(
         color_cells = annotation_col,
         ax          = ax,
         show        = False,
+        size        = cell_size,
+        size_nodes  = node_size,
+        edge_width  = edge_width,
     )
     scf.pl.trajectory(
         adata,
