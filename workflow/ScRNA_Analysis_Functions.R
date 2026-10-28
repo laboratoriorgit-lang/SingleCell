@@ -209,9 +209,9 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 #' @return A ggplot object.
 #' @export
 plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
-                      pt_size = 3.5, legend_text_size = NULL,
+                      pt_size = 4.5, legend_text_size = NULL,
                       legend_key_cm = NULL, legend_point_size = NULL,
-                      axis_title_size = 36, axis_text_size = 29,
+                      axis_title_size = 29, axis_text_size = 23,
                       label = NULL, label_size = NULL,
                       repel = NULL, raster = NULL, ...) {
   is_celltype <- grepl("^celltype", group_by)
@@ -254,9 +254,9 @@ plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
 #' @param ...               Further arguments passed to Seurat::FeaturePlot().
 #' @return A ggplot (or patchwork) object.
 #' @export
-plot_gene_umap <- function(obj, features, pt_size = 3.5, legend_text_size = 30,
-                           legend_key_cm = 2.5, axis_title_size = 36,
-                           axis_text_size = 29, order = TRUE, title_size = 36, ...) {
+plot_gene_umap <- function(obj, features, pt_size = 4.5, legend_text_size = 30,
+                           legend_key_cm = 2.5, axis_title_size = 29,
+                           axis_text_size = 23, order = TRUE, title_size = 36, ...) {
   p <- FeaturePlot(obj, features = features, pt.size = pt_size,
                    order = order, ...) &
     labs(x = "umap 1", y = "umap 2") &
