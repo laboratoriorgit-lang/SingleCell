@@ -211,7 +211,7 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
                       pt_size = 3.5, legend_text_size = NULL,
                       legend_key_cm = NULL, legend_point_size = NULL,
-                      axis_title_size = 51, axis_text_size = 41,
+                      axis_title_size = 36, axis_text_size = 29,
                       label = NULL, label_size = NULL,
                       repel = NULL, raster = NULL, ...) {
   is_celltype <- grepl("^celltype", group_by)
