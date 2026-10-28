@@ -93,7 +93,10 @@ plot_qc_violin_grid <- function(obj1, label, color) {
                 pt.size  = 0.1,
                 ncol     = length(features),
                 group.by = "cond",
-                cols     = color)
+                cols     = color) &
+    theme(plot.title = element_text(size = 22),
+          axis.title = element_text(size = 18),
+          axis.text  = element_text(size = 14))
 
   title <- ggplot() +
     ggtitle(paste0(label, " (", n1, " cells)")) +
