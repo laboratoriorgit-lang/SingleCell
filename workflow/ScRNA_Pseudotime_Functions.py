@@ -450,9 +450,9 @@ def summarize_along_pseudotime(adata, columns=("nFeature_RNA",), genes=None, gro
     return res
 
 
-# Marks the root cell with a red dot, 30% larger than the cells already drawn on the
+# Marks the root cell with a bright green dot, 50% larger than the cells already drawn on the
 # axis, on a plot that uses a draw_graph basis.
-def mark_root_cell(ax, adata, basis):
+def mark_root_cell(ax, adata, basis, size_factor=1.5, color="lime"):
     if "is_root" not in adata.obs.columns:
         return
     idx = np.where(adata.obs["is_root"].values)[0]
@@ -463,8 +463,8 @@ def mark_root_cell(ax, adata, basis):
     sizes = [np.median(c.get_sizes()) for c in ax.collections
              if hasattr(c, "get_sizes") and len(c.get_sizes()) > 0]
     base  = float(np.median(sizes)) if sizes else 26
-    ax.scatter(xy[idx, 0], xy[idx, 1], s=1.3 * base, marker="o", c="red",
-               edgecolor="black", linewidth=0.5, zorder=10)
+    ax.scatter(xy[idx, 0], xy[idx, 1], s=size_factor * base, marker="o", c=color,
+               edgecolor="black", linewidth=1.5, zorder=10)
 
 
 # Vertical color bar for the pseudotime (t) next to the plot: the bottom end is
@@ -500,6 +500,7 @@ def plot_pseudotime_trajectory(
     axis_title_size=29,
     trajectory_s=200,
     trajectory_scale=1.5,
+    title_size=38,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -541,9 +542,9 @@ def plot_pseudotime_trajectory(
     title = f"{name} — pseudotime trajectory"
     if param_label:
         title += f"\n{param_label}"
-    ax.set_title(title, fontsize=22)
+    ax.set_title(title, fontsize=title_size)
     # Pseudotime bar on top and cell-type legend below, in one column to the right.
-    root_handle = plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="red",
+    root_handle = plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="lime",
                              markeredgecolor="black", markeredgewidth=1.5,
                              markersize=17)
     fit_legend_inside(fig, ax, legend_x=1.04, legend_y=0.30, extra_width_in=7.5,
@@ -558,8 +559,9 @@ def plot_pseudotime_trajectory(
     print(f"Pseudotime trajectory saved to {output_dir}")
 
 
-# QC plot: show the automatically selected root cell as a red point on FA1/FA2.
-def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None):
+# QC plot: show the automatically selected root cell as a bright green point on FA1/FA2.
+def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None,
+                   cell_size=800, root_size_factor=2.0, axis_title_size=29, title_size=38):
     os.makedirs(output_dir, exist_ok=True)
     if "is_root" not in adata.obs.columns:
         print("Root-cell plot skipped: is_root not found.")
@@ -574,26 +576,33 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)
     plot_data = adata.copy()
     plot_data.obs["root_cell"] = np.where(plot_data.obs["is_root"], "Root cell", "Other cells")
     plot_data = plot_data[plot_data.obs.sort_values("root_cell").index, :]
-    plot_data.uns["root_cell_colors"] = ["lightgray", "red"]
+    plot_data.uns["root_cell_colors"] = ["lightgray", "lime"]
 
     title = f"Root cell: {root_cell}"
     if param_label:
         title += f"\n{param_label}"
 
+    basis = draw_graph_basis(plot_data)
     fig = sc.pl.embedding(
         plot_data,
-        basis              = draw_graph_basis(plot_data),
+        basis              = basis,
         color              = "root_cell",
         legend_loc         = "right margin",
         title              = title,
         frameon            = False,
-        size               = 26,
+        size               = cell_size,
         alpha              = 0.9,
         show               = False,
         return_fig         = True,
     )
-    mark_root_cell(fig.axes[0], plot_data, draw_graph_basis(plot_data))
-    fit_legend_inside(fig, fig.axes[0])
+    ax = fig.axes[0]
+    ax.set_title(title, fontsize=title_size)
+    mark_root_cell(ax, plot_data, basis, size_factor=root_size_factor, color="lime")
+    # Add axes labels
+    layout = basis.replace("draw_graph_", "").upper()
+    ax.set_xlabel(f"{layout}1", fontsize=axis_title_size)
+    ax.set_ylabel(f"{layout}2", fontsize=axis_title_size)
+    fit_legend_inside(fig, ax)
     out_file = os.path.join(output_dir, f"{name}_root_cell.pdf")
     fig.savefig(out_file, dpi=PLOT_DPI, facecolor="white")
 
