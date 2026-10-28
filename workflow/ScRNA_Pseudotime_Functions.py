@@ -45,7 +45,7 @@ KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
 # "umap 1" / "umap 2" labels, no title, cell-type names on the clusters and a
 # legend with one swatch per cell type on the right. Sizes are in points.
 def plot_celltype_umap(adata, annotation_col, path,
-                       point_size=300, label_size=17,
+                       point_size=360, label_size=17,
                        axis_title_size=29, axis_text_size=23,
                        legend_text_size=30, legend_point_size=17,
                        axis_pad=0.15, legend_x=1.12):
@@ -395,6 +395,8 @@ def plot_trajectory_graphs(
     cell_size=360,
     node_size=80,
     node_label_size=20,
+    axis_title_size=29,
+    axis_text_size=23,
 ):
     os.makedirs(output_dir, exist_ok=True)
     title_suffix = f"\n{param_label}" if param_label else ""
@@ -403,6 +405,9 @@ def plot_trajectory_graphs(
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False,
                  size=cell_size, size_nodes=node_size, fontsize_nodes=node_label_size)
     ax.set_title(f"{ax.get_title()}{title_suffix}")
+    ax.set_xlabel("FA1", fontsize=axis_title_size)
+    ax.set_ylabel("FA2", fontsize=axis_title_size)
+    ax.tick_params(axis='both', labelsize=axis_text_size)
     fit_legend_inside(fig, ax)
     fig.savefig(os.path.join(output_dir, f"{name}_annotation.pdf"), dpi=PLOT_DPI, facecolor="white")
 
@@ -490,8 +495,9 @@ def plot_pseudotime_trajectory(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=300,
+    cell_size=360,
     node_size=80,
+    axis_title_size=29,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -527,8 +533,8 @@ def plot_pseudotime_trajectory(
         ax.spines[side].set_visible(False)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_xlabel(f"{layout}1")
-    ax.set_ylabel(f"{layout}2")
+    ax.set_xlabel(f"{layout}1", fontsize=axis_title_size)
+    ax.set_ylabel(f"{layout}2", fontsize=axis_title_size)
 
     title = f"{name} — pseudotime trajectory"
     if param_label:
@@ -732,7 +738,7 @@ def run_trajectory_runs(
 # creates the folder, closes the figure, and returns the saved path.
 def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=36,
                              sort_order=True, filename=None, ncols=None,
-                             point_size=300, axis_title_size=29, axis_text_size=23):
+                             point_size=360, axis_title_size=29, axis_text_size=23):
     ensure_expression_in_X(adata)
     out_dir = os.path.join(run_dir, "gene_plots")
     os.makedirs(out_dir, exist_ok=True)
