@@ -45,7 +45,7 @@ KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
 # "umap 1" / "umap 2" labels, no title, cell-type names on the clusters and a
 # legend with one swatch per cell type on the right. Sizes are in points.
 def plot_celltype_umap(adata, annotation_col, path,
-                       point_size=144, label_size=17,
+                       point_size=300, label_size=17,
                        axis_title_size=29, axis_text_size=23,
                        legend_text_size=30, legend_point_size=17,
                        axis_pad=0.15, legend_x=1.12):
@@ -392,7 +392,7 @@ def plot_trajectory_graphs(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=144,
+    cell_size=300,
     node_size=80,
 ):
     os.makedirs(output_dir, exist_ok=True)
@@ -489,7 +489,7 @@ def plot_pseudotime_trajectory(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=144,
+    cell_size=300,
     node_size=80,
 ):
     os.makedirs(output_dir, exist_ok=True)
@@ -731,7 +731,7 @@ def run_trajectory_runs(
 # creates the folder, closes the figure, and returns the saved path.
 def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=36,
                              sort_order=True, filename=None, ncols=None,
-                             point_size=144, axis_title_size=29, axis_text_size=23):
+                             point_size=300, axis_title_size=29, axis_text_size=23):
     ensure_expression_in_X(adata)
     out_dir = os.path.join(run_dir, "gene_plots")
     os.makedirs(out_dir, exist_ok=True)
