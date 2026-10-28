@@ -392,8 +392,9 @@ def plot_trajectory_graphs(
     annotation_col,
     show_inline=False,
     param_label=None,
-    cell_size=432,
-    node_size=120,
+    cell_size=540,
+    node_size=80,
+    node_label_size=18,
     title_size=38,
     axis_title_size=29,
     axis_text_size=23,
@@ -404,6 +405,9 @@ def plot_trajectory_graphs(
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False,
                  size=cell_size, size_nodes=node_size)
+    # Increase node number labels
+    for txt in ax.texts:
+        txt.set_fontsize(node_label_size)
     ax.set_title(f"{ax.get_title()}{title_suffix}", fontsize=title_size)
     ax.set_xlabel("FA1", fontsize=axis_title_size)
     ax.set_ylabel("FA2", fontsize=axis_title_size)
