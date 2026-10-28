@@ -1827,8 +1827,15 @@ can be set from other biology with `root_score` (an `obs` column or a gene ID;
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
-overwriting previous results. The run shown here uses 100 nodes, `sigma = 0.1`,
-`lambda_value = 20`, `eigs = 3`, and `seed = 3`.
+overwriting previous results.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `nodes` | 100 | Number of nodes in the principal tree. More nodes capture finer structure but risk overfitting noise. |
+| `sigma` | 0.1 | Bandwidth for the elastic energy term. Lower values make the tree more rigid; higher values allow more flexibility. |
+| `lambda_value` | 20 | Regularization strength. Higher values produce smoother, less branched trees. |
+| `eigs` | 3 | Number of diffusion components used before fitting the trajectory. Captures the main axes of variation. |
+| `seed` | 3 | Random seed for reproducibility. |
 
 Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
