@@ -394,14 +394,13 @@ def plot_trajectory_graphs(
     param_label=None,
     cell_size=144,
     node_size=360,
-    edge_width=3,
 ):
     os.makedirs(output_dir, exist_ok=True)
     title_suffix = f"\n{param_label}" if param_label else ""
 
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False,
-                 size=cell_size, size_nodes=node_size, edge_width=edge_width)
+                 size=cell_size, size_nodes=node_size)
     ax.set_title(f"{ax.get_title()}{title_suffix}")
     fit_legend_inside(fig, ax)
     fig.savefig(os.path.join(output_dir, f"{name}_annotation.pdf"), dpi=PLOT_DPI, facecolor="white")
@@ -492,7 +491,6 @@ def plot_pseudotime_trajectory(
     param_label=None,
     cell_size=144,
     node_size=360,
-    edge_width=3,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -506,7 +504,6 @@ def plot_pseudotime_trajectory(
         show        = False,
         size        = cell_size,
         size_nodes  = node_size,
-        edge_width  = edge_width,
     )
     scf.pl.trajectory(
         adata,
