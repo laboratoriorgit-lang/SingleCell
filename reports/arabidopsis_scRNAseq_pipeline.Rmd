@@ -908,7 +908,7 @@ ath_sc <- reduce(seurat_list, merge) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
+  plot_umap(ath_sc, "orig.ident", colors),
   "umap_preharmony.pdf"
 )
 
@@ -957,7 +957,7 @@ ath_sc <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
+  plot_umap(ath_sc, "orig.ident", colors),
   "umap_postharmony.pdf"
 )
 
@@ -997,7 +997,7 @@ more, smaller ones. The values in `resolutions_test` are only the range of
 candidates to compare; widen or narrow it if the useful region lies outside it.
 
 The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
-`clustree2.pdf`. Use the clustree to choose `cluster_resolution` in Section 6.
+`clustree.pdf`. Use the clustree to choose `cluster_resolution` in Section 6.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
@@ -1073,7 +1073,7 @@ ath_sc <- ath_sc %>%
 
 Idents(ath_sc) <- "seurat_clusters"
 save_pdf(
-  DimPlot(ath_sc, group.by = "seurat_clusters", label = TRUE),
+  plot_umap(ath_sc, "seurat_clusters"),
   "umap_seuratclusters.pdf"
 )
 
@@ -1153,10 +1153,7 @@ plot_marker_dotplot(
 )
 
 save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
+  plot_umap(ath_sc, "celltype"),
   "umap_annotation_biblio.pdf"
 )
 
@@ -1189,24 +1186,24 @@ The outputs are saved in `results/04_expression/` with filenames based on the
 selected gene.
 
 ```{r section_08_gene_expression_visualization}
-gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
+gene <- "AT4G21750"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
 
 ath_sc <- JoinLayers(ath_sc)
 Idents(ath_sc) <- "celltype"
 
-# Name each file after the plotted gene(s): AT5G26000  ->  ..._AT5G26000.pdf
+# Name each file after the plotted gene(s): AT4G21750  ->  ..._AT4G21750.pdf
 # c("gen1","gen2") -> ..._gen1_gen2.pdf
 gene_tag <- paste(gene, collapse = "_")
 
 save_vln(
-  VlnPlot(ath_sc, features = gene),
+  plot_gene_violin(ath_sc, gene),
   paste0("vln_gene_", gene_tag, ".pdf")
 )
 
 save_pdf(
-  FeaturePlot(ath_sc, features = gene),
+  plot_gene_umap(ath_sc, gene),
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
@@ -1218,7 +1215,7 @@ Representative outputs from Section 8:
 ```{=latex}
 \begin{center}
 ```
-![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_AT5G26000.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_AT5G26000.png){width=30%}
+![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_AT4G21750.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_AT4G21750.png){width=30%}
 ```{=latex}
 \end{center}
 ```
@@ -1450,7 +1447,7 @@ message("\nOK SECTION 13 COMPLETE: volcano plots saved")
 
 Representative output from Section 13:
 
-![Volcano plot for Mesophyll, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
+![Volcano plot for Mesophyll.1, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
 
 ## Section 14 - Differential gene tables
 
@@ -1533,7 +1530,7 @@ message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
 
 Representative output from Section 15:
 
-![GO enrichment (BP) for Mesophyll, WT vs pifq.](assets/go_mesophyll.png){width=30%}
+![GO enrichment (BP) for Mesophyll.1, WT vs pifq.](assets/go_mesophyll.png){width=30%}
 
 ## Section 16 - Log2FC heatmap
 
@@ -1596,6 +1593,30 @@ The parameters near the end of the call control practical details: the number of
 metacells, the minimum module size, the edge-strength threshold (a minimum TOM
 weight) and how many hub TFs are labeled. The network output is saved in
 `results/08_networks/`.
+
+Besides the figure, the function exports the TF-target interaction file
+`TF_TARGET_interaccion.tsv` to `results/08_networks/`. It has three columns,
+`TF`, `TARGET` and `weight` (the TOM value), and it keeps only the gene pairs
+with at least one TF whose weight reaches `tom_threshold`. This is the file to
+import into Cytoscape (File > Import > Network from File, with `TF` as source
+node, `TARGET` as target node and `weight` as edge attribute). The network drawn
+in R is only a basic visualization made with the `igraph` and `ggraph`
+packages; for a final figure, build the network from the interaction file in
+Cytoscape. Co-expression has no direction: `TF` and `TARGET` only tell which
+gene of the pair is the transcription factor (when both are TFs, the order is
+arbitrary).
+
+The file is tab-separated, one interaction per row. These are its first rows
+(columns aligned here for reading):
+
+```
+TF         TARGET     weight
+AT1G01380  AT4G36250  0.200217019734875
+AT1G01720  AT5G59820  0.230731043800715
+AT1G01720  AT5G08790  0.228962029137792
+AT1G01720  AT5G63790  0.222149570169148
+AT1G01720  AT1G76600  0.222010840386788
+```
 
 ```{r section_17_tf_coexpression_network}
 run_hdwgcna_tf_network(
@@ -1776,8 +1797,8 @@ can be set from other biology with `root_score` (an `obs` column or a gene ID;
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
-overwriting previous results. The run shown here uses 50 nodes, `sigma = 0.3`,
-`lambda_value = 200`, `eigs = 3`, and `seed = 3`.
+overwriting previous results. The run shown here uses 100 nodes, `sigma = 0.1`,
+`lambda_value = 20`, `eigs = 3`, and `seed = 3`.
 
 Here, `eigs = 3` means that three diffusion components are used before fitting
 the trajectory. The outputs include the trajectory graph, pseudotime
@@ -1791,7 +1812,7 @@ visualization, and root cell plot inside `results/09_pseudotime/`.
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=20, eigs=3, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -1809,17 +1830,13 @@ print("SECTION 21 COMPLETE: trajectory inference saved")
 \newpage
 
 Representative outputs from Section 21 for the epidermis-cotyledon-only trajectory using
-`nodes=50`, `sigma=0.3`, `lambda=200`, and `eigs=3`:
+`nodes=100`, `sigma=0.1`, `lambda=20`, and `eigs=3`:
 
-```{=latex}
-\begin{center}
-```
-![Trajectory graph for the epidermis-cotyledon-only run (`nodes=50`, `sigma=0.3`, `lambda=200`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=46%} ![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=46%}
-```{=latex}
-\end{center}
-```
+![Trajectory graph for the epidermis-cotyledon-only run (`nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=85%}
 
-![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=46%}
+![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=85%}
+
+![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=85%}
 
 ```{=latex}
 \clearpage
@@ -1827,24 +1844,28 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 
 ## Section 22 - Plot genes on trajectory
 
-This section plots selected genes on the fitted epidermis cotyledon trajectory.
-`plot_genes_on_trajectory()` takes the genes (and optional panel titles), so
-changing `genes` is the only thing needed to inspect another marker. The figure
-is saved automatically in the run folder and named after the plotted genes
-(`gene_plots/trajectory_gene_AT4G21750.pdf` here; several genes are joined with
-`_`), and the path is printed.
+This section plots the expression of a selected gene on the fitted epidermis
+cotyledon trajectory. `plot_genes_on_trajectory()` takes the genes (and optional
+panel titles), so changing `genes` is the only thing needed to inspect another
+gene. The figure is saved automatically in the run folder (`gene_plots/`), named
+with `filename` or, by default, after the plotted genes joined with `_`, and the
+path is printed. The cells with the highest expression are drawn on top
+(`sort_order = TRUE`, the equivalent of `order = TRUE` in Seurat), so they are not
+hidden by the cells that do not express the gene.
 
-For this version, Section 22 is focused only on ATML1. In the count matrix ATML1
-is stored as the locus `AT4G21750`, so the code uses `AT4G21750` while the text
-and figure label report it as ATML1. The plot shows where ATML1 expression falls
-on the epidermis cotyledon trajectory layout.
+This section is focused on **ATML1**, a marker of the epidermis and the gene used
+as the example throughout this report. In the count matrix ATML1 is stored as the
+locus `AT4G21750`, so the code uses `AT4G21750` while the panel title shows the
+gene name followed by the locus. The plot shows where ATML1 expression falls on
+the epidermis cotyledon trajectory layout.
 
 ```{python section_22_gene_plots, eval=FALSE}
 plot_genes_on_trajectory(
     adata_traj,
-    genes   = ["AT4G21750"],           # AT4G21750 = ATML1
-    titles  = ["ATML1 (AT4G21750)"],
-    run_dir = selected_trajectory_dir,
+    genes    = ["AT4G21750"],                         # ATML1
+    titles   = ["ATML1 (AT4G21750)"],
+    run_dir  = selected_trajectory_dir,
+    filename = "trajectory_genes_ATML1.pdf",
 )
 
 print("SECTION 22 COMPLETE: gene trajectory plots saved")
@@ -1854,7 +1875,7 @@ Representative output from Section 22:
 
 ```{=latex}
 \begin{center}
-\includegraphics[width=0.6\linewidth]{assets/pseudotime_gene_plots.pdf}
+\includegraphics[width=0.6\linewidth]{assets/pseudotime_gene_plots_ATML1.pdf}
 \end{center}
 ```
 
@@ -1867,37 +1888,52 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 ## Section 23 - Gene trends
 
 This section fits gene-expression trends along pseudotime for the epidermis
-cotyledon trajectory calculated above. The function first tests genes for
-association with pseudotime, fits smooth expression curves, ranks genes by their
-trend signal, and then saves trend heatmaps.
+cotyledon trajectory calculated above. It runs in two steps. `compute_gene_trends()`
+tests genes for association with pseudotime and fits smooth expression curves; this
+is the slow part (about 15 minutes), and its result is saved in
+`gene_trends/gene_trends_fitted.h5ad` inside the trajectory run folder, so the next
+call loads it instead of recomputing. `plot_gene_trends()` ranks the genes by their
+trend signal and draws the trend heatmaps; it takes seconds, so `TOP_N`,
+`HIGHLIGHT_GENES` or `ORDERING` can be changed and only this step run again.
 
 For this report, the run shown here uses the already selected epidermis
-cotyledon trajectory: `nodes=50`, `sigma=0.3`, `lambda=200`, `eigs=3`, and
-`seed=3`. `TOP_N = 10` means the main panel shows the top 10 ranked genes.
-`HIGHLIGHT_GENES = ["AT3G24140"]` highlights the selected marker using the same fitted trend
-workflow.
+cotyledon trajectory: `nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, and
+`seed=3`. `TOP_N = 10` means the main panel labels 10 genes. They are spread along the whole pseudotime: the heatmap rows are cut into 10 equal blocks and the gene with the highest amplitude is labeled in each block (`spread_top = True`; with `spread_top = False` the 10 genes with the highest amplitude are labeled instead).
+`HIGHLIGHT_GENES = ["AT4G21750"]` highlights ATML1 using the same fitted trend workflow. ATML1
+is significant, so it is already part of the fit. A highlighted gene that is not in the saved fit
+(it was not significant when the fit was computed) is fitted on its own and added to it, which
+takes seconds.
 
 ```{python section_23_gene_trends, eval=FALSE}
 TOP_N           = 10
-HIGHLIGHT_GENES = ["AT3G24140"]
+HIGHLIGHT_GENES = ["AT4G21750"]
 ORDERING        = "max"
 SPLINE_DF       = 3
 
 # selected_trajectory_dir points to the epidermis cotyledon run:
-# results/09_pseudotime/trajectory/n50_s0.3_l200_e3_seed3
+# results/09_pseudotime/trajectory/n100_s0.1_l20_e3_seed3
 name = os.path.basename(selected_trajectory_dir)
 
 ensure_expression_in_X(adata_traj)
 
-top_path, highlight_path = run_step29_gene_trends(
+# Step 1 - compute (slow, ~15 min); saved and reused on the next call
+adata_fitted = compute_gene_trends(
     adata        = adata_traj,
+    run_dir      = selected_trajectory_dir,
+    name         = name,
+    custom_genes = HIGHLIGHT_GENES,
+    n_jobs       = N_JOBS,
+    spline_df    = SPLINE_DF,
+)
+
+# Step 2 - plot (seconds); rerun only this call after changing the settings
+top_path, highlight_path = plot_gene_trends(
+    adata_fitted,
     run_dir      = selected_trajectory_dir,
     name         = name,
     custom_genes = HIGHLIGHT_GENES,
     top_n        = TOP_N,
     ordering     = ORDERING,
-    n_jobs       = N_JOBS,
-    spline_df    = SPLINE_DF,
 )
 
 print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
@@ -1913,8 +1949,8 @@ Representative outputs from Section 23 — epidermis cotyledon gene trends:
 \end{center}
 ```
 
-Left: top 10 ranked genes along pseudotime for the epidermis cotyledon trajectory.
-Right: `AT3G24140` highlighted from the same fitted trend workflow.
+Left: 10 variable genes spread along pseudotime for the epidermis cotyledon trajectory.
+Right: ATML1 (`AT4G21750`) highlighted from the same fitted trend workflow.
 
 ## Section 24 - Final export
 
@@ -1962,7 +1998,7 @@ results/
 |   `-- umap_postharmony.pdf
 |-- 02_clustering/
 |   |-- elbow_plot.pdf
-|   |-- clustree2.pdf
+|   |-- clustree.pdf
 |   `-- umap_seuratclusters.pdf
 |-- 03_annotation/
 |   |-- FindAllMarkers.tsv
@@ -1997,6 +2033,7 @@ results/
 |   |-- GO_<cell_type>_<tag>_BP.tsv
 |   `-- GO_<cell_type>_<tag>_BP_bubble.pdf
 |-- 08_networks/
+|   |-- TF_TARGET_interaccion.tsv
 |   |-- edges_unified.tsv
 |   |-- nodes_unified.tsv
 |   |-- modules_unified.tsv
@@ -2008,7 +2045,7 @@ results/
 `-- 09_pseudotime/
     |-- umap_overview.pdf
     |-- umap_selection.pdf
-    `-- trajectory/<run_name>/            # e.g. n50_s0.3_l200_e3_seed3/
+    `-- trajectory/<run_name>/            # e.g. n100_s0.1_l20_e3_seed3/
         |-- parameters.tsv
         |-- <run_name>_annotation.pdf
         |-- <run_name>_pseudotime_trajectory.pdf
@@ -2101,10 +2138,7 @@ if (length(grouping) > 0) {
 }
 
 save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype_grouped",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
+  plot_umap(ath_sc, "celltype_grouped"),
   "umap_grouped.pdf"
 )
 
@@ -2113,7 +2147,7 @@ message("\nOK SUPPLEMENTARY S2 COMPLETE: cell-type grouping complete")
 
 Representative output from Supplementary Section S2:
 
-![UMAP colored by grouped cell-type labels.](assets/umap_grouped_epidermis_hypocotyl.png){width=30%}
+![UMAP colored by grouped cell-type labels.](assets/umap_grouped.png){width=30%}
 
 
 
@@ -2130,6 +2164,18 @@ name is the cluster being curated, the names inside are subcluster IDs, and the
 values are the new labels. The special label `others` is used for any subcluster
 not listed explicitly.
 
+In this example the inspected cluster is `Mesophyll.1`, one of the two mesophyll
+subclusters that Supplementary Section S2 merges into `Mesophyll`. The inspection
+confirms the original label, so `reassign` maps every Mesophyll subcluster back to
+`"Mesophyll"` and no cell is relabeled; this is the pattern to use when the
+inspection shows that the original annotation was already correct.
+
+The names of `reassign` are looked up in the column given by `annot_col`. Because
+`Mesophyll` is a label of `celltype_grouped` (created in Supplementary Section S2)
+and not of `celltype`, which only has `Mesophyll.1` and `Mesophyll.2`, the call uses
+`annot_col = "celltype_grouped"`; S2 must be run first, otherwise the function stops
+with a message that says so.
+
 Then `curate_clusters()` applies those manual labels and stores the result in
 `celltype_curated`. The final curated UMAP is saved as
 `results/05_curation/umap_curated.pdf`. This block is not executed automatically
@@ -2141,26 +2187,28 @@ Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  ath_sc, cluster_id = "Mesophyll",
+  ath_sc, cluster_id = "Mesophyll.1",
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
 #    then curate them in one call. Here Mesophyll's subclusters all map back
 #    to "Mesophyll" (no relabeling), which is the pattern to use when the
-#    subcluster inspection confirms the original label was already correct:
+#    subcluster inspection confirms the original label was already correct.
+#    The keys of `reassign` are labels of celltype_grouped (created in
+#    Supplementary Section S2), so annot_col and source_col point to that column:
 reassign <- list(
   "Mesophyll" = c("others" = "Mesophyll")
 )
 ath_sc <- curate_clusters(
   ath_sc, reassign,
-  marker_table = marker_table, output_dir = output_dir
+  marker_table = marker_table, output_dir = output_dir,
+  annot_col = "celltype_grouped", source_col = "celltype_grouped"
 )
 
 # 3. Save the curated annotation UMAP
 save_pdf(
-  DimPlot(ath_sc, group.by = "celltype_curated",
-          label = TRUE, repel = TRUE, raster = FALSE),
+  plot_umap(ath_sc, "celltype_curated"),
   "umap_curated.pdf"
 )
 

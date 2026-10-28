@@ -60,7 +60,7 @@ print("SECTION 20 COMPLETE: cell type selection saved")
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=50, sigma=0.3, lambda_value=200, eigs=3, seed=3),
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=20, eigs=3, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -77,10 +77,13 @@ print("SECTION 21 COMPLETE: trajectory inference saved")
 # ==============================================================================
 # Section 22 - Plot genes on trajectory
 # ==============================================================================
+# ATML1, the gene of interest, with a readable panel title
 plot_genes_on_trajectory(
     adata_traj,
-    genes   = ["AT3G24140", "AT4G21750", "AT4G20260"],
-    run_dir = selected_trajectory_dir,
+    genes    = ["AT4G21750"],                         # ATML1
+    titles   = ["ATML1 (AT4G21750)"],
+    run_dir  = selected_trajectory_dir,
+    filename = "trajectory_genes_ATML1.pdf",
 )
 
 print("SECTION 22 COMPLETE: gene trajectory plots saved")
@@ -89,19 +92,32 @@ print("SECTION 22 COMPLETE: gene trajectory plots saved")
 # Section 23 - Gene trends
 # ==============================================================================
 TOP_N           = 10
-HIGHLIGHT_GENES = ["AT3G24140", "AT4G21750", "AT4G20260"]
+HIGHLIGHT_GENES = ["AT4G21750"]
 ORDERING        = "max"
 SPLINE_DF       = 3
 
-top_path, highlight_path = run_step29_gene_trends(
+name = os.path.basename(selected_trajectory_dir)
+
+# Step 1 - compute (slow, ~15 min). The fitted curves are saved in
+# <run>/gene_trends/gene_trends_fitted.h5ad and reused if you run it again.
+adata_fitted = compute_gene_trends(
     adata        = adata_traj,
     run_dir      = selected_trajectory_dir,
-    name         = os.path.basename(selected_trajectory_dir),
+    name         = name,
+    custom_genes = HIGHLIGHT_GENES,
+    n_jobs       = N_JOBS,
+    spline_df    = SPLINE_DF,
+)
+
+# Step 2 - plot (seconds). Change TOP_N, HIGHLIGHT_GENES or ORDERING and run only
+# this call again; nothing is recomputed.
+top_path, highlight_path = plot_gene_trends(
+    adata_fitted,
+    run_dir      = selected_trajectory_dir,
+    name         = name,
     custom_genes = HIGHLIGHT_GENES,
     top_n        = TOP_N,
     ordering     = ORDERING,
-    n_jobs       = N_JOBS,
-    spline_df    = SPLINE_DF,
 )
 
 print("SECTION 23 COMPLETE: gene trend plots saved")

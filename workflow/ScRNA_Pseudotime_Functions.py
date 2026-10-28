@@ -41,6 +41,70 @@ KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
 
 # Notebook wrapper for Step 25. Loads the full curated object, fixes Seurat-style
 # coordinate names, plots the overview UMAP, and prints available cell types.
+# UMAP in the same format as the R figures (Section 7): visible x/y axes with
+# "umap 1" / "umap 2" labels, no title, cell-type names on the clusters and a
+# legend with one swatch per cell type on the right. Sizes are in points.
+def plot_celltype_umap(adata, annotation_col, path,
+                       point_size=40, label_size=17,
+                       axis_title_size=30, axis_text_size=24,
+                       legend_text_size=28, legend_point_size=17,
+                       axis_pad=0.15, legend_x=1.12):
+    fig = sc.pl.umap(
+        adata,
+        color           = annotation_col,
+        legend_loc      = "on data",
+        legend_fontsize = label_size,
+        frameon         = True,
+        size            = point_size,
+        show            = False,
+        return_fig      = True,
+    )
+    ax = fig.axes[0]
+
+    # scanpy removes ticks and axis names on embeddings: restore them R-style
+    # (left and bottom axes only, "umap 1" / "umap 2", no title).
+    ax.xaxis.set_major_locator(matplotlib.ticker.AutoLocator())
+    ax.yaxis.set_major_locator(matplotlib.ticker.AutoLocator())
+    ax.xaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.tick_params(axis="both", which="major", labelsize=axis_text_size,
+                   left=True, bottom=True, labelleft=True, labelbottom=True)
+    ax.set_xlabel("umap 1", fontsize=axis_title_size, labelpad=18)
+    ax.set_ylabel("umap 2", fontsize=axis_title_size, labelpad=18)
+    ax.tick_params(axis="both", which="major", pad=10)
+    ax.set_title("")
+
+    # Extra room around the cells (axis_pad = fraction of the range), so labels
+    # of clusters near the border stay inside the plot.
+    for get_lim, set_lim in ((ax.get_xlim, ax.set_xlim), (ax.get_ylim, ax.set_ylim)):
+        lo, hi = get_lim()
+        pad = axis_pad * (hi - lo)
+        set_lim(lo - pad, hi + pad)
+    ax.grid(False)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+
+    # Side legend with one color swatch per cell type, in addition to the
+    # on-data labels (scanpy only supports one legend_loc at a time).
+    cats    = adata.obs[annotation_col].cat.categories
+    colors  = adata.uns[f"{annotation_col}_colors"]
+    handles = [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c,
+                   markersize=legend_point_size)
+        for c in colors
+    ]
+    ax.legend(
+        handles, cats,
+        loc="center left", bbox_to_anchor=(legend_x, 0.5),
+        fontsize=legend_text_size, frameon=False, labelspacing=0.7,
+    )
+
+    fig.subplots_adjust(left=0.12, right=0.58)
+    save_plot_18x18(fig, path)
+    plt.close(fig)
+    return path
+
+
 def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
 
     print(f"Loading object: {input_h5ad}")
@@ -65,36 +129,8 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
     sc.settings.figdir = dir_pseudotime
     sc.set_figure_params(figsize=PLOT_FIGSIZE, dpi=100, dpi_save=PLOT_DPI)
 
-    fig = sc.pl.umap(
-        adata,
-        color              = annotation_col,
-        legend_loc         = "on data",
-        legend_fontsize    = 6,
-        legend_fontoutline = 2,
-        frameon            = False,
-        size               = 10,
-        show               = False,
-        return_fig         = True,
-    )
-
-    # Add a side legend with one color swatch per cell type, in addition to
-    # the on-data labels above (scanpy only supports one legend_loc at a time).
-    ax  = fig.axes[0]
-    cats   = adata.obs[annotation_col].cat.categories
-    colors = adata.uns[f"{annotation_col}_colors"]
-    handles = [
-        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=8)
-        for c in colors
-    ]
-    ax.legend(
-        handles, cats,
-        loc="center left", bbox_to_anchor=(1.0, 0.5),
-        fontsize=6, frameon=False,
-    )
-
-    fig.subplots_adjust(right=0.78)
-    save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_overview.pdf"))
-    plt.close(fig)
+    plot_celltype_umap(adata, annotation_col,
+                       os.path.join(dir_pseudotime, "umap_overview.pdf"))
 
     counts = adata.obs[annotation_col].value_counts()
     print(f"\nCell types in '{annotation_col}':\n")
@@ -121,36 +157,8 @@ def preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime
     adata_sub = adata[adata.obs[annotation_col].isin(clusters)].copy()
     print(f"Selected {len(adata_sub)} cells: {clusters}")
 
-    fig = sc.pl.umap(
-        adata_sub,
-        color              = annotation_col,
-        legend_loc         = "on data",
-        legend_fontsize    = 6,
-        legend_fontoutline = 2,
-        frameon            = False,
-        size               = 10,
-        show               = False,
-        return_fig         = True,
-    )
-
-    # Side legend with one color swatch per cell type, in addition to the
-    # on-data labels above (scanpy only supports one legend_loc at a time).
-    ax     = fig.axes[0]
-    cats   = adata_sub.obs[annotation_col].cat.categories
-    colors = adata_sub.uns[f"{annotation_col}_colors"]
-    handles = [
-        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=8)
-        for c in colors
-    ]
-    ax.legend(
-        handles, cats,
-        loc="center left", bbox_to_anchor=(1.0, 0.5),
-        fontsize=6, frameon=False,
-    )
-
-    fig.subplots_adjust(right=0.78)
-    save_plot_18x18(fig, os.path.join(dir_pseudotime, "umap_selection.pdf"))
-    plt.close(fig)
+    plot_celltype_umap(adata_sub, annotation_col,
+                       os.path.join(dir_pseudotime, "umap_selection.pdf"))
 
     print("\nSTEP 26 COMPLETE: continue only if this UMAP looks biologically sensible")
     return adata_sub
@@ -332,6 +340,50 @@ def draw_graph_basis(adata):
     )
 
 
+# Puts the legend of a trajectory figure fully inside the image, to the right of
+# the plot and in the same style as the UMAP legends (plot_celltype_umap). The
+# canvas is made wider instead of squeezing the plot, so the plot keeps its size.
+# Axes, titles and point sizes are left untouched.
+def fit_legend_inside(fig, ax, legend_text_size=28, legend_point_size=17,
+                      legend_x=1.04, legend_y=0.5, extra_width_in=6.5,
+                      extra_entries=None):
+    leg = ax.get_legend()
+    if leg is None:
+        return
+    handles = getattr(leg, "legend_handles", None) or leg.legendHandles
+    labels  = [t.get_text() for t in leg.get_texts()]
+
+    def _color(h):
+        try:
+            return h.get_facecolor()[0]
+        except Exception:
+            return h.get_markerfacecolor()
+
+    new_handles = [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=_color(h),
+                   markersize=legend_point_size)
+        for h in handles
+    ]
+    # extra_entries: list of (handle, label) appended below the cell types.
+    for h, lab in (extra_entries or []):
+        new_handles.append(h)
+        labels.append(lab)
+    leg.remove()
+    ax.legend(
+        new_handles, labels,
+        loc="center left", bbox_to_anchor=(legend_x, legend_y),
+        fontsize=legend_text_size, frameon=False, labelspacing=0.7,
+    )
+
+    # Wider canvas, same absolute size and position of the plot area.
+    pos        = ax.get_position()
+    old_w, h_in = fig.get_size_inches()
+    new_w      = old_w + extra_width_in
+    fig.set_size_inches(new_w, h_in, forward=True)
+    ax.set_position([pos.x0 * old_w / new_w, pos.y0,
+                     pos.width * old_w / new_w, pos.height])
+
+
 # Saves the force-directed tree graph colored by cell type.
 def plot_trajectory_graphs(
     adata,
@@ -347,6 +399,7 @@ def plot_trajectory_graphs(
     fig, ax = plt.subplots(figsize=PLOT_FIGSIZE)
     scf.pl.graph(adata, color_cells=annotation_col, ax=ax, show=False)
     ax.set_title(f"{ax.get_title()}{title_suffix}")
+    fit_legend_inside(fig, ax)
     fig.savefig(os.path.join(output_dir, f"{name}_annotation.pdf"), dpi=PLOT_DPI, facecolor="white")
 
     plt.close(fig)
@@ -405,6 +458,27 @@ def mark_root_cell(ax, adata, basis):
                edgecolor="black", linewidth=0.5, zorder=10)
 
 
+# Vertical color bar for the pseudotime (t) next to the plot: the bottom end is
+# the least advanced cells (start of the trajectory) and the top end the most
+# advanced ones. Uses the same colormap as the trajectory line (viridis).
+def add_pseudotime_bar(fig, ax, adata, cmap="viridis", text_size=20, label_size=24):
+    t = np.asarray(adata.obs["t"], dtype=float)
+    norm = matplotlib.colors.Normalize(vmin=np.nanmin(t), vmax=np.nanmax(t))
+    sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+    pos = ax.get_position()
+    # Same column as the legend (legend_x = 1.04 of the plot width); bar in the
+    # upper part, legend below it.
+    cax = fig.add_axes([pos.x1 + 0.04 * pos.width, pos.y0 + 0.58 * pos.height,
+                        0.008, 0.30 * pos.height])
+    cb = fig.colorbar(sm, cax=cax)
+    cb.set_ticks([norm.vmin, norm.vmax])
+    cb.set_ticklabels(["less advanced", "more advanced"])
+    cb.ax.tick_params(labelsize=text_size, length=0, pad=10)
+    cb.ax.set_title("pseudotime", fontsize=label_size, loc="left", pad=22)
+    cb.outline.set_visible(False)
+    return cb
+
+
 def plot_pseudotime_trajectory(
     adata,
     name,
@@ -435,11 +509,32 @@ def plot_pseudotime_trajectory(
         show       = False,
     )
     mark_root_cell(ax, adata, basis)
-    title = f"{name} — pseudotime trajectory (red dot = root cell)"
+
+    # Same axes as the nodes-only figure (plot_trajectory_graphs): left and bottom
+    # axis lines with FA1 / FA2 labels, no ticks (frameon=False above hides them).
+    layout = basis.replace("draw_graph_", "").upper()
+    ax.set_axis_on()
+    ax.set_frame_on(True)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xlabel(f"{layout}1")
+    ax.set_ylabel(f"{layout}2")
+
+    title = f"{name} — pseudotime trajectory"
     if param_label:
         title += f"\n{param_label}"
-    ax.set_title(title)
-    save_plot_18x18(fig, os.path.join(output_dir, f"{name}_pseudotime_trajectory.pdf"))
+    ax.set_title(title, fontsize=22)
+    # Pseudotime bar on top and cell-type legend below, in one column to the right.
+    root_handle = plt.Line2D([0], [0], marker="o", color="w", markerfacecolor="red",
+                             markeredgecolor="black", markeredgewidth=1.5,
+                             markersize=17)
+    fit_legend_inside(fig, ax, legend_x=1.04, legend_y=0.30, extra_width_in=7.5,
+                      extra_entries=[(root_handle, "Root cell")])
+    add_pseudotime_bar(fig, ax, adata)
+    fig.savefig(os.path.join(output_dir, f"{name}_pseudotime_trajectory.pdf"),
+                dpi=PLOT_DPI, facecolor="white")
 
     if show_inline:
         pass
@@ -482,8 +577,9 @@ def plot_root_cell(adata, name, output_dir, show_inline=False, param_label=None)
         return_fig         = True,
     )
     mark_root_cell(fig.axes[0], plot_data, draw_graph_basis(plot_data))
+    fit_legend_inside(fig, fig.axes[0])
     out_file = os.path.join(output_dir, f"{name}_root_cell.pdf")
-    save_plot_18x18(fig, out_file)
+    fig.savefig(out_file, dpi=PLOT_DPI, facecolor="white")
 
     if show_inline:
         pass
@@ -626,13 +722,21 @@ def run_trajectory_runs(
 # plotted genes, as in Section 8: one gene -> trajectory_gene_AT4G21750.pdf, several
 # -> trajectory_gene_AT3G24140_AT4G21750.pdf. Puts the expression in .X if needed,
 # creates the folder, closes the figure, and returns the saved path.
-def plot_genes_on_trajectory(adata, genes, run_dir, titles=None):
+def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=22,
+                             sort_order=True, filename=None, ncols=None):
     ensure_expression_in_X(adata)
     out_dir = os.path.join(run_dir, "gene_plots")
     os.makedirs(out_dir, exist_ok=True)
+    # sort_order=True draws the cells with the highest expression on top (the
+    # equivalent of order = TRUE in Seurat's FeaturePlot).
+    kw = {"ncols": ncols} if ncols else {}
     fig = sc.pl.draw_graph(adata, color=genes, title=titles if titles is not None else genes,
-                           show=False, return_fig=True)
-    path = os.path.join(out_dir, f"trajectory_gene_{'_'.join(genes)}.pdf")
+                           sort_order=sort_order, show=False, return_fig=True, **kw)
+    for ax in fig.axes:
+        if ax.get_title():
+            ax.set_title(ax.get_title(), fontsize=title_size)
+    # filename: optional output name (default: trajectory_gene_<genes joined with _>.pdf)
+    path = os.path.join(out_dir, filename or f"trajectory_gene_{'_'.join(genes)}.pdf")
     save_plot_18x18(fig, path)
     plt.close(fig)
     print(f"✓ Gene plots saved: {path}")
@@ -651,33 +755,102 @@ def strip_segment_frames(ax):
                 p.remove()
 
 
-# Trends plots get their own canvas (24x18, wider than tall) instead of the
-# generic PLOT_FIGSIZE (18x18) used by other plot types — the dendrogram
-# panel looks cramped at a square 18x18 once the tree is a single segment.
-def save_trends_plot(axes_list, pdf_path):
+# Trends plots are the heatmap only (the cells-on-the-tree panel is not drawn,
+# plot_emb=False), so the canvas is narrow (12x18) with room on the right for the
+# gene names.
+def save_trends_plot(axes_list, pdf_path, title=None):
     for ax in axes_list:
         strip_segment_frames(ax)
     fig = axes_list[0].get_figure()
-    fig.set_size_inches(24, 18, forward=True)
-    fig.subplots_adjust(left=0.04, right=0.85, bottom=0.06, top=0.92)
+    fig.set_size_inches(12, 18, forward=True)
+    fig.subplots_adjust(left=0.08, right=0.97, bottom=0.06, top=0.92)
+    if title:
+        fig.suptitle(title, fontsize=22, y=0.975)
     fig.savefig(pdf_path, dpi=PLOT_DPI, facecolor="white")
     plt.close(fig)
 
 
-def run_step29_gene_trends(
+# Picks top_n genes spread along the whole pseudotime as shown in the heatmap:
+# the heatmap rows are already ordered along pseudotime (ordering = "max"), so the
+# rows are cut into top_n blocks with the same number of genes and, in each block,
+# the gene with the highest amplitude (A) is taken. The labels are therefore
+# evenly spread from the start to the end of the trajectory, instead of piling up
+# where the strongest genes happen to peak.
+def select_genes_across_pseudotime(adata_fitted, genes, top_n, ordering="max"):
+    order = scf.pl.trends(adata_fitted, features=genes, plot_emb=False,
+                          ordering=ordering, return_genes=True, show=False)
+    plt.close("all")
+    order = list(order[0]) if isinstance(order, tuple) else list(order)
+    amp   = adata_fitted.var["A"]
+    blocks = np.array_split(np.arange(len(order)), top_n)
+    picked = []
+    for blk in blocks:
+        if not len(blk):
+            continue
+        # central 60% of the block: keeps the labels apart from each other
+        core = blk[int(0.2 * len(blk)): max(int(0.8 * len(blk)), int(0.2 * len(blk)) + 1)]
+        picked.append(amp.loc[[order[i] for i in core]].idxmax())
+    return picked
+
+
+# Fits the given genes on their own and appends them to an already fitted object
+# (their association statistics stay empty: they were not tested).
+def _append_fitted_genes(adata, adata_fitted, genes, n_jobs=4):
+    import anndata as ad
+    ensure_expression_in_X(adata)
+    extra = adata.copy()
+    scf.tl.fit(extra, features=genes, n_jobs=n_jobs)
+    new = ad.AnnData(X=extra.X, obs=adata_fitted.obs.copy(),
+                     var=pd.DataFrame(index=extra.var_names))
+    for layer in adata_fitted.layers.keys():
+        if layer in extra.layers:
+            new.layers[layer] = extra.layers[layer]
+    for col, val in (("p_val", np.nan), ("A", np.nan), ("fdr", np.nan), ("st", 0), ("signi", False)):
+        if col in adata_fitted.var.columns:
+            new.var[col] = val
+    return ad.concat([adata_fitted, new], axis=1, join="outer", merge="first", uns_merge="first")
+
+
+# Gene trends, in two steps so the plots can be redrawn without recomputing:
+#   1) compute_gene_trends(): association test + fitted curves (slow, ~15 min).
+#      The fitted object is saved in <run_dir>/gene_trends/gene_trends_fitted.h5ad
+#      and reused on the next call (reuse=True).
+#   2) plot_gene_trends(): the heatmaps (seconds). Change top_n, the highlighted
+#      genes, the ordering or spread_top and run only this step again.
+def compute_gene_trends(
     adata,
     run_dir,
-    name        = "trajectory",
+    name         = "trajectory",
     custom_genes = None,
-    top_n        = 50,
-    ordering     = "max",
     n_jobs       = 4,
     spline_df    = 5,
     A_cut        = 0.3,
     p_val_cut    = 0.001,
+    reuse        = True,
 ):
     output_dir = os.path.join(run_dir, "gene_trends")
     os.makedirs(output_dir, exist_ok=True)
+    fitted_path = os.path.join(output_dir, "gene_trends_fitted.h5ad")
+
+    custom_genes = custom_genes or []
+
+    if reuse and os.path.exists(fitted_path):
+        adata_fitted = sc.read_h5ad(fitted_path)
+        print(f"Loaded fitted gene trends: {fitted_path} ({adata_fitted.n_vars} genes)")
+        missing = [g for g in custom_genes if g not in adata_fitted.var_names]
+        addable = [g for g in missing if g in adata.var_names]
+        if addable:
+            # Custom genes that were not in the saved fit are fitted on their own
+            # (seconds) and appended to it, so the full computation is not repeated.
+            print(f"Fitting {len(addable)} extra gene(s) and adding them to the saved fit: "
+                  f"{', '.join(addable)}")
+            adata_fitted = _append_fitted_genes(adata, adata_fitted, addable, n_jobs)
+            adata_fitted.write_h5ad(fitted_path)
+            print(f"✓ Saved fit updated: {fitted_path}")
+        not_found = [g for g in missing if g not in adata.var_names]
+        if not_found:
+            print(f"custom selection: genes not found in adata: {', '.join(not_found)}")
+        return adata_fitted
 
     ensure_expression_in_X(adata)
 
@@ -699,22 +872,42 @@ def run_step29_gene_trends(
     # Custom genes are force-included in the fit even if not statistically
     # significant, so a gene you explicitly asked for never silently
     # disappears from either heatmap.
-    custom_genes  = custom_genes or []
     genes_present = [g for g in custom_genes if g in adata.var_names]
     missing       = sorted(set(custom_genes) - set(genes_present))
     if missing:
         print(f"custom selection: genes ignored (not found in adata): {', '.join(missing)}")
     fit_features = list(dict.fromkeys(significant_genes + genes_present))
 
-    # Fit on a copy so the caller's adata is never subsetted. Both heatmaps
-    # below reuse this single fit — rows = significant + custom genes, only
-    # the highlighted/labeled subset differs between the two plots.
+    # Fit on a copy so the caller's adata is never subsetted.
     adata_fitted = adata.copy()
     scf.tl.fit(adata_fitted, features=fit_features, n_jobs=n_jobs)
 
-    top_genes = adata_fitted.var.sort_values("A", ascending=False).head(top_n).index.tolist()
+    adata_fitted.write_h5ad(fitted_path)
+    print(f"✓ Fitted gene trends saved: {fitted_path}")
+    return adata_fitted
+
+
+def plot_gene_trends(
+    adata_fitted,
+    run_dir,
+    name         = "trajectory",
+    custom_genes = None,
+    top_n        = 10,
+    ordering     = "max",
+    spread_top   = True,
+):
+    output_dir = os.path.join(run_dir, "gene_trends")
+    os.makedirs(output_dir, exist_ok=True)
+
+    fit_features = list(adata_fitted.var_names)
+
+    if spread_top:
+        top_genes = select_genes_across_pseudotime(adata_fitted, fit_features, top_n, ordering)
+    else:
+        top_genes = adata_fitted.var.sort_values("A", ascending=False).head(top_n).index.tolist()
     axes_list = scf.pl.trends(
         adata_fitted,
+        plot_emb           = False,
         highlight_features = top_genes,
         style               = "italic",
         add_outline         = True,
@@ -723,16 +916,23 @@ def run_step29_gene_trends(
         fontsize            = 18,
         ordering            = ordering,
         show                = False,
-        title               = f"{name} — top {top_n} variable genes",
     )
     top_pdf = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.pdf")
-    save_trends_plot(axes_list, top_pdf)
+    save_trends_plot(axes_list, top_pdf,
+                     title=f"{name} — top {top_n} variable genes"
+                           + (" across pseudotime" if spread_top else ""))
     print(f"✓ Top-{top_n} gene trends saved: {top_pdf}")
 
+    custom_genes  = custom_genes or []
+    genes_present = [g for g in custom_genes if g in adata_fitted.var_names]
+    missing       = sorted(set(custom_genes) - set(genes_present))
+    if missing:
+        print(f"custom selection: genes not in the saved fit: {', '.join(missing)}")
     custom_pdf = None
     if genes_present:
         axes_list = scf.pl.trends(
             adata_fitted,
+            plot_emb           = False,
             highlight_features = genes_present,
             style               = "italic",
             add_outline         = True,
@@ -741,11 +941,47 @@ def run_step29_gene_trends(
             fontsize            = 18,
             ordering            = ordering,
             show                = False,
-            title               = f"{name} — custom selection",
         )
         custom_pdf = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.pdf")
-        save_trends_plot(axes_list, custom_pdf)
+        save_trends_plot(axes_list, custom_pdf, title=f"{name} — custom selection")
         print(f"✓ Custom selection gene trends saved: {custom_pdf}")
 
     print("STEP 29 COMPLETE: gene trends saved")
     return top_pdf, custom_pdf
+
+
+# One-call version (compute + plot), kept for convenience.
+def run_step29_gene_trends(
+    adata,
+    run_dir,
+    name         = "trajectory",
+    custom_genes = None,
+    top_n        = 50,
+    ordering     = "max",
+    n_jobs       = 4,
+    spline_df    = 5,
+    A_cut        = 0.3,
+    p_val_cut    = 0.001,
+    spread_top   = True,
+):
+    adata_fitted = compute_gene_trends(adata, run_dir, name=name, custom_genes=custom_genes,
+                                       n_jobs=n_jobs, spline_df=spline_df,
+                                       A_cut=A_cut, p_val_cut=p_val_cut)
+    return plot_gene_trends(adata_fitted, run_dir, name=name, custom_genes=custom_genes,
+                            top_n=top_n, ordering=ordering, spread_top=spread_top)
+
+
+# Redraws the three trajectory figures of Section 21 (nodes, pseudotime, root cell)
+# from the saved <run_dir>/<name>_trajectory.h5ad, without running the inference
+# again. Use it after changing a plotting function.
+def replot_trajectory_figures(run_dir, annotation_col="celltype"):
+    name  = os.path.basename(os.path.normpath(run_dir))
+    adata = sc.read_h5ad(os.path.join(run_dir, f"{name}_trajectory.h5ad"))
+    p = pd.read_csv(os.path.join(run_dir, "parameters.tsv"), sep="\t", header=None,
+                    index_col=0)[1].to_dict()
+    label = f"nodes={p.get('nodes')}, sigma={p.get('sigma')}, lambda={p.get('lambda')}, eigs={p.get('eigs')}"
+    plot_trajectory_graphs(adata, name, run_dir, annotation_col, param_label=label)
+    plot_pseudotime_trajectory(adata, name, run_dir, annotation_col, param_label=label)
+    plot_root_cell(adata, name, run_dir, param_label=label)
+    return adata
+
