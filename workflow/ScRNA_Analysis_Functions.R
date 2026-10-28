@@ -180,6 +180,124 @@ summarize_nfeature_plot <- function(obj_list, labels = NULL, colores = NULL) {
 }
 
 
+#' UMAP Colored by a Metadata Column
+#'
+#' DimPlot without title, with "umap 1" / "umap 2" axis labels and enlarged points and legend.
+#'
+#' @param obj               Seurat object with a UMAP reduction.
+#' @param group_by          Metadata column used to color the cells.
+#' @param colors            Vector of colors (one per group), or NULL.
+#' @param pt_size           Size of the cell points.
+#' @param legend_text_size  Size of the legend text (default 32; 28 for cell-type columns).
+#' @param legend_key_cm     Size of the legend keys, in cm (default 2; 1.5 for cell-type columns).
+#' @param legend_point_size Size of the points drawn in the legend (default 10; 6 for cell-type columns).
+#' @param axis_title_size   Size of the axis titles.
+#' @param axis_text_size    Size of the axis tick labels.
+#' @param label             Print the group names on the plot. Default NULL: TRUE when
+#'                          group_by is "seurat_clusters" or a cell-type column
+#'                          (name starting with "celltype"), FALSE otherwise.
+#'                          Cell-type columns have long names, so they get a smaller legend and
+#'                          labels by default (see the size parameters).
+#' @param label_size        Size of those labels (default 12; 8 for cell-type columns).
+#' @param repel             Avoid overlapping labels. Default NULL: TRUE for cell-type columns.
+#' @param raster            Rasterize the points. Default NULL: FALSE for cell-type columns,
+#'                          Seurat's automatic choice otherwise.
+#' @param ...               Further arguments passed to Seurat::DimPlot().
+#' @return A ggplot object.
+#' @export
+plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
+                      pt_size = 1.5, legend_text_size = NULL,
+                      legend_key_cm = NULL, legend_point_size = NULL,
+                      axis_title_size = 30, axis_text_size = 24,
+                      label = NULL, label_size = NULL,
+                      repel = NULL, raster = NULL, ...) {
+  is_celltype <- grepl("^celltype", group_by)
+
+  if (is.null(label))             label             <- is_celltype || group_by == "seurat_clusters"
+  if (is.null(legend_text_size))  legend_text_size  <- if (is_celltype) 28   else 32
+  if (is.null(legend_key_cm))     legend_key_cm     <- if (is_celltype) 1.5  else 2
+  if (is.null(legend_point_size)) legend_point_size <- if (is_celltype) 6    else 10
+  if (is.null(label_size))        label_size        <- if (is_celltype) 8    else 12
+  if (is.null(repel))             repel             <- is_celltype
+  if (is.null(raster) && is_celltype) raster <- FALSE
+
+  DimPlot(obj, group.by = group_by, cols = colors, pt.size = pt_size,
+          label = label, label.size = label_size, repel = repel,
+          raster = raster, ...) +
+    labs(title = NULL, x = "umap 1", y = "umap 2") +
+    guides(color = guide_legend(override.aes = list(size = legend_point_size))) +
+    theme(
+      legend.text     = element_text(size = legend_text_size),
+      legend.key.size = unit(legend_key_cm, "cm"),
+      axis.title      = element_text(size = axis_title_size),
+      axis.text       = element_text(size = axis_text_size)
+    )
+}
+
+#' Gene Expression on the UMAP
+#'
+#' FeaturePlot with the same style as plot_umap(): "umap 1" / "umap 2" axis labels,
+#' enlarged points, legend and axes. Each panel is titled with its gene name.
+#'
+#' @param obj               Seurat object with a UMAP reduction.
+#' @param features          One gene, or several genes.
+#' @param pt_size           Size of the cell points.
+#' @param legend_text_size  Size of the legend text.
+#' @param legend_key_cm     Size of the legend keys, in cm.
+#' @param axis_title_size   Size of the axis titles.
+#' @param axis_text_size    Size of the axis tick labels.
+#' @param order             Plot the cells with the highest expression on top (default TRUE).
+#' @param title_size        Size of the gene-name titles.
+#' @param ...               Further arguments passed to Seurat::FeaturePlot().
+#' @return A ggplot (or patchwork) object.
+#' @export
+plot_gene_umap <- function(obj, features, pt_size = 1.5, legend_text_size = 40,
+                           legend_key_cm = 2.5, axis_title_size = 30,
+                           axis_text_size = 24, order = TRUE, title_size = 36, ...) {
+  p <- FeaturePlot(obj, features = features, pt.size = pt_size,
+                   order = order, ...) &
+    labs(x = "umap 1", y = "umap 2") &
+    theme(
+      legend.text     = element_text(size = legend_text_size),
+      legend.key.size = unit(legend_key_cm, "cm"),
+      axis.title      = element_text(size = axis_title_size),
+      axis.text       = element_text(size = axis_text_size),
+      plot.title      = element_text(size = title_size)
+    )
+
+
+  p
+}
+
+#' Gene Expression Violin by Identity
+#'
+#' VlnPlot with enlarged axes, without legend and without x-axis title. Each panel
+#' is titled with its gene name.
+#'
+#' @param obj               Seurat object (identities already set).
+#' @param features          One gene, or several genes.
+#' @param axis_title_size   Size of the axis titles.
+#' @param axis_text_size    Size of the axis tick labels (cell types and values).
+#' @param title_size        Size of the gene-name titles.
+#' @param ...               Further arguments passed to Seurat::VlnPlot().
+#' @return A ggplot (or patchwork) object.
+#' @export
+plot_gene_violin <- function(obj, features, axis_title_size = 30,
+                             axis_text_size = 24, title_size = 36, ...) {
+  p <- VlnPlot(obj, features = features, ...) &
+    labs(x = NULL) &
+    theme(
+      legend.position = "none",
+      axis.title      = element_text(size = axis_title_size),
+      axis.text       = element_text(size = axis_text_size),
+      plot.title      = element_text(size = title_size)
+    )
+
+
+  p
+}
+
+
 # =============================================================================
 # 2. CLUSTERING / RESOLUTION OPTIMIZATION
 # =============================================================================
@@ -211,6 +329,31 @@ plot_resolution_elbow <- function(seurat_obj, output_dir, filename = "elbow_plot
   invisible(elbow_plot)
 }
 
+#' Compact theme for clustree figures
+#'
+#' Larger legend text and tighter margins and legend spacing, shared by the
+#' clustree figures (run_resolution_sweep(), plot_annotated_clustree()).
+#'
+#' @param legend_text_size  Size of the legend text.
+#' @param legend_title_size Size of the legend titles.
+#' @param legend_point_size Size of the points in the resolution legend.
+#' @return A list of ggplot2 components (legend guide and theme).
+#' @export
+theme_clustree <- function(legend_text_size = 26, legend_title_size = 28,
+                           legend_point_size = 8) {
+  list(
+    guides(colour = guide_legend(override.aes = list(size = legend_point_size))),
+    theme(
+      legend.text        = element_text(size = legend_text_size),
+      legend.title       = element_text(size = legend_title_size),
+      legend.key.size    = unit(1.4, "cm"),
+      legend.box.spacing = unit(4, "pt"),
+      legend.spacing.y   = unit(6, "pt"),
+      plot.margin        = margin(4, 4, 4, 4)
+    )
+  )
+}
+
 #' Clustering resolution sweep and clustree
 #'
 #' Recomputes UMAP/neighbors on the Harmony embedding, runs FindClusters
@@ -220,13 +363,13 @@ plot_resolution_elbow <- function(seurat_obj, output_dir, filename = "elbow_plot
 #' @param seurat_obj  Seurat object with a Harmony reduction computed.
 #' @param resolutions Candidate resolutions to test.
 #' @param output_dir  Folder to save the clustree pdf into.
-#' @param filename    Output pdf filename (default: "clustree2.pdf").
+#' @param filename    Output pdf filename (default: "clustree.pdf").
 #' @param pca_dims    PCA/Harmony dimensions to use (default: 1:30).
 #' @param knn_k       Neighbors per cell for FindNeighbors (default: 20).
 #' @return The Seurat object with one `RNA_snn_res.<r>` column per tested resolution.
 #' @export
 run_resolution_sweep <- function(seurat_obj, resolutions, output_dir,
-                                  filename = "clustree2.pdf",
+                                  filename = "clustree.pdf",
                                   pca_dims = 1:30, knn_k = 20) {
   clu <- seurat_obj %>%
     RunUMAP(reduction = "harmony", dims = pca_dims, verbose = FALSE) %>%
@@ -235,7 +378,11 @@ run_resolution_sweep <- function(seurat_obj, resolutions, output_dir,
   for (res in resolutions)
     clu <- FindClusters(clu, resolution = res, algorithm = 4, verbose = FALSE)
 
-  ggsave(file.path(output_dir, filename), clustree(clu, prefix = "RNA_snn_res."),
+  ggsave(file.path(output_dir, filename),
+         clustree(clu, prefix = "RNA_snn_res.",
+                  node_text_size = 9, node_size_range = c(8, 24),
+                  edge_width = 1.2) +
+           theme_clustree(),
          width = 18, height = 18, dpi = 300, limitsize = FALSE)
 
   clu
@@ -283,7 +430,10 @@ plot_annotated_clustree <- function(seurat_obj, clu, annot_col, output_dir,
   ggsave(
     file.path(output_dir, filename),
     clustree(clu, prefix = "RNA_snn_res.",
-             node_label = "celltype_label", node_label_aggr = "Mode"),
+             node_label = "celltype_label", node_label_aggr = "Mode",
+             node_label_size = 7, node_size_range = c(8, 24),
+             edge_width = 1.2) +
+      theme_clustree(),
     width = 14, height = 14, dpi = 300, limitsize = FALSE
   )
 
@@ -1094,19 +1244,18 @@ annotate_by_reference <- function(seurat_obj,
 #' @export
 #' Plot and Save a Subcluster UMAP
 #'
-#' Creates a labeled DimPlot for a subclustered object, saves it to disk,
-#' and returns the plot invisibly for use in composite figures.
+#' Creates a labeled UMAP (plot_umap() format: "umap 1" / "umap 2" axes, no title)
+#' for a subclustered object, saves it to disk, and returns the plot invisibly.
 #'
 #' @param obj        Subclustered Seurat object (output of subcluster_cell_type).
-#' @param label      Cell-type label used as the plot title and to derive
-#'   the output filename (spaces replaced with underscores).
+#' @param label      Cell-type label used to derive the output filename (spaces
+#'   replaced with underscores).
 #' @param output_dir Directory where the PDF will be saved.
 #'
 #' @return ggplot object (invisibly).
 #' @export
 plot_subcluster_umap <- function(obj, label, output_dir) {
-  p <- DimPlot(obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
-    ggtitle(paste0(label, " — subclusters")) +
+  p <- plot_umap(obj, "cluster_subtipo", label = TRUE, raster = FALSE) +
     coord_fixed()
   filename <- paste0("subcluster_", tolower(gsub(" ", "_", label)), ".pdf")
   ggsave(file.path(output_dir, filename), p, width = 18, height = 12, dpi = 300)
@@ -1117,7 +1266,20 @@ plot_subcluster_umap <- function(obj, label, output_dir) {
 subcluster_cell_type <- function(obj, ctype, annot_col = "celltype_grouped",
                             resolution = 0.3, dims = 1:20) {
 
-  sub <- subset(obj, cells = colnames(obj)[obj@meta.data[[annot_col]] %in% ctype])
+  if (!annot_col %in% colnames(obj@meta.data)) {
+    stop("Column '", annot_col, "' not found in the object. ",
+         if (annot_col == "celltype_grouped")
+           "Run Supplementary Section S2 first: it creates celltype_grouped. " else "",
+         "Available annotation columns: ",
+         paste(grep("^celltype", colnames(obj@meta.data), value = TRUE), collapse = ", "))
+  }
+  keep <- colnames(obj)[obj@meta.data[[annot_col]] %in% ctype]
+  if (length(keep) == 0) {
+    stop("No cells with ", annot_col, " in {", paste(ctype, collapse = ", "), "}. ",
+         "Labels available in '", annot_col, "': ",
+         paste(sort(unique(as.character(obj@meta.data[[annot_col]]))), collapse = ", "))
+  }
+  sub <- subset(obj, cells = keep)
 
   # For small subsets, recompute variable features
   ncells <- ncol(sub)
@@ -1228,11 +1390,18 @@ inspect_subcluster_markers <- function(obj, cluster_id, marker_table,
     resolution = resolution, dims = dims
   )
 
-  p_umap <- DimPlot(sub_obj, group.by = "cluster_subtipo", label = TRUE, raster = FALSE) +
+  # Half-width panels of a 20-inch figure: same format as plot_umap() with
+  # smaller text, and the dotplot at its compact sizes (14).
+  p_umap <- plot_umap(sub_obj, "cluster_subtipo", label = TRUE, raster = FALSE,
+                      legend_text_size = 18, legend_key_cm = 1.2,
+                      legend_point_size = 7, label_size = 7,
+                      axis_title_size = 20, axis_text_size = 14) +
     ggtitle(paste0("Cluster ", cluster_id, " - subclusters")) +
     coord_fixed()
 
-  p_dot <- plot_marker_dotplot(sub_obj, marker_table, annot_col = "cluster_subtipo") +
+  p_dot <- plot_marker_dotplot(sub_obj, marker_table, annot_col = "cluster_subtipo",
+                               celltype_text_size = 14, gene_text_size = 14,
+                               legend_text_size = 14) +
     ggtitle("Marker expression")
 
   top_row <- p_umap + p_dot
@@ -1308,6 +1477,10 @@ apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
 #' @param reassign     Named list (keys = cluster IDs) of subcluster->label maps.
 #' @param marker_table Marker table passed to inspect_subcluster_markers.
 #' @param output_dir   Directory for the per-cluster inspection figures.
+#' @param annot_col    Column where the keys of `reassign` are looked up
+#'   (default "celltype"). Use "celltype_grouped" when the keys are labels
+#'   created by Supplementary Section S2 (e.g. "Mesophyll", which merges
+#'   Mesophyll.1 and Mesophyll.2).
 #' @param source_col   Baseline annotation column (default "celltype").
 #' @param dest_col     Output curated column (default "celltype_curated").
 #' @param resolution   Subcluster resolution (default 0.3).
@@ -1315,13 +1488,14 @@ apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
 #' @return Updated Seurat object with dest_col populated.
 #' @export
 curate_clusters <- function(obj, reassign, marker_table, output_dir,
+                            annot_col  = "celltype",
                             source_col = "celltype",
                             dest_col   = "celltype_curated",
                             resolution = 0.3, dims = 1:20) {
   sub_objs <- list()
   for (cl in names(reassign)) {
     res <- inspect_subcluster_markers(
-      obj, cluster_id = cl, marker_table = marker_table,
+      obj, cluster_id = cl, marker_table = marker_table, annot_col = annot_col,
       output_dir = output_dir, resolution = resolution, dims = dims
     )
     sub_objs[[cl]] <- res$sub_obj
@@ -1853,6 +2027,9 @@ plot_heatmap <- function(mat,
 #' @param height            PDF height in inches.
 #' @param dot_scale         Dot size scaling factor.
 #' @param base_size         Base font size.
+#' @param celltype_text_size Font size of the cell-type labels (x axis).
+#' @param gene_text_size    Font size of the gene labels (y axis).
+#' @param legend_text_size  Font size of the legend text and titles.
 #' @param name_gene         If TRUE (default), label genes with their symbol
 #'                          (e.g. "OPS"); if FALSE, label them with the gene ID
 #'                          only (e.g. "AT3G09070"). Tables without a symbol
@@ -1870,6 +2047,9 @@ plot_marker_dotplot <- function(seurat_obj,
                                      height          = 18,
                                      dot_scale       = 12,
                                      base_size       = 18,
+                                     celltype_text_size = 24,
+                                     gene_text_size  = 24,
+                                     legend_text_size = 17,
                                      name_gene       = TRUE) {
 
   obj   <- seurat_obj
@@ -1947,11 +2127,13 @@ plot_marker_dotplot <- function(seurat_obj,
     coord_flip() +
     theme_minimal(base_size = base_size) +
     theme(
-      axis.text.x  = element_text(angle = 45, hjust = 1, size = base_size - 4),
-      axis.text.y  = element_text(size = base_size - 4, face = "italic"),
+      axis.text.x  = element_text(angle = 45, hjust = 1, size = celltype_text_size),
+      axis.text.y  = element_text(size = gene_text_size, face = "italic"),
       axis.title   = element_blank(),
       panel.border = element_rect(color = "black", fill = NA),
-      legend.position = "right"
+      legend.position = "right",
+      legend.text     = element_text(size = legend_text_size),
+      legend.title    = element_text(size = legend_text_size)
     )
 
   figure$layers[[1]]$aes_params$alpha <- 1   # solid dots
@@ -3290,8 +3472,19 @@ run_simple_go_enrichment <- function(diff_table,
   # Generate plots with title
   plot_title <- if (!is.null(cell_type)) paste0("GO Enrichment - ", cell_type) else "GO Enrichment"
 
-  pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 18, height = 18)
-  p <- dotplot(go_result, showCategory = 20) + ggtitle(plot_title)
+  pdf(file.path(output_dir, paste0(file_prefix, "_bubble.pdf")), width = 15, height = 16)
+  p <- dotplot(go_result, showCategory = 20, label_format = 40) +
+    ggtitle(plot_title) +
+    scale_size(range = c(4, 12)) +
+    theme(
+      plot.title   = element_text(size = 30, face = "bold"),
+      plot.title.position = "plot",
+      axis.text.y  = element_text(size = 28),
+      axis.text.x  = element_text(size = 22),
+      axis.title.x = element_text(size = 26),
+      legend.text  = element_text(size = 22),
+      legend.title = element_text(size = 24)
+    )
   print(p)
   dev.off()
 
@@ -3321,6 +3514,9 @@ run_go_enrichment_for_contrast <- function(results_dir,
 
   for (deseq2_file in deseq2_files) {
     cell_type <- gsub("^DESeq2_|\\.csv$", "", basename(deseq2_file))
+    # the DESeq2 file names end with the contrast tag: drop it, so titles and output
+    # names read "Mesophyll_1" and GO_Mesophyll_1_<contrast>_BP (not repeated twice)
+    cell_type <- sub(paste0("_", contrast_tag, "$"), "", cell_type)
 
     deseq2_results <- read.csv(deseq2_file, row.names = 1)
     sig_genes <- rownames(deseq2_results)[deseq2_results$padj < padj_cutoff]
@@ -3355,7 +3551,12 @@ build_logfc_heatmap <- function(logfc_table,
                                 contrast_tag,
                                 output_dir,
                                 limits     = c(-5, 5),
-                                cell_order = NULL) {
+                                cell_order = NULL,
+                                column_names_size = 18,
+                                column_width_cm   = 1.5,
+                                body_height_cm    = 20,
+                                pdf_width  = NULL,
+                                pdf_height = NULL) {
 
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -3380,19 +3581,26 @@ build_logfc_heatmap <- function(logfc_table,
     mat <- mat[, ordered_cols, drop = FALSE]
   }
 
+  # Fixed size: column width and body height are set in cm. Total width = columns
+  # + row dendrogram; total height = body + title and column labels (estimated).
+  dend_cm  <- 4
+  extra_cm <- 7
+
   ht <- ComplexHeatmap::Heatmap(
     mat,
     name = "log2FC",
+    width  = grid::unit(ncol(mat) * column_width_cm + dend_cm, "cm"),
+    height = grid::unit(body_height_cm + extra_cm, "cm"),
     col  = circlize::colorRamp2(c(limits[1], 0, limits[2]), c("blue", "black", "yellow")),
 
     cluster_rows    = TRUE,          # hierarchical row ordering
     show_row_dend   = TRUE,
-    row_dend_width  = grid::unit(4, "cm"),
+    row_dend_width  = grid::unit(dend_cm, "cm"),
     cluster_columns = FALSE,         # keep the marker-table column order
 
     show_row_names    = FALSE,
     show_column_names = TRUE,
-    column_names_gp   = grid::gpar(fontsize = 10, fontface = "bold"),
+    column_names_gp   = grid::gpar(fontsize = column_names_size, fontface = "bold"),
     column_names_rot  = 45,
 
     column_title    = sprintf("log2FC — %s  (%d genes)", contrast_tag, nrow(mat)),
@@ -3400,14 +3608,30 @@ build_logfc_heatmap <- function(logfc_table,
 
     heatmap_legend_param = list(
       title         = "log2FC",
-      title_gp      = gpar(fontsize = 12, fontface = "bold"),
-      legend_height = unit(4, "cm")
+      title_gp      = gpar(fontsize = 16, fontface = "bold"),
+      labels_gp     = gpar(fontsize = 13),
+      legend_height = unit(5, "cm"),
+      grid_width    = unit(5, "mm")
     )
   )
 
+  pad <- grid::unit(c(3, 3, 3, 3), "mm")
+
+  # PDF size: by default measured from the drawn heatmap (plus legend), so the
+  # page fits the figure without extra white margin.
+  if (is.null(pdf_width) || is.null(pdf_height)) {
+    pdf(NULL)
+    drawn <- ComplexHeatmap::draw(ht, merge_legend = TRUE, padding = pad)
+    w_in  <- grid::convertX(ComplexHeatmap:::width(drawn),  "inches", valueOnly = TRUE)
+    h_in  <- grid::convertY(ComplexHeatmap:::height(drawn), "inches", valueOnly = TRUE)
+    dev.off()
+    if (is.null(pdf_width))  pdf_width  <- w_in
+    if (is.null(pdf_height)) pdf_height <- h_in
+  }
+
   pdf(file.path(output_dir, paste0("heatmap_", contrast_tag, ".pdf")),
-      width = 18, height = 18)
-  ComplexHeatmap::draw(ht, merge_legend = TRUE, padding = grid::unit(c(2, 2, 2, 10), "mm"))
+      width = pdf_width, height = pdf_height)
+  ComplexHeatmap::draw(ht, merge_legend = TRUE, padding = pad)
   dev.off()
 
   invisible(NULL)
@@ -5300,7 +5524,10 @@ plot_tf_de_network <- function(net, output_dir,
                                 contrast_tag = "condition_1_vs_condition_2",
                                 output_pdf   = "network_tf_DE_direction.pdf",
                                 output_width = 12,
-                                output_height = 10) {
+                                output_height = 10,
+                                legend_text_size  = 28,
+                                legend_key_cm     = 1.8,
+                                legend_point_size = 8) {
   g       <- net$graph
   node_df <- net$node_df
 
@@ -5315,6 +5542,7 @@ plot_tf_de_network <- function(net, output_dir,
   node_df$label <- ifelse(node_df$gene %in% top_tfs, node_df$gene, NA_character_)
 
   igraph::V(g)$node_color <- node_df$color[match(igraph::V(g)$name, node_df$gene)]
+  igraph::V(g)$direction  <- node_df$direction[match(igraph::V(g)$name, node_df$gene)]
   igraph::V(g)$shape_type <- node_df$shape_type[match(igraph::V(g)$name, node_df$gene)]
   igraph::V(g)$node_label <- node_df$label[match(igraph::V(g)$name, node_df$gene)]
 
@@ -5343,28 +5571,40 @@ plot_tf_de_network <- function(net, output_dir,
   p <- ggraph::ggraph(lay) +
     ggraph::geom_edge_link(alpha = 0.15, colour = "grey70", linewidth = 0.3) +
     ggraph::geom_node_point(
-      ggplot2::aes(colour = node_color, shape = shape_type),
+      ggplot2::aes(colour = direction, shape = shape_type),
       size = 2.5
     ) +
     ggraph::geom_node_text(
       ggplot2::aes(label = node_label),
       size = 2.5, repel = TRUE, max.overlaps = 20, na.rm = TRUE
     ) +
-    ggplot2::scale_colour_identity() +
+    ggplot2::scale_colour_manual(
+      values = dir_colors,
+      breaks = c("up", "down", "mixed"),
+      labels = c("up" = "Up-regulated", "down" = "Down-regulated",
+                 "mixed" = "Mixed across cell types"),
+      name   = NULL
+    ) +
     ggplot2::scale_shape_manual(
       values = c("circle" = 16, "triangle" = 17),
+      breaks = c("triangle", "circle"),
       labels = c("circle" = "Co-expression partner", "triangle" = "Transcription factor"),
       name   = NULL
     ) +
-    ggplot2::theme_void() +
-    ggplot2::labs(
-      title   = paste0("TF co-expression network (", contrast_tag, ")"),
-      caption = "Red = up-regulated | Blue = down-regulated | Grey = mixed across cell types"
+    ggplot2::guides(
+      shape  = ggplot2::guide_legend(
+        order = 1, override.aes = list(size = legend_point_size, colour = "grey30")),
+      colour = ggplot2::guide_legend(
+        order = 2, override.aes = list(size = legend_point_size, shape = 16))
     ) +
+    ggplot2::theme_void() +
+    ggplot2::labs(title = paste0("TF co-expression network (", contrast_tag, ")")) +
     ggplot2::theme(
-      legend.position = "bottom",
-      plot.title      = ggplot2::element_text(size = 11, face = "bold"),
-      plot.caption    = ggplot2::element_text(size = 8, colour = "grey40")
+      legend.position = "right",
+      legend.text     = ggplot2::element_text(size = legend_text_size),
+      legend.key.size = ggplot2::unit(legend_key_cm, "cm"),
+      legend.spacing.y = ggplot2::unit(1.5, "cm"),   # gap between the two legend blocks
+      plot.title      = ggplot2::element_text(size = 11, face = "bold", hjust = 0.5)
     )
 
   out_file <- file.path(output_dir, output_pdf)
@@ -5380,7 +5620,8 @@ plot_tf_de_network <- function(net, output_dir,
 #' genes, exports the edge list (source | target | weight), then filters to
 #' TF-containing pairs (AtTFDB) and draws the TF network colored by DE
 #' direction. No module-visualization plots are produced; only the gene-gene
-#' network and the TF network figure. Thin wrapper over run_unified_hdwgcna(),
+#' network and the TF network figure. It also writes TF_TARGET_interaccion.tsv
+#' (columns TF, TARGET, weight) to import the TF-target network into Cytoscape. Thin wrapper over run_unified_hdwgcna(),
 #' plot_hdwgcna_network() and build/plot_tf_de_network().
 #'
 #' @param seurat_obj     Curated Seurat object.
@@ -5443,6 +5684,24 @@ run_hdwgcna_tf_network <- function(seurat_obj,
 
   edges_tf <- edges_all[edges_all$weight >= tom_threshold, ]
   net_tf   <- build_tf_network(edges_tf, tfs, de_mat)
+
+  # TF-target interaction table (TF | TARGET | weight) for Cytoscape. Pairs with
+  # one TF: the TF is the source. TF-TF pairs keep their original order.
+  e_tf       <- net_tf$edge_df
+  tf_first   <- e_tf$source %in% tfs | !(e_tf$target %in% tfs)
+  tf_target  <- data.frame(
+    TF     = ifelse(tf_first, e_tf$source, e_tf$target),
+    TARGET = ifelse(tf_first, e_tf$target, e_tf$source),
+    weight = e_tf$weight,
+    stringsAsFactors = FALSE
+  )
+  tf_target  <- tf_target[order(tf_target$TF, -tf_target$weight), ]
+  write.table(tf_target, file.path(output_dir, "TF_TARGET_interaccion.tsv"),
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  message("TF-target interaction file saved: ",
+          file.path(output_dir, "TF_TARGET_interaccion.tsv"),
+          " (", nrow(tf_target), " interactions)")
+
   plot_tf_de_network(net_tf,
                      output_dir    = output_dir,
                      layout        = "graphopt",

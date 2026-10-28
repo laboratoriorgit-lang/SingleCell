@@ -276,7 +276,7 @@ Boxplot + jitter of `nFeature_RNA` across a list of Seurat objects, combined wit
 Used in Section 5 as an optional check of how many PCs to use. All steps use `dims = 1:30` by default; fewer dimensions change the UMAP and the clusters.
 Standard Deviation per principal component (`Seurat::ElbowPlot`, `reduction = "pca"`), saved as a PDF. Read the flattening point manually to pick how many PCs (`elbow_dims`) to carry into clustering in Section 6 — this does not decide the number of clusters, see `run_resolution_sweep()` below for that.
 
-#### `run_resolution_sweep(seurat_obj, resolutions, output_dir, filename = "clustree2.pdf", pca_dims = 1:30, knn_k = 20)`
+#### `run_resolution_sweep(seurat_obj, resolutions, output_dir, filename = "clustree.pdf", pca_dims = 1:30, knn_k = 20)`
 Recomputes UMAP/neighbors on the Harmony embedding, runs `FindClusters` (Leiden, `algorithm = 4`) across every candidate resolution, and saves a `clustree` diagnostic showing how clusters split or stay stable as resolution changes. Returns the Seurat object with one `RNA_snn_res.<r>` column per tested resolution.
 
 #### `plot_annotated_clustree(seurat_obj, clu, annot_col, output_dir, filename = "clustree_annotated.pdf")`

@@ -35,10 +35,7 @@ if (length(grouping) > 0) {
 }
 
 save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype_grouped",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
+  plot_umap(ath_sc, "celltype_grouped"),
   "umap_grouped.pdf"
 )
 
@@ -53,26 +50,28 @@ Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  ath_sc, cluster_id = "Mesophyll",
+  ath_sc, cluster_id = "Mesophyll.1",
   marker_table = marker_table, output_dir = output_dir
 )
 
 # 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
 #    then curate them in one call. Here Mesophyll's subclusters all map back
 #    to "Mesophyll" (no relabeling) -- use this pattern when inspection
-#    confirms the original label was already correct:
+#    confirms the original label was already correct.
+#    The keys of `reassign` are labels of celltype_grouped (created in
+#    Supplementary Section S2), so annot_col and source_col point to that column:
 reassign <- list(
   "Mesophyll" = c("others" = "Mesophyll")
 )
 ath_sc <- curate_clusters(
   ath_sc, reassign,
-  marker_table = marker_table, output_dir = output_dir
+  marker_table = marker_table, output_dir = output_dir,
+  annot_col = "celltype_grouped", source_col = "celltype_grouped"
 )
 
 # 3. Save the curated annotation UMAP
 save_pdf(
-  DimPlot(ath_sc, group.by = "celltype_curated",
-          label = TRUE, repel = TRUE, raster = FALSE),
+  plot_umap(ath_sc, "celltype_curated"),
   "umap_curated.pdf"
 )
 

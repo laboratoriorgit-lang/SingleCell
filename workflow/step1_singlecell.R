@@ -134,7 +134,7 @@ ath_sc <- reduce(seurat_list, merge) %>%
   RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
+  plot_umap(ath_sc, "orig.ident", colors),
   "umap_preharmony.pdf"
 )
 
@@ -152,7 +152,7 @@ ath_sc <- ath_sc %>%
   RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 save_pdf(
-  DimPlot(ath_sc, group.by = "orig.ident", cols = colors),
+  plot_umap(ath_sc, "orig.ident", colors),
   "umap_postharmony.pdf"
 )
 
@@ -191,7 +191,7 @@ ath_sc <- ath_sc %>%
 
 Idents(ath_sc) <- "seurat_clusters"
 save_pdf(
-  DimPlot(ath_sc, group.by = "seurat_clusters", label = TRUE),
+  plot_umap(ath_sc, "seurat_clusters"),
   "umap_seuratclusters.pdf"
 )
 
@@ -230,10 +230,7 @@ plot_marker_dotplot(
 )
 
 save_pdf(
-  DimPlot(
-    ath_sc, group.by = "celltype",
-    label = TRUE, repel = TRUE, raster = FALSE
-  ),
+  plot_umap(ath_sc, "celltype"),
   "umap_annotation_biblio.pdf"
 )
 
@@ -242,24 +239,24 @@ message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
 # ==============================================================================
 # Section 8 - Gene expression visualization
 # ==============================================================================
-gene <- "AT5G26000"   # one gene, or several: c("gen1", "gen2")
+gene <- "AT4G21750"   # one gene, or several: c("gen1", "gen2")
 
 output_dir <- dir_04
 
 ath_sc <- JoinLayers(ath_sc)
 Idents(ath_sc) <- "celltype"
 
-# Name each file after the plotted gene(s): AT5G26000  ->  ..._AT5G26000.pdf
+# Name each file after the plotted gene(s): AT4G21750  ->  ..._AT4G21750.pdf
 # c("gen1","gen2") -> ..._gen1_gen2.pdf
 gene_tag <- paste(gene, collapse = "_")
 
 save_vln(
-  VlnPlot(ath_sc, features = gene),
+  plot_gene_violin(ath_sc, gene),
   paste0("vln_gene_", gene_tag, ".pdf")
 )
 
 save_pdf(
-  FeaturePlot(ath_sc, features = gene),
+  plot_gene_umap(ath_sc, gene),
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
