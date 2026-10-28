@@ -254,9 +254,9 @@ plot_umap <- function(obj, group_by = "orig.ident", colors = NULL,
 #' @param ...               Further arguments passed to Seurat::FeaturePlot().
 #' @return A ggplot (or patchwork) object.
 #' @export
-plot_gene_umap <- function(obj, features, pt_size = 1.5, legend_text_size = 40,
-                           legend_key_cm = 2.5, axis_title_size = 30,
-                           axis_text_size = 24, order = TRUE, title_size = 36, ...) {
+plot_gene_umap <- function(obj, features, pt_size = 3.5, legend_text_size = 30,
+                           legend_key_cm = 2.5, axis_title_size = 36,
+                           axis_text_size = 29, order = TRUE, title_size = 36, ...) {
   p <- FeaturePlot(obj, features = features, pt.size = pt_size,
                    order = order, ...) &
     labs(x = "umap 1", y = "umap 2") &
