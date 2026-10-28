@@ -393,7 +393,7 @@ def plot_trajectory_graphs(
     show_inline=False,
     param_label=None,
     cell_size=144,
-    node_size=360,
+    node_size=80,
 ):
     os.makedirs(output_dir, exist_ok=True)
     title_suffix = f"\n{param_label}" if param_label else ""
@@ -490,7 +490,7 @@ def plot_pseudotime_trajectory(
     show_inline=False,
     param_label=None,
     cell_size=144,
-    node_size=360,
+    node_size=80,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
