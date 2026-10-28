@@ -98,7 +98,7 @@ plot_qc_violin_grid <- function(obj1, label, color) {
   title <- ggplot() +
     ggtitle(paste0(label, " (", n1, " cells)")) +
     theme_void() +
-    theme(plot.title = element_text(face = "bold", size = 16))
+    theme(plot.title = element_text(face = "bold", size = 24))
 
   return(title / p1 + plot_layout(heights = c(0.06, 1)))
 }
