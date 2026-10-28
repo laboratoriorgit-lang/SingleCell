@@ -499,7 +499,7 @@ def plot_pseudotime_trajectory(
     node_size=0,
     axis_title_size=29,
     trajectory_s=200,
-    trajectory_scale=0.9,
+    trajectory_scale=1.5,
 ):
     os.makedirs(output_dir, exist_ok=True)
 
