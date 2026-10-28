@@ -753,9 +753,9 @@ def run_trajectory_runs(
 # plotted genes, as in Section 8: one gene -> trajectory_gene_AT4G21750.pdf, several
 # -> trajectory_gene_AT3G24140_AT4G21750.pdf. Puts the expression in .X if needed,
 # creates the folder, closes the figure, and returns the saved path.
-def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=36,
+def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=38,
                              sort_order=True, filename=None, ncols=None,
-                             point_size=360, axis_title_size=29, axis_text_size=23):
+                             point_size=800, axis_title_size=29, axis_text_size=23):
     ensure_expression_in_X(adata)
     out_dir = os.path.join(run_dir, "gene_plots")
     os.makedirs(out_dir, exist_ok=True)
