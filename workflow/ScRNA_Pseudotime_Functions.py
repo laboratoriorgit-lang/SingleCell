@@ -45,9 +45,9 @@ KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
 # "umap 1" / "umap 2" labels, no title, cell-type names on the clusters and a
 # legend with one swatch per cell type on the right. Sizes are in points.
 def plot_celltype_umap(adata, annotation_col, path,
-                       point_size=60, label_size=17,
-                       axis_title_size=30, axis_text_size=24,
-                       legend_text_size=28, legend_point_size=17,
+                       point_size=120, label_size=17,
+                       axis_title_size=36, axis_text_size=29,
+                       legend_text_size=30, legend_point_size=17,
                        axis_pad=0.15, legend_x=1.12):
     fig = sc.pl.umap(
         adata,
