@@ -82,36 +82,21 @@ plot_qc_batch <- function(seurat_list, colors, file) {
 
 
 # -----------------------------------------------------------------------------
-# plot_elbow: PCA elbow plot with automatic cutoff detection
+# plot_elbow: PCA elbow plot with points connected by line
 # -----------------------------------------------------------------------------
-# Uses "kneedle" method: finds PC where curve bends most (max perpendicular
-# distance from line connecting first and last point).
-#
 # @param seurat_obj Seurat object with PCA computed
-# @param ndims      Number of PCs to plot (default 50)
-# @return ggplot object with elbow plot and red dashed line at detected cutoff
+# @param ndims      Number of PCs to plot (default 30)
+# @return ggplot object with elbow plot (points + connecting line)
 # -----------------------------------------------------------------------------
-plot_elbow <- function(seurat_obj, ndims = 50) {
+plot_elbow <- function(seurat_obj, ndims = 30) {
   stdev <- Stdev(seurat_obj, reduction = "pca")[1:ndims]
+  df <- data.frame(PC = 1:ndims, stdev = stdev)
 
-  # Kneedle algorithm: max perpendicular distance from line (1, stdev[1]) to (n, stdev[n])
-  n <- length(stdev)
-  x <- 1:n
-  y <- stdev
-
-  # Line from first to last point
-  x1 <- 1; y1 <- y[1]
-  x2 <- n; y2 <- y[n]
-
-  # Perpendicular distance from each point to line
-  dist <- abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) /
-          sqrt((y2 - y1)^2 + (x2 - x1)^2)
-
-  elbow <- which.max(dist)
-
-  ElbowPlot(seurat_obj, ndims = ndims) +
-    geom_vline(xintercept = elbow, linetype = "dashed", color = "red") +
-    labs(caption = paste0("Elbow: PC ", elbow))
+  ggplot(df, aes(x = PC, y = stdev)) +
+    geom_line(color = "black") +
+    geom_point(color = "black", size = 2) +
+    labs(x = "PC", y = "Standard Deviation") +
+    theme_classic()
 }
 
 
