@@ -81,6 +81,40 @@ plot_qc_batch <- function(seurat_list, colors, file) {
 }
 
 
+# -----------------------------------------------------------------------------
+# plot_elbow: PCA elbow plot with automatic cutoff detection
+# -----------------------------------------------------------------------------
+# Uses "kneedle" method: finds PC where curve bends most (max perpendicular
+# distance from line connecting first and last point).
+#
+# @param seurat_obj Seurat object with PCA computed
+# @param ndims      Number of PCs to plot (default 50)
+# @return ggplot object with elbow plot and red dashed line at detected cutoff
+# -----------------------------------------------------------------------------
+plot_elbow <- function(seurat_obj, ndims = 50) {
+  stdev <- Stdev(seurat_obj, reduction = "pca")[1:ndims]
+
+  # Kneedle algorithm: max perpendicular distance from line (1, stdev[1]) to (n, stdev[n])
+  n <- length(stdev)
+  x <- 1:n
+  y <- stdev
+
+  # Line from first to last point
+  x1 <- 1; y1 <- y[1]
+  x2 <- n; y2 <- y[n]
+
+  # Perpendicular distance from each point to line
+  dist <- abs((y2 - y1) * x - (x2 - x1) * y + x2 * y1 - y2 * x1) /
+          sqrt((y2 - y1)^2 + (x2 - x1)^2)
+
+  elbow <- which.max(dist)
+
+  ElbowPlot(seurat_obj, ndims = ndims) +
+    geom_vline(xintercept = elbow, linetype = "dashed", color = "red") +
+    labs(caption = paste0("Elbow: PC ", elbow))
+}
+
+
 plot_qc_violin_grid <- function(obj1, label, color) {
 
   n1        <- ncol(obj1)
