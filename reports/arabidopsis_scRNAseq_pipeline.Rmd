@@ -1823,15 +1823,10 @@ is placed within that cell type.
 | Method | Description |
 |--------|-------------|
 | `"auto"` | Default. Uses Gulati score; when multiple cell types, restricts to `ROOT_CLUSTER`. |
-| `"tip"` | Manual override. Set `root_tip` to a specific node number (from tree figure). |
+| `"tip"` | Manual override. Set `root_tip` to a node number (see Supplementary Section S4). |
 
-**Workflow:** Run first with `auto` (default) to generate the tree and FA plot
-with numbered nodes. Inspect the plot to identify tip positions. If the
-automatic root is not biologically correct, re-run with `root_method = "tip"`
-and `root_tip = <node number>`.
-
-To customize further, use `root_score` (a gene ID or obs column) or
-`root_lowest = TRUE` (for an end-state marker where low expression marks the root).
+To customize, use `root_score` (a gene ID or obs column) or `root_lowest = TRUE`
+(for an end-state marker where low expression marks the root).
 
 **Reference:** Gulati GS et al. (2020) Single-cell transcriptional diversity is
 a hallmark of developmental potential. *Science* 367(6476):405-411.
@@ -2273,6 +2268,38 @@ decide whether to keep or split the label):
 relabeling), which shows the inspect-then-curate mechanism without changing any
 label. The main workflow does not need this step: it continues with the labels
 from Section 7.*
+
+\newpage
+
+## Supplementary Section S4 - Manual root override {-}
+
+If the automatic root selection (Section 21) does not match the expected
+biological starting point, the root can be set manually by specifying a tree
+node number. This requires two runs:
+
+1. **First run with `auto`:** Run the trajectory with default settings. The
+   pipeline generates an FA (ForceAtlas2) plot showing the tree structure with
+   numbered nodes at each tip. Inspect this plot to identify which tip
+   corresponds to the biological root (e.g., the progenitor population).
+
+2. **Second run with `tip`:** Re-run with `root_method = "tip"` and `root_tip`
+   set to the node number identified in step 1.
+
+```python
+# Example: re-run with manual root at node 42
+adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
+    adata           = adata,
+    clusters        = TRAJECTORY_CLUSTERS,
+    root_cluster    = ROOT_CLUSTER,
+    annotation_col  = ANNOTATION_COL,
+    root_method     = "tip",
+    root_tip        = 42,  # node number from FA plot
+)
+```
+
+This approach is useful when the Gulati score (number of detected genes) does
+not correctly identify the progenitor population, for example in datasets where
+differentiated cells have higher transcriptional diversity than progenitors.
 
 \newpage
 
