@@ -1825,8 +1825,13 @@ is placed within that cell type.
 | `"auto"` | Default. Uses Gulati score; when multiple cell types, restricts to `ROOT_CLUSTER`. |
 | `"tip"` | Manual override. Set `root_tip` to a specific node number (from tree figure). |
 
-To customize, use `root_score` (a gene ID or obs column), `root_lowest = TRUE`
-(for an end-state marker where low expression marks the root).
+**Workflow:** Run first with `auto` (default) to generate the tree and FA plot
+with numbered nodes. Inspect the plot to identify tip positions. If the
+automatic root is not biologically correct, re-run with `root_method = "tip"`
+and `root_tip = <node number>`.
+
+To customize further, use `root_score` (a gene ID or obs column) or
+`root_lowest = TRUE` (for an end-state marker where low expression marks the root).
 
 **Reference:** Gulati GS et al. (2020) Single-cell transcriptional diversity is
 a hallmark of developmental potential. *Science* 367(6476):405-411.
