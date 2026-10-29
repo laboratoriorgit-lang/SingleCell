@@ -188,25 +188,25 @@ The active annotation path is bibliography-based (`biblio_marks.txt` ->
 
 ## Minimum computing requirements {-}
 
-The table below summarizes the computing requirements for running the full
-pipeline on a personal computer, from raw FASTQ through the downstream Seurat/R
-and Python workflow. These are not hard limits; below them the
-pipeline still runs, just slower, and heavier steps (Cell Ranger, merging,
-PCA/UMAP) risk stalling or exhausting memory.
+The pipeline has two stages with different requirements:
+
+**Cell Ranger (FASTQ → count matrices):** see the official 10x Genomics system
+requirements at https://www.10xgenomics.com/support/software/cell-ranger/downloads/cr-system-requirements.
+Cell Ranger is CPU- and memory-intensive; 8+ cores and 64+ GB RAM are typical.
+
+**R/Python analysis (Section 2 onwards):** lighter requirements, suitable for a
+personal computer with ~10,000 cells.
 
 | Component | Minimum | Recommended |
 |---|---:|---:|
-| CPU cores | 4 | 16 or more |
-| RAM | 32 GB | 64-128 GB for merged multi-sample objects |
+| CPU cores | 4 | 8 or more |
+| RAM | 8 GB | 32 GB for merged multi-sample objects |
 | Disk space | 80 GB free | 100 GB free |
-| Container runtime | Docker or Singularity/Apptainer (choose one; see "Container startup") | Singularity/Apptainer on a cluster; Docker Desktop on a personal computer |
+| Container runtime | Docker or Singularity/Apptainer | Singularity/Apptainer on a cluster; Docker on a personal computer |
 
 These requirements were estimated from test runs of the two-sample WT vs pifq
-dataset on a Linux server (Intel Xeon, 2.3 GHz). The exact CPU model matters
-less than the number of cores and available RAM: Cell Ranger and Seurat
-parallelize across cores, so more cores reduce runtime linearly up to a point.
-The RAM requirement is dominated by the merged Seurat object size, which scales
-with total cell count.
+dataset. The RAM requirement scales with total cell count (~4 GB per 10k cells
+for a Seurat object).
 
 This workflow is packaged as a single public image (`psblab/scrnaseq:latest`,
 available at [hub.docker.com/r/psblab/scrnaseq](https://hub.docker.com/r/psblab/scrnaseq));
@@ -456,11 +456,11 @@ export PATH=$PWD/cellranger-9.0.1/bin:$PATH
 cellranger --version
 ```
 
-**Expected output:** `tar` extracts a `cellranger-9.0.1/` folder; `cellranger
---version` prints something like `cellranger cellranger-9.0.1` if the install
-and `PATH` are correct. If instead you get `command not found`, the `export
-PATH` line did not run, or was run in a different terminal/session than the
-one you are using now.
+The `export PATH=...` line adds Cell Ranger to the system's search path,
+allowing you to call `cellranger` from any directory. Verify with `cellranger
+--version` — it should print the version number (e.g., `cellranger-9.0.1`);
+`command not found` means the PATH was not set correctly or was run in a
+different terminal session.
 
 The single-cell workflow starts from Cell Ranger output, specifically the
 `outs/filtered_feature_bc_matrix/` folder for each sample. If only raw FASTQ
