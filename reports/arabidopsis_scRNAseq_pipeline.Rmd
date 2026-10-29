@@ -2285,19 +2285,18 @@ container (Part 1); its version is fixed by the workflow.
 
 ## Installing tmux or screen {-}
 
-| OS | tmux | screen |
-|---|---|---|
-| Linux (Debian/Ubuntu) | `sudo apt install tmux` | `sudo apt install screen` |
-| Linux (RHEL/CentOS/Fedora) | `sudo yum install tmux` | `sudo yum install screen` |
-| macOS (Homebrew) | `brew install tmux` | ships with macOS by default |
-| Windows | not natively available — see note below | not natively available — see note below |
+**tmux:** see the official installation guide at https://github.com/tmux/tmux/wiki/Installing
+for platform-specific instructions (Linux, macOS, BSD, Windows via WSL2).
+
+**screen:** `sudo apt install screen` (Debian/Ubuntu), `sudo yum install screen`
+(RHEL/CentOS/Fedora), or ships with macOS by default.
 
 Windows users: this whole pipeline (Cell Ranger, Docker/Singularity, R,
 Python) is Linux-based. The practical options on Windows are WSL2
 (https://learn.microsoft.com/windows/wsl/install) running Ubuntu locally, or
 an SSH client (Windows Terminal, PuTTY, or WSL2's own `ssh`) connecting out to
 a Linux server or HPC cluster where the rest of this guide applies directly.
-Once inside WSL2 or an SSH session on Linux, use the Linux commands above.
+Once inside WSL2 or an SSH session on Linux, use the commands above.
 
 ## Installing a container runtime (Docker or Singularity/Apptainer) {-}
 
