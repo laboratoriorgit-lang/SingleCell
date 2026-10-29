@@ -380,17 +380,21 @@ usually restricted to admins). It involves two separate steps:
 singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 ```
 
-2. **Run it with `exec`.** This opens a working shell inside the container.
-   Run this from the repository cloned in Section 1.1:
+2. **Run it with `exec`.** This opens a Bash shell inside the container. Run
+   this command **from the SingleCell directory** cloned in Section 1.1 — all
+   pipeline work happens inside this repository:
 
 ```bash
+cd ~/my-analysis/SingleCell   # or wherever you cloned it
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
-`--bind $(pwd):/workspace` mounts your current directory as `/workspace` inside
-the container (containers are isolated and cannot see host files otherwise).
-`/workspace` is a conventional name that keeps scripts portable across machines.
-`--pwd` sets the initial working directory.
+`--bind $(pwd):/workspace` makes the SingleCell repository visible inside the
+container as `/workspace`. Containers are isolated by default and cannot access
+host files without an explicit bind. `--pwd /workspace` sets the initial working
+directory so you start inside the repository. For more details on Singularity
+bind mounts, see the official documentation:
+https://apptainer.org/docs/user/main/bind_paths_and_mounts.html
 
 If this step fails (for example with `squashfuse not found` or `Operation not
 permitted`), see "Troubleshooting Singularity/Apptainer" in the Supplementary
