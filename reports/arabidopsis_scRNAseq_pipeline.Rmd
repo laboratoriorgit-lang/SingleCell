@@ -380,14 +380,31 @@ usually restricted to admins). It involves two separate steps:
 singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 ```
 
-2. **Run it with `exec`.** This opens the working shell, binding the current
-   directory to `/workspace` inside the container. Every time you come back to
-   work on this pipeline, run this from inside the repository cloned in
-   Section 1.1 (so `$(pwd)` resolves to the repository, not somewhere else):
+2. **Run it with `exec`.** This opens a working shell inside the container.
+   Every time you come back to work on this pipeline, run this from inside the
+   repository cloned in Section 1.1:
 
 ```bash
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
+
+**Understanding the command:**
+
+- `--bind $(pwd):/workspace` — mounts your current directory (the repository)
+  as `/workspace` inside the container. The container is isolated: without this
+  flag it cannot see your files. The syntax is `host_path:container_path`.
+  `$(pwd)` expands to your current directory, so run this command from the
+  repository root.
+- `/workspace` — a conventional mount point inside containers. The name is
+  arbitrary, but using a fixed path like `/workspace` (instead of mirroring
+  your host path) keeps scripts portable: the same R/Python code works on any
+  machine because it always references `/workspace`, regardless of where the
+  repository lives on the host.
+- `--pwd /workspace` — sets the working directory inside the container. Without
+  it, Apptainer warns that the host working directory does not exist in the
+  container and falls back to `$HOME`.
+- `scrnaseq.sif` — the container image built in step 1.
+- `/bin/bash` — the shell to run inside the container.
 
 If this step fails (for example with `squashfuse not found` or `Operation not
 permitted`), see "Troubleshooting Singularity/Apptainer" in the Supplementary
@@ -395,9 +412,7 @@ section.
 
 Apptainer imports the image environment, so the bundled Python (`/opt/venv`) and
 R stay on `PATH`, and it runs as the invoking user, so files under `results/`
-are owned by that user rather than by root. The `--pwd /workspace` flag starts
-the shell inside the bound repository (otherwise Apptainer warns that the host
-working directory does not exist in the container and falls back to `$HOME`).
+are owned by that user rather than by root.
 
 **Option B: Docker.** Use this only if the table above sent you here, or if Singularity/Apptainer is not
 available. Requires root (or membership in the `docker` group), which is the
