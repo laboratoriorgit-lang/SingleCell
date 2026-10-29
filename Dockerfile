@@ -113,6 +113,9 @@ RUN R -e "BiocManager::install(c('impute', 'preprocessCore'), ask = FALSE, updat
 # ── WGCNA (requires impute + preprocessCore above) ────────────────────────────
 RUN R -e "install.packages('WGCNA')"
 
+# ── hdWGCNA dependencies (UCell, GeneOverlap) ────────────────────────────────
+RUN R -e "BiocManager::install(c('UCell', 'GeneOverlap'), ask = FALSE, update = FALSE)"
+
 # ── hdWGCNA (single-cell WGCNA wrapper) ───────────────────────────────────────
 RUN R -e "remotes::install_github('smorabit/hdWGCNA', ref='dev', upgrade='never')"
 
