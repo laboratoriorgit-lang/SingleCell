@@ -939,7 +939,8 @@ ath_sc <- reduce(seurat_list, merge) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(npcs = 50, verbose = FALSE)
 
-# Elbow plot: variance explained by each PC (auto-detects cutoff)
+
+# Elbow plot: shows variance explained by each PC to help choose dims for UMAP
 save_pdf(plot_elbow(ath_sc, ndims = 30), "elbow_merged.pdf")
 
 message("\nOK SECTION 3 COMPLETE: merge and PCA complete")
