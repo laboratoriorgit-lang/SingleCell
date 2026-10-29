@@ -2286,7 +2286,10 @@ container (Part 1); its version is fixed by the workflow.
 ## Installing tmux or screen {-}
 
 **tmux:** see the official installation guide at https://github.com/tmux/tmux/wiki/Installing
-for platform-specific instructions (Linux, macOS, BSD, Windows via WSL2).
+maintained by the tmux developers. This is the authoritative source for
+platform-specific instructions (Linux package managers, macOS Homebrew/MacPorts,
+BSD ports, building from source, and Windows via WSL2). The wiki is kept
+up-to-date with each release and covers edge cases not listed here.
 
 **screen:** `sudo apt install screen` (Debian/Ubuntu), `sudo yum install screen`
 (RHEL/CentOS/Fedora), or ships with macOS by default.
