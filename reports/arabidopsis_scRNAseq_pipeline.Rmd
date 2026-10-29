@@ -1941,7 +1941,7 @@ trend signal and draws the trend heatmaps; it takes seconds, so `TOP_N`,
 
 For this report, the run shown here uses the already selected epidermis
 cotyledon trajectory: `nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, and
-`seed=3`. `TOP_N = 10` means the main panel labels 10 genes. They are spread along the whole pseudotime: the heatmap rows are cut into 10 equal blocks and the gene with the highest amplitude is labeled in each block (`spread_top = True`; with `spread_top = False` the 10 genes with the highest amplitude are labeled instead).
+`seed=3`. `TOP_N = 10` labels 10 genes spread along the pseudotime axis.
 `HIGHLIGHT_GENES = ["AT4G21750"]` highlights ATML1 using the same fitted trend workflow. ATML1
 is significant, so it is already part of the fit. A highlighted gene that is not in the saved fit
 (it was not significant when the fit was computed) is fitted on its own and added to it, which
