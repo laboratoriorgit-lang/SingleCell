@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglpk-dev libfftw3-dev libgsl-dev \
     libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
     libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev \
+    libmagick++-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python virtual environment + packages ─────────────────────────────────────
@@ -30,7 +31,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     scipy \
     scikit-learn \
     matplotlib \
-    seaborn
+    seaborn \
+    ipython
 
 # ── R global options ───────────────────────────────────────────────────────────
 RUN echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/noble/latest"))' \
@@ -110,6 +112,9 @@ RUN R -e "BiocManager::install(c('impute', 'preprocessCore'), ask = FALSE, updat
 
 # ── WGCNA (requires impute + preprocessCore above) ────────────────────────────
 RUN R -e "install.packages('WGCNA')"
+
+# ── hdWGCNA (single-cell WGCNA wrapper) ───────────────────────────────────────
+RUN R -e "remotes::install_github('smorabit/hdWGCNA', ref='dev', upgrade='never')"
 
 # ── leidenbase (required for FindClusters algorithm=4) ────────────────────────
 RUN R -e "install.packages('leidenbase')"
