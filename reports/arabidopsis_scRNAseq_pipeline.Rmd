@@ -1150,9 +1150,29 @@ companion cell  PP2-A1   AT4G19840
 **How cell type names are assigned.** The pipeline first runs `FindAllMarkers()`
 (Seurat's differential expression function) to identify marker genes for each
 cluster. The full output is saved to `results/03_annotation/FindAllMarkers.tsv`
-— this table contains all differentially expressed genes per cluster with
-columns including `gene`, `cluster`, `p_val`, `avg_log2FC`, `pct.1`, `pct.2`,
-and `p_val_adj`. Then, the annotation function:
+for exploratory analysis:
+
+```text
+gene        p_val       avg_log2FC  pct.1  pct.2  p_val_adj  cluster
+AT2G39730   1.2e-180    2.45        0.92   0.15   2.8e-176   0
+AT1G29930   3.1e-165    1.89        0.88   0.21   7.2e-161   0
+AT5G38410   8.4e-142    2.12        0.85   0.18   1.9e-137   0
+...
+```
+
+| Column | Description |
+|--------|-------------|
+| `gene` | Gene identifier (AGI code) |
+| `p_val` | Raw p-value from differential expression test |
+| `avg_log2FC` | Log2 fold change between cluster and all other cells |
+| `pct.1` | Fraction of cells in the cluster expressing the gene |
+| `pct.2` | Fraction of cells outside the cluster expressing the gene |
+| `p_val_adj` | Bonferroni-adjusted p-value |
+| `cluster` | Cluster number |
+
+The `pct.1` and `pct.2` columns are useful for exploratory analysis: a good
+marker has high `pct.1` (expressed in most cells of the cluster) and low `pct.2`
+(not expressed elsewhere). Then, the annotation function:
 
 1. Finds which genes from the bibliography table are also significant markers
    in each cluster (intersection of bibliography IDs with FindAllMarkers genes).
