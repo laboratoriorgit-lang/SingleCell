@@ -1125,10 +1125,17 @@ This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
 `data/biblio_marks.txt`.
 
-The pipeline first finds marker genes for the dataset (recomputed each time with
-`force = TRUE`, so they always match the current clusters), then compares those
-markers with the bibliography table to assign a `celltype` label. The dotplot is
-used to inspect whether the expected marker genes support the assigned labels.
+**How cell type names are assigned.** The pipeline first runs `FindAllMarkers()`
+(Seurat's differential expression function) to identify marker genes for each
+cluster. The full output is saved to `FindAllMarkers.tsv` for manual inspection
+— this table contains all differentially expressed genes per cluster with their
+p-values and fold changes. Then, for each cluster, the annotation function finds
+which bibliography markers overlap with the cluster's significant genes and
+assigns the cell type of the marker with the lowest adjusted p-value. When
+multiple clusters receive the same label, a numeric suffix is added (e.g.,
+Mesophyll.1, Mesophyll.2). The dotplot visualizes expression of all bibliography
+markers across clusters to verify whether the assigned labels are supported by
+the expected gene signatures.
 
 **Marker table format.** The marker table has one row per marker gene and three
 columns: `celltype` (the cell type the gene marks), `symbol` (the gene name) and
