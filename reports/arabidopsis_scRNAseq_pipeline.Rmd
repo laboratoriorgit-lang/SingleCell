@@ -1024,7 +1024,7 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
-message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
+message("\nOK SECTION 5 COMPLETE: Harmony integration complete")
 ```
 
 Representative output from Section 4:
@@ -1033,7 +1033,7 @@ Representative output from Section 4:
 
 \newpage
 
-## Section 7 - Clustering resolution
+## Section 6 - Clustering resolution
 
 This section compares candidate clustering resolutions to help choose the one
 used in Section 6. The elbow plot (how many PCs to use) was already shown in
@@ -1061,7 +1061,7 @@ clu <- run_resolution_sweep(
   pca_dims = dims_elbow
 )
 
-message("\nOK SECTION 8 COMPLETE: clustree saved")
+message("\nOK SECTION 6 COMPLETE: clustree saved")
 ```
 
 Representative output from Section 5:
@@ -1070,7 +1070,7 @@ Representative output from Section 5:
 
 \newpage
 
-## Section 6 - Final clustering
+## Section 7 - Final clustering
 
 This section groups cells that look transcriptionally similar into discrete
 clusters, using the **Leiden algorithm** (`algorithm = 4`) -- a standard
@@ -1122,7 +1122,7 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK SECTION 8 COMPLETE: final clustering complete")
+message("\nOK SECTION 7 COMPLETE: final clustering complete")
 ```
 
 Representative output from Section 6:
@@ -1221,7 +1221,7 @@ Representative outputs from Section 7:
 
 \newpage
 
-## Section 8 - Gene expression visualization
+## Section 9 - Gene expression visualization
 
 This section plots the expression of one selected gene across the annotated
 cell types. The gene to inspect is set in the `gene` variable.
@@ -1256,7 +1256,7 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
+message("\nOK SECTION 9 COMPLETE: gene expression visualization saved")
 ```
 
 Representative outputs from Section 8:
@@ -1271,7 +1271,7 @@ Representative outputs from Section 8:
 
 \newpage
 
-## Section 9 - Export the annotated object
+## Section 10 - Export the annotated object
 
 This section closes the R part of the workflow by saving the final object in two
 formats. The `.rds` file is used to continue working in R, and the `.h5ad` file
@@ -1298,7 +1298,7 @@ export_to_scanpy(
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK SECTION 10 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 \newpage
@@ -1315,7 +1315,7 @@ networks.
 ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 ```
 
-## Section 10 - Cell-type subsets
+## Section 11 - Cell-type subsets
 
 The annotation column used to define cell types is a user choice. Depending on
 how Part 1 was run, this is one of `celltype` (bibliography annotation),
@@ -1333,7 +1333,7 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
+message("\nOK SECTION 11 COMPLETE: cell-type subsets created")
 ```
 
 Cells per cell type (annotation `celltype`; Mesophyll is split into two
@@ -1354,7 +1354,7 @@ this stage):
 | endodermis | 67 |
 | guard cell | 31 |
 
-## Section 11 - Pseudo-replicate assignment
+## Section 12 - Pseudo-replicate assignment
 
 This section creates pseudo-replicates for the pseudobulk analysis. Instead of
 treating each single cell as an independent replicate, cells from the same cell
@@ -1388,7 +1388,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Epidermis_Cotyledon"]]$replicate)
 
-message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
+message("\nOK SECTION 12 COMPLETE: pseudo-replicates assigned")
 ```
 
 Cell types present in only one condition are dropped, since a WT vs pifq
@@ -1411,7 +1411,7 @@ different numbers of cells (WT has fewer here):
 | Epidermis Cotyledon | WT_rep2 | 147 |
 | Epidermis Cotyledon | WT_rep3 | 142 |
 
-## Section 12 - Pseudobulk tables and DESeq2
+## Section 13 - Pseudobulk tables and DESeq2
 
 Testing every single cell as its own replicate overstates statistical
 confidence, since cells from the same sample are not independent. This
@@ -1450,7 +1450,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK SECTION 13 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 ```
 
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
@@ -1465,7 +1465,7 @@ AT1G01020   119.88      0.204           0.168      1.212   2.3e-01     3.6e-01
 AT1G01030   417.65     -0.605           0.172     -3.521   4.3e-04     1.8e-03
 ```
 
-## Section 13 - Volcano plots
+## Section 14 - Volcano plots
 
 This section creates volcano plots from the DESeq2 result tables generated in
 Section 15. Each plot summarizes one cell type for the selected comparison.
@@ -1491,14 +1491,14 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK SECTION 13 COMPLETE: volcano plots saved")
+message("\nOK SECTION 14 COMPLETE: volcano plots saved")
 ```
 
 Representative output from Section 13:
 
 ![Volcano plot for Mesophyll.1, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
 
-## Section 14 - Differential gene tables
+## Section 15 - Differential gene tables
 
 This section summarizes the DESeq2 results into combined differential gene
 tables. It uses the same significance thresholds defined for the volcano plots:
@@ -1523,7 +1523,7 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK SECTION 14 COMPLETE: differential gene tables saved")
+message("\nOK SECTION 15 COMPLETE: differential gene tables saved")
 ```
 
 This writes two combined matrices (genes x cell types). The class matrix
@@ -1541,7 +1541,7 @@ AT1G01060     1      1     0          AT1G01060     1.47    4.55    NA
 AT1G01120    -1      1     0          AT1G01120    -1.72    1.22    NA
 ```
 
-## Section 15 - GO enrichment
+## Section 16 - GO enrichment
 
 This section tests whether the significant genes from each cell type are
 enriched for Gene Ontology terms. In simple terms, it asks whether the genes that
@@ -1574,14 +1574,14 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
+message("\nOK SECTION 16 COMPLETE: GO enrichment complete")
 ```
 
 Representative output from Section 15:
 
 ![GO enrichment (BP) for Mesophyll.1, WT vs pifq.](assets/go_mesophyll.png){width=30%}
 
-## Section 16 - Log2FC heatmap
+## Section 17 - Log2FC heatmap
 
 This section turns the differential expression tables into a heatmap of log2FC
 values. It is used to compare how strongly genes change across cell types in the
@@ -1606,7 +1606,7 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK SECTION 16 COMPLETE: log2FC heatmap saved")
+message("\nOK SECTION 17 COMPLETE: log2FC heatmap saved")
 ```
 
 Representative output from Section 16:
@@ -1615,7 +1615,7 @@ Representative output from Section 16:
 
 \newpage
 
-## Section 17 - Gene-gene co-expression network (hdWGCNA) and TF network
+## Section 18 - Gene-gene co-expression network (hdWGCNA) and TF network
 
 This section builds a gene-gene co-expression network with **hdWGCNA**
 (high-dimensional weighted gene co-expression network analysis; Morabito et al.,
@@ -1683,7 +1683,7 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")
+message("\nOK SECTION 18 COMPLETE: TF coexpression network saved")
 ```
 
 Representative output from Section 17:
@@ -1704,7 +1704,7 @@ q()          # leave R (do not save the workspace)
 python3
 ```
 
-## Section 18 - Setup
+## Section 19 - Setup
 
 This section starts the Python part of the pipeline. It defines the same project
 paths used earlier, loads the Python helper scripts, and creates the pseudotime
@@ -1727,12 +1727,12 @@ exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), g
 dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
 os.makedirs(dir_pseudotime, exist_ok=True)
 
-print("SECTION 18 COMPLETE: setup done")
+print("SECTION 19 COMPLETE: setup done")
 ```
 
 \newpage
 
-## Section 19 - Load annotated object
+## Section 20 - Load annotated object
 
 This section loads the `.h5ad` object exported at the end of the R workflow. The
 `INPUT_H5AD` path points to that file, and `ANNOTATION_COL` selects which cell
@@ -1785,7 +1785,7 @@ Representative output from Section 19:
 
 \newpage
 
-## Section 20 - Cell type selection
+## Section 21 - Cell type selection
 
 This section selects which cell types will be used for trajectory inference. The
 list is set in `TRAJECTORY_CLUSTERS`, and the names must match the cell-type
@@ -1808,7 +1808,7 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 20 COMPLETE: cell type selection saved")
+print("SECTION 21 COMPLETE: cell type selection saved")
 ```
 
 Representative output from Section 20:
@@ -1817,7 +1817,7 @@ Representative output from Section 20:
 
 \newpage
 
-## Section 21 - Trajectory inference
+## Section 22 - Trajectory inference
 
 This section fits the pseudotime trajectory for the selected cells and sets its
 root (starting point). A trajectory tree has no intrinsic direction — the start
@@ -1879,7 +1879,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 21 COMPLETE: trajectory inference saved")
+print("SECTION 22 COMPLETE: trajectory inference saved")
 ```
 
 \newpage
@@ -1897,7 +1897,7 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 \clearpage
 ```
 
-## Section 22 - Plot genes on trajectory
+## Section 23 - Plot genes on trajectory
 
 This section plots the expression of a selected gene on the fitted epidermis
 cotyledon trajectory. `plot_genes_on_trajectory()` takes the genes (and optional
@@ -1923,7 +1923,7 @@ plot_genes_on_trajectory(
     filename = "trajectory_genes_ATML1.pdf",
 )
 
-print("SECTION 22 COMPLETE: gene trajectory plots saved")
+print("SECTION 23 COMPLETE: gene trajectory plots saved")
 ```
 
 Representative output from Section 22:
@@ -1940,7 +1940,7 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 \clearpage
 ```
 
-## Section 23 - Gene trends
+## Section 24 - Gene trends
 
 This section fits gene-expression trends along pseudotime for the epidermis
 cotyledon trajectory calculated above. It runs in two steps. `compute_gene_trends()`
@@ -1995,7 +1995,7 @@ top_path, highlight_path = plot_gene_trends(
 for gene in HIGHLIGHT_GENES:
     plot_single_gene_trend(adata_fitted, gene, selected_trajectory_dir)
 
-print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
+print("SECTION 24 COMPLETE: gene trends saved")
 ```
 
 Representative outputs from Section 23 — epidermis cotyledon gene trends:
@@ -2011,7 +2011,7 @@ Representative outputs from Section 23 — epidermis cotyledon gene trends:
 Left: 10 variable genes spread along pseudotime for the epidermis cotyledon trajectory.
 Right: ATML1 (`AT4G21750`) highlighted from the same fitted trend workflow.
 
-## Section 24 - Final export
+## Section 25 - Final export
 
 This section saves the final pseudotime object after trajectory inference and
 gene-trend analysis. The exported `.h5ad` file keeps the trajectory results,
@@ -2025,7 +2025,7 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"SECTION 25 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 ```
 
 This is the last step of the pipeline. Leave the Python REPL the same way
