@@ -988,6 +988,62 @@ def plot_gene_trends(
     return top_pdf, custom_pdf
 
 
+def plot_single_gene_trend(
+    adata_fitted,
+    gene,
+    run_dir,
+    point_size=20,
+    point_alpha=0.4,
+    line_width=3,
+    title_size=24,
+    axis_size=18,
+    figsize=(10, 6),
+):
+    """
+    Scatter plot of one gene's expression over pseudotime with fitted trend.
+
+    Produces a plot with pseudotime on X, expression on Y, cells as points,
+    and the fitted spline as a line (Gulati-style single-gene view).
+    """
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import UnivariateSpline
+
+    output_dir = os.path.join(run_dir, "gene_trends")
+    os.makedirs(output_dir, exist_ok=True)
+
+    if gene not in adata_fitted.var_names:
+        print(f"Gene {gene} not in fitted data.")
+        return None
+
+    t = adata_fitted.obs["t"].values
+    X = adata_fitted[:, gene].X
+    expr = X.toarray().ravel() if hasattr(X, "toarray") else np.asarray(X).ravel()
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.scatter(t, expr, s=point_size, alpha=point_alpha, c="#888888", edgecolors="none")
+
+    # Fitted trend from scFates (stored in layers["fitted"])
+    if "fitted" in adata_fitted.layers:
+        fitted_expr = adata_fitted[:, gene].layers["fitted"]
+        fitted_expr = fitted_expr.toarray().ravel() if hasattr(fitted_expr, "toarray") else np.asarray(fitted_expr).ravel()
+        order = np.argsort(t)
+        ax.plot(t[order], fitted_expr[order], c="#E63946", lw=line_width, label="fitted trend")
+
+    ax.set_xlabel("Pseudotime", fontsize=axis_size)
+    ax.set_ylabel("Expression", fontsize=axis_size)
+    ax.set_title(gene, fontsize=title_size, style="italic")
+    ax.tick_params(labelsize=axis_size - 4)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    outfile = os.path.join(output_dir, f"single_gene_{gene}.pdf")
+    fig.tight_layout()
+    fig.savefig(outfile, dpi=150)
+    plt.close(fig)
+    print(f"✓ Single gene trend saved: {outfile}")
+    return outfile
+
+
 # One-call version (compute + plot), kept for convenience.
 def run_step29_gene_trends(
     adata,

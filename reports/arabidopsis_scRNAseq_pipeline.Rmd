@@ -1979,6 +1979,10 @@ top_path, highlight_path = plot_gene_trends(
     ordering     = ORDERING,
 )
 
+# Step 3 - single gene plot (expression over pseudotime for one gene)
+for gene in HIGHLIGHT_GENES:
+    plot_single_gene_trend(adata_fitted, gene, selected_trajectory_dir)
+
 print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
 ```
 
