@@ -255,56 +255,58 @@ def build_pseudotime_trajectory(
         ppt_sigma  = sigma,
     )
 
-    # Root selection (see "Root selection for pseudotime" in the README).
-    #   "auto" (default):
-    #       - more than one cell type in the trajectory: the root is the most-connected
-    #         cell of the selected root_cluster (the root cell type chosen by the user).
-    #       - a single cell type: the root is placed automatically at the TIP of the
-    #         tree where the mean of root_score is highest (lowest if root_lowest).
-    #         root_score defaults to the number of detected genes per cell, a proxy of
-    #         developmental potential (Gulati et al. 2020). It is an assumption, so a
-    #         message is printed; the direction of pseudotime is conventional.
-    #   "score": always use the tip rule above, even with several cell types.
-    #   "tip": the root is the tip with node number root_tip.
-    #   "most_connected": hidden legacy option, the most-connected cell of root_cluster
-    #         (see _most_connected_cell); not used by the main workflow.
+    # Root selection (Gulati et al. 2020: nFeature_RNA as developmental potential proxy).
+    #   "auto" (default): uses root_score (nFeature_RNA by default) to find the tree tip
+    #       with the highest mean score. When multiple cell types are present, only cells
+    #       from root_cluster are considered for scoring, so the root is placed in that
+    #       cell type. With a single cell type, all cells are scored.
+    #   "tip": manual override — the root is the tip with node number root_tip.
+    #   "most_connected": hidden legacy option, not used by the main workflow.
     n_types = adata.obs[annotation_col].nunique()
-    method  = root_method
-    if method == "auto":
-        method = "most_connected" if n_types > 1 else "score"
-        label  = "selected root cell type" if n_types > 1 else "automatic tip rule (single cell type)"
-    else:
-        label  = method
+    method  = root_method if root_method != "auto" else "score"
+    label   = f"Gulati score ({root_score})" if method == "score" else method
 
-    if method == "most_connected":
+    if method == "tip":
+        if root_tip is None:
+            raise ValueError("root_method = 'tip' needs root_tip (a tip node number).")
+        scf.tl.root(adata, root=int(root_tip))
+        scf.tl.pseudotime(adata)
+        root_cell = adata.obs["t"].idxmin()
+        adata.obs["is_root"] = adata.obs_names == root_cell
+    elif method == "score":
+        ensure_expression_in_X(adata)
+        if root_score not in adata.obs.columns and root_score not in adata.var_names:
+            adata.obs[root_score] = np.asarray((adata.X > 0).sum(axis=1)).ravel()
+        # When multiple cell types, restrict scoring to root_cluster cells
+        if n_types > 1 and root_cluster is not None:
+            mask = adata.obs[annotation_col] == root_cluster
+            score_values = adata.obs[root_score].values.astype(float).copy()
+            score_values[~mask] = -np.inf if not root_lowest else np.inf
+            adata.obs["_root_score_masked"] = score_values
+            score_col = "_root_score_masked"
+            label = f"Gulati score ({root_score}) within {root_cluster}"
+        else:
+            score_col = root_score
+        tip_means = None
+        if score_col in adata.obs.columns:
+            R = adata.obsm["X_R"]
+            R = R.toarray() if hasattr(R, "toarray") else np.asarray(R)
+            node_means = (R.T @ adata.obs[score_col].values.astype(float)) / np.maximum(R.sum(0), 1e-9)
+            tip_means  = {int(t): float(node_means[int(t)]) for t in adata.uns["graph"]["tips"]}
+        scf.tl.root(adata, root=score_col, tips_only=True, min_val=root_lowest)
+        scf.tl.pseudotime(adata)
+        root_cell = adata.obs["t"].idxmin()
+        adata.obs["is_root"] = adata.obs_names == root_cell
+        if "_root_score_masked" in adata.obs.columns:
+            del adata.obs["_root_score_masked"]
+    elif method == "most_connected":
+        # Legacy option, kept for backwards compatibility
         root_cell = _most_connected_cell(adata, annotation_col, root_cluster)
         adata.obs["is_root"] = adata.obs_names == root_cell
         scf.tl.root(adata, root="is_root")
         scf.tl.pseudotime(adata)
     else:
-        if method == "tip":
-            if root_tip is None:
-                raise ValueError("root_method = 'tip' needs root_tip (a tip node number).")
-            scf.tl.root(adata, root=int(root_tip))
-        elif method == "score":
-            ensure_expression_in_X(adata)
-            if root_score not in adata.obs.columns and root_score not in adata.var_names:
-                # number of detected genes per cell, computed from the expression matrix
-                adata.obs[root_score] = np.asarray((adata.X > 0).sum(axis=1)).ravel()
-            tip_means = None
-            if root_score in adata.obs.columns:
-                # mean of the score at each tip node (soft cell-to-node assignment, as scFates does)
-                R = adata.obsm["X_R"]
-                R = R.toarray() if hasattr(R, "toarray") else np.asarray(R)
-                node_means = (R.T @ adata.obs[root_score].values.astype(float)) / np.maximum(R.sum(0), 1e-9)
-                tip_means  = {int(t): float(node_means[int(t)]) for t in adata.uns["graph"]["tips"]}
-            scf.tl.root(adata, root=root_score, tips_only=True, min_val=root_lowest)
-        else:
-            raise ValueError(f"Unknown root_method '{root_method}'.")
-        scf.tl.pseudotime(adata)
-        # root cell = the cell with the smallest pseudotime (closest to the root tip)
-        root_cell = adata.obs["t"].idxmin()
-        adata.obs["is_root"] = adata.obs_names == root_cell
+        raise ValueError(f"Unknown root_method '{root_method}'.")
     print(f"✓ Root: {label} | root node {int(adata.uns['graph']['root'])}")
     if method == "score":
         if tip_means:

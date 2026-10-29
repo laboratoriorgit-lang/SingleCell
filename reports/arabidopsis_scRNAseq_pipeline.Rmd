@@ -1817,11 +1817,16 @@ root at the tree tip with the highest mean number of detected genes per cell
 transcriptional diversity (number of expressed genes) is a hallmark of
 developmental potential — less differentiated cells express more genes, making
 them good candidates for the trajectory root. When multiple cell types are
-present, the pipeline uses the most-connected cell of `ROOT_CLUSTER` as root;
-pass `root_method = "score"` to apply the gene-count rule instead.
+present, only cells from `ROOT_CLUSTER` are considered for scoring, so the root
+is placed within that cell type.
 
-To override, use `root_score` (a gene ID whose expression marks the root),
-`root_lowest = TRUE` (for an end-state marker), or `root_tip` (a specific node).
+| Method | Description |
+|--------|-------------|
+| `"auto"` | Default. Uses Gulati score; when multiple cell types, restricts to `ROOT_CLUSTER`. |
+| `"tip"` | Manual override. Set `root_tip` to a specific node number (from tree figure). |
+
+To customize, use `root_score` (a gene ID or obs column), `root_lowest = TRUE`
+(for an end-state marker where low expression marks the root).
 
 **Reference:** Gulati GS et al. (2020) Single-cell transcriptional diversity is
 a hallmark of developmental potential. *Science* 367(6476):405-411.
