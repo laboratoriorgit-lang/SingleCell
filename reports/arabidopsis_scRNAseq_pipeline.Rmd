@@ -939,14 +939,8 @@ ath_sc <- reduce(seurat_list, merge) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(npcs = 50, verbose = FALSE)
 
-# Elbow plot: variance explained by each PC (red line = chosen cutoff)
-ELBOW_CUTOFF <- 30
-save_pdf(
-  ElbowPlot(ath_sc, ndims = 50) +
-    geom_vline(xintercept = ELBOW_CUTOFF, linetype = "dashed", color = "red") +
-    labs(caption = paste0("Cutoff: ", ELBOW_CUTOFF, " PCs")),
-  "elbow_merged.pdf"
-)
+# Elbow plot: variance explained by each PC (auto-detects cutoff)
+save_pdf(plot_elbow(ath_sc, ndims = 30), "elbow_merged.pdf")
 
 message("\nOK SECTION 3 COMPLETE: merge and PCA complete")
 ```
@@ -972,7 +966,7 @@ This UMAP shows how the samples look *before* Harmony batch correction.
 ```{r section_04_umap_preharmony}
 output_dir <- dir_01
 
-ath_sc <- RunUMAP(ath_sc, reduction = "pca", dims = 1:ELBOW_CUTOFF, verbose = FALSE)
+ath_sc <- RunUMAP(ath_sc, reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -1021,7 +1015,7 @@ output_dir <- dir_01
 
 ath_sc <- ath_sc %>%
   RunHarmony("orig.ident", plot_convergence = FALSE) %>%
-  RunUMAP(reduction = "harmony", dims = 1:ELBOW_CUTOFF, verbose = FALSE)
+  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
