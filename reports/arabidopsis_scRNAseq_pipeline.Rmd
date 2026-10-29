@@ -1052,7 +1052,7 @@ The output is saved in `results/02_clustering/` as `clustree.pdf`. Use it to
 choose `cluster_resolution` in Section 6.
 
 ```{r section_06_resolution_optimization}
-resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
+resolutions_test <- c(0.15, 0.35, 0.4, 0.55, 1.0)
 
 output_dir <- dir_02
 
@@ -1081,10 +1081,10 @@ produce more, smaller ones. Clustering uses the Harmony dimensions in
 `cluster_dims`, which by default are the first 30 (`1:30`); change it only if you
 decided on fewer after looking at the elbow plot in Section 5.
 
-The resolution used here is `cluster_resolution <- 0.35`. In the clustree
-(Section 5), 0.35 is one of the most stable resolutions: its clusters mostly
+The resolution used here is `cluster_resolution <- 0.4`. In the clustree
+(Section 7), 0.4 is one of the most stable resolutions: its clusters mostly
 trace back to a single cluster of the previous resolution (solid arrows).
-Raising the resolution beyond it (0.45 and above) starts to split clusters into
+Raising the resolution beyond it (0.55 and above) starts to split clusters into
 many smaller ones and cells begin to move between branches (the pale crossing
 arrows), which would give clusters that are harder to interpret as cell types.
 This is a judgment call, not a fixed rule: with another dataset, choose the
@@ -1104,7 +1104,7 @@ The output figure is a UMAP colored by final cluster number, saved as
 `results/02_clustering/umap_seuratclusters.pdf`.
 
 ```{r section_06_final_clustering}
-cluster_resolution <- 0.35
+cluster_resolution <- 0.4
 cluster_dims       <- dims_elbow  # uses same dims as Section 4 (from elbow plot)
 output_dir <- dir_02
 
