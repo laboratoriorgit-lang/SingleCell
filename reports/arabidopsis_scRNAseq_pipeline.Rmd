@@ -908,7 +908,7 @@ this order:
    for visualization. It is useful to see how the samples look before Harmony.
 
 **Number of PCs.** By default all 30 PCs are used in every later step (Harmony,
-UMAP and clustering use `dims = 1:30`). The elbow plot in Section 5 shows how many
+UMAP and clustering use `dims = 1:30`). The elbow plot in this section shows how many
 of them carry signal.
 
 **Default parameters used here.** Several important settings are not written in
@@ -920,7 +920,7 @@ data call for it:
 | `NormalizeData` | `scale.factor` | 10,000 | Total counts per cell after normalization, before the log transform |
 | `FindVariableFeatures` | `nfeatures` | 2,000 | Number of HVGs kept (set explicitly here) |
 | `ScaleData` | `scale.max` | 10 | Cap on scaled values, to limit the effect of outliers |
-| `RunPCA` | `npcs` | 30 | Number of PCs computed (set explicitly here) |
+| `RunPCA` | `npcs` | 50 | Number of PCs computed; the elbow plot shows how many are informative |
 | `RunUMAP` | `n.neighbors` | 30 | Neighbors used to build the map; lower values emphasize local structure |
 | `RunUMAP` | `min.dist` | 0.3 | How tightly cells are allowed to pack together in the plot |
 | `FindNeighbors` (Section 6) | `k.param` | 20 | Neighbors per cell in the graph used for clustering |
@@ -937,8 +937,12 @@ ath_sc <- reduce(seurat_list, merge) %>%
     selection.method = "vst", nfeatures = 2000, verbose = FALSE
   ) %>%
   ScaleData(verbose = FALSE) %>%
-  RunPCA(npcs = 30, verbose = FALSE) %>%
-  RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+  RunPCA(npcs = 50, verbose = FALSE)
+
+# Elbow plot: variance explained by each PC (decide how many to use)
+save_pdf(ElbowPlot(ath_sc, ndims = 50), "elbow_merged.pdf")
+
+ath_sc <- RunUMAP(ath_sc, reduction = "pca", dims = 1:30, verbose = FALSE)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -952,7 +956,13 @@ message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
 Representative output from Section 3:
 
-![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
+```{=latex}
+\begin{center}
+```
+![Elbow plot: variance explained by each PC.](assets/elbow_plot.png){width=30%} ![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
+```{=latex}
+\end{center}
+```
 
 \newpage
 
@@ -1005,56 +1015,39 @@ Representative output from Section 4:
 
 \newpage
 
-## Section 5 - Elbow plot (optional) and clustering resolution
+## Section 5 - Clustering resolution
 
-This section has two parts: an optional check of how many principal components
-to use for clustering, and the choice of the clustering resolution.
-
-**Elbow plot (optional).** The elbow plot shows the variance explained by each
-principal component. By default this guide keeps `dims = 1:30` in every step after
-Harmony, which includes all the informative components. If the curve flattens
-earlier (for example around PC 15), you can use fewer dimensions by changing
-`cluster_dims` in Section 6. This is optional, and it has consequences: using
-fewer dimensions changes how the UMAP is laid out and can change the clusters,
-and so everything that comes after Harmony (annotation, differential expression,
-networks and pseudotime). Decide it here, before continuing, and keep the same
-value from then on.
+This section compares candidate clustering resolutions to help choose the one
+used in Section 6. The elbow plot (how many PCs to use) was already shown in
+Section 3.
 
 **Clustree.** The clustree compares several candidate clustering resolutions. It
-shows, for each resolution in `resolutions_test`, how
-many clusters it produces and whether cells stay in stable clusters or keep
-moving between them as the resolution changes. A resolution where cell
-membership stops moving is a safer choice than one that is still fragmenting.
-Lower resolutions produce fewer, broader clusters; higher resolutions produce
-more, smaller ones. The values in `resolutions_test` are only the range of
-candidates to compare; widen or narrow it if the useful region lies outside it.
+shows, for each resolution in `resolutions_test`, how many clusters it produces
+and whether cells stay in stable clusters or keep moving between them as the
+resolution changes. A resolution where cell membership stops moving is a safer
+choice than one that is still fragmenting. Lower resolutions produce fewer,
+broader clusters; higher resolutions produce more, smaller ones. The values in
+`resolutions_test` are only the range of candidates to compare; widen or narrow
+it if the useful region lies outside it.
 
-The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
-`clustree.pdf`. Use the clustree to choose `cluster_resolution` in Section 6.
+The output is saved in `results/02_clustering/` as `clustree.pdf`. Use it to
+choose `cluster_resolution` in Section 6.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
 
-plot_resolution_elbow(ath_sc, output_dir = output_dir)
-
 clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
+message("\nOK SECTION 5 COMPLETE: clustree saved")
 ```
 
-Representative outputs from Section 5:
+Representative output from Section 5:
 
-```{=latex}
-\begin{center}
-```
-![Elbow plot: variance explained by each principal component.](assets/elbow_plot.png){width=30%} ![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=30%}
-```{=latex}
-\end{center}
-```
+![Cluster tree across candidate Leiden resolutions.](assets/clustree.png){width=40%}
 
 \newpage
 
