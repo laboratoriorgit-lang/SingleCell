@@ -1078,7 +1078,7 @@ cell population; cell-type labels are only assigned afterward, in Section 7.
 The resolution is set in `cluster_resolution`, chosen from the clustree in
 Section 5. Lower resolutions produce fewer, broader clusters; higher resolutions
 produce more, smaller ones. Clustering uses the Harmony dimensions in
-`cluster_dims`, which by default are the first 30 (`1:30`); change it only if you
+`cluster_dims`, which uses `dims_elbow` from Section 4; change it only if you
 decided on fewer after looking at the elbow plot in Section 5.
 
 The resolution used here is `cluster_resolution <- 0.4`. In the clustree
