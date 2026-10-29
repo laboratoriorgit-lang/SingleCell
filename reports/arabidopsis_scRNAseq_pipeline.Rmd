@@ -1125,24 +1125,17 @@ This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
 `data/biblio_marks.txt`.
 
-**How cell type names are assigned.** The pipeline first runs `FindAllMarkers()`
-(Seurat's differential expression function) to identify marker genes for each
-cluster. The full output is saved to `FindAllMarkers.tsv` for manual inspection
-— this table contains all differentially expressed genes per cluster with their
-p-values and fold changes. Then, for each cluster, the annotation function finds
-which bibliography markers overlap with the cluster's significant genes and
-assigns the cell type of the marker with the lowest adjusted p-value. When
-multiple clusters receive the same label, a numeric suffix is added (e.g.,
-Mesophyll.1, Mesophyll.2). The dotplot visualizes expression of all bibliography
-markers across clusters to verify whether the assigned labels are supported by
-the expected gene signatures.
+**Marker table format.** The bibliography marker table has one row per marker
+gene and three columns:
 
-**Marker table format.** The marker table has one row per marker gene and three
-columns: `celltype` (the cell type the gene marks), `symbol` (the gene name) and
-`ID` (the gene identifier, the AGI code for Arabidopsis, which must match the
-gene names of the Seurat object). An optional `source` column can record where
-each marker comes from; the code ignores it. The first rows of the table look
-like this:
+| Column | Description |
+|--------|-------------|
+| `celltype` | The cell type this gene marks (e.g., "guard cell", "mesophyll") |
+| `symbol` | The gene symbol (e.g., FAMA, TGG1) |
+| `ID` | The AGI locus code (e.g., AT3G24140), must match gene names in the Seurat object |
+
+An optional `source` column can record the literature reference; the code
+ignores it. Example:
 
 ```text
 celltype        symbol   ID
@@ -1154,15 +1147,25 @@ companion cell  APL      AT1G79430
 companion cell  PP2-A1   AT4G19840
 ```
 
-The table is read with `standardize_marker_table()`, which finds the columns by
-their header names. An older two-column table (cell type and gene ID) is still
-accepted; in that case no symbol is available and the plots show the ID. In the
-dotplot, genes are labeled with their symbol by default; set `name_gene = FALSE`
-to label them with the ID only.
+**How cell type names are assigned.** The pipeline first runs `FindAllMarkers()`
+(Seurat's differential expression function) to identify marker genes for each
+cluster. The full output is saved to `results/03_annotation/FindAllMarkers.tsv`
+— this table contains all differentially expressed genes per cluster with
+columns including `gene`, `cluster`, `p_val`, `avg_log2FC`, `pct.1`, `pct.2`,
+and `p_val_adj`. Then, the annotation function:
 
-The marker table is saved in `results/03_annotation/FindAllMarkers.tsv`, and the
-main figures are saved as `dotplot_marker_table_annotation_biblio.pdf` and
-`umap_annotation_biblio.pdf`.
+1. Finds which genes from the bibliography table are also significant markers
+   in each cluster (intersection of bibliography IDs with FindAllMarkers genes).
+2. For each cluster, selects the marker with the **lowest adjusted p-value**
+   (`p_val_adj`) among those that matched.
+3. Assigns that marker's cell type label to the cluster.
+4. When multiple clusters receive the same label, adds a numeric suffix
+   (e.g., Mesophyll.1, Mesophyll.2).
+
+The dotplot visualizes expression of all bibliography markers across clusters
+to verify whether the assigned labels are supported by the expected gene
+signatures. The main figures are saved as
+`dotplot_marker_table_annotation_biblio.pdf` and `umap_annotation_biblio.pdf`.
 
 ```{r section_07_cell_type_annotation}
 output_dir <- dir_03
