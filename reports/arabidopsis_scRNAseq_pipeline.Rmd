@@ -1137,11 +1137,19 @@ companion cell  AHA3     AT5G57350
 
 **How annotation works.** The pipeline runs `FindAllMarkers()` to find genes
 differentially expressed in each cluster. This output is saved to
-`results/03_annotation/FindAllMarkers.tsv` with columns: `gene`, `cluster`,
-`avg_log2FC` (fold change), `pct.1` (% cells in cluster expressing the gene),
-`pct.2` (% cells outside), and `p_val_adj`. The `pct.1`/`pct.2` columns help
-identify good markers: high `pct.1` + low `pct.2` means the gene is specific
-to that cluster.
+`results/03_annotation/FindAllMarkers.tsv`:
+
+```text
+gene        p_val       avg_log2FC  pct.1  pct.2  p_val_adj  cluster
+AT2G39730   1.2e-180    2.45        0.92   0.15   2.8e-176   0
+AT1G29930   3.1e-165    1.89        0.88   0.21   7.2e-161   0
+AT5G38410   8.4e-142    2.12        0.85   0.18   1.9e-137   0
+```
+
+Columns: `gene` (AGI code), `avg_log2FC` (fold change), `pct.1` (% cells in
+cluster expressing the gene), `pct.2` (% cells outside), `p_val_adj` (adjusted
+p-value). The `pct.1`/`pct.2` columns help identify good markers: high `pct.1`
++ low `pct.2` means the gene is specific to that cluster.
 
 For each cluster, the annotation function finds which bibliography genes are
 also significant markers, picks the one with the best p-value, and assigns its
