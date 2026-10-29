@@ -928,7 +928,7 @@ data call for it:
 The output is saved as `results/objects/ath_sc_preharmony.rds`, and the UMAP
 before Harmony integration is saved as `results/01_qc/umap_preharmony.pdf`.
 
-```{r section_03_merge_and_initial_preprocessing}
+```{r section_03_merge_and_pca}
 output_dir <- dir_01
 
 ath_sc <- reduce(seurat_list, merge) %>%
@@ -939,8 +939,32 @@ ath_sc <- reduce(seurat_list, merge) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(npcs = 50, verbose = FALSE)
 
-# Elbow plot: variance explained by each PC (decide how many to use)
+# Elbow plot: variance explained by each PC
 save_pdf(ElbowPlot(ath_sc, ndims = 50), "elbow_merged.pdf")
+
+message("\nOK SECTION 3 COMPLETE: merge and PCA complete")
+```
+
+Representative output from Section 3:
+
+![Elbow plot: variance explained by each PC.](assets/elbow_plot.png){width=40%}
+
+The elbow plot shows how much variance each principal component explains. The
+curve typically flattens after the most informative components. Use this to
+decide `dims` in Section 4: if the elbow is around PC 15, use `dims = 1:15`;
+if it keeps dropping until PC 30, use `dims = 1:30`. For this dataset, we use
+`dims = 1:30`.
+
+\newpage
+
+## Section 4 - UMAP pre-Harmony
+
+This section computes the UMAP visualization using the PCA from Section 3. The
+number of dimensions (`dims`) should match what you decided from the elbow plot.
+This UMAP shows how the samples look *before* Harmony batch correction.
+
+```{r section_04_umap_preharmony}
+output_dir <- dir_01
 
 ath_sc <- RunUMAP(ath_sc, reduction = "pca", dims = 1:30, verbose = FALSE)
 
@@ -951,22 +975,16 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
-message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
+message("\nOK SECTION 4 COMPLETE: UMAP pre-Harmony complete")
 ```
 
-Representative output from Section 3:
+Representative output from Section 4:
 
-```{=latex}
-\begin{center}
-```
-![Elbow plot: variance explained by each PC.](assets/elbow_plot.png){width=30%} ![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
-```{=latex}
-\end{center}
-```
+![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=40%}
 
 \newpage
 
-## Section 4 - Harmony integration
+## Section 5 - Harmony integration
 
 The two samples in this guide are different genotypes (WT and pifq), so they
 differ for biological reasons as well as for technical ones. Left as they are,
@@ -992,7 +1010,7 @@ biological structure.
 The corrected object is saved as `results/objects/ath_sc_postharmony.rds`, and
 the post-Harmony UMAP is saved as `results/01_qc/umap_postharmony.pdf`.
 
-```{r section_04_harmony_batch_correction}
+```{r section_05_harmony_batch_correction}
 output_dir <- dir_01
 
 ath_sc <- ath_sc %>%
@@ -1015,7 +1033,7 @@ Representative output from Section 4:
 
 \newpage
 
-## Section 5 - Clustering resolution
+## Section 7 - Clustering resolution
 
 This section compares candidate clustering resolutions to help choose the one
 used in Section 6. The elbow plot (how many PCs to use) was already shown in
@@ -1033,7 +1051,7 @@ it if the useful region lies outside it.
 The output is saved in `results/02_clustering/` as `clustree.pdf`. Use it to
 choose `cluster_resolution` in Section 6.
 
-```{r section_05_resolution_optimization}
+```{r section_06_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
 output_dir <- dir_02
@@ -1042,7 +1060,7 @@ clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: clustree saved")
+message("\nOK SECTION 8 COMPLETE: clustree saved")
 ```
 
 Representative output from Section 5:
@@ -1103,7 +1121,7 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK SECTION 6 COMPLETE: final clustering complete")
+message("\nOK SECTION 8 COMPLETE: final clustering complete")
 ```
 
 Representative output from Section 6:
@@ -1112,7 +1130,7 @@ Representative output from Section 6:
 
 \newpage
 
-## Section 7 - Cell-type annotation
+## Section 8 - Cell-type annotation
 
 This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
@@ -1154,7 +1172,7 @@ to verify whether the assigned labels are supported by the expected gene
 signatures. The main figures are saved as
 `dotplot_marker_table_annotation_biblio.pdf` and `umap_annotation_biblio.pdf`.
 
-```{r section_07_cell_type_annotation}
+```{r section_08_cell_type_annotation}
 output_dir <- dir_03
 
 biblio_marks_file <- file.path(DATA_DIR, "data", "biblio_marks.txt")
@@ -1187,7 +1205,7 @@ save_pdf(
   "umap_annotation_biblio.pdf"
 )
 
-message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
+message("\nOK SECTION 8 COMPLETE: cell-type annotation complete")
 ```
 
 Representative outputs from Section 7:
