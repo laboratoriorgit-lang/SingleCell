@@ -1811,19 +1811,20 @@ This section fits the pseudotime trajectory for the selected cells and sets its
 root (starting point). A trajectory tree has no intrinsic direction — the start
 must be defined based on biological knowledge.
 
-**Root selection methods:**
+**Root selection logic.** The default method (`root_method = "auto"`) places the
+root at the tree tip with the highest mean number of detected genes per cell
+(`nFeature_RNA`). This follows Gulati et al. (2020), who showed that
+transcriptional diversity (number of expressed genes) is a hallmark of
+developmental potential — less differentiated cells express more genes, making
+them good candidates for the trajectory root. When multiple cell types are
+present, the pipeline uses the most-connected cell of `ROOT_CLUSTER` as root;
+pass `root_method = "score"` to apply the gene-count rule instead.
 
-| Method | When to use | How it works |
-|--------|-------------|--------------|
-| **By cell type** | Multiple cell types in trajectory | Set `ROOT_CLUSTER` to the progenitor cell type. The root is the most-connected cell of that type. |
-| **By gene count** | Single cell type (this report) | Automatic: the root is the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). |
+To override, use `root_score` (a gene ID whose expression marks the root),
+`root_lowest = TRUE` (for an end-state marker), or `root_tip` (a specific node).
 
-For single cell-type trajectories, the gene-count rule assumes that less
-differentiated cells express more genes — a common pattern in developmental
-data, though not validated broadly in plants. The pipeline prints a note when
-this rule applies. To override, use `root_score` (a gene ID whose expression
-marks the root, e.g., a progenitor marker), `root_lowest = TRUE` (for an
-end-state marker), or `root_tip` (a specific node number).
+**Reference:** Gulati GS et al. (2020) Single-cell transcriptional diversity is
+a hallmark of developmental potential. *Science* 367(6476):405-411.
 
 `TRAJECTORY_RUNS` stores the trajectory settings to test. Each run creates its
 own output folder, making it possible to compare parameter choices without
