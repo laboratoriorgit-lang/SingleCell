@@ -381,30 +381,16 @@ singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 ```
 
 2. **Run it with `exec`.** This opens a working shell inside the container.
-   Every time you come back to work on this pipeline, run this from inside the
-   repository cloned in Section 1.1:
+   Run this from the repository cloned in Section 1.1:
 
 ```bash
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
 ```
 
-**Understanding the command:**
-
-- `--bind $(pwd):/workspace` — mounts your current directory (the repository)
-  as `/workspace` inside the container. The container is isolated: without this
-  flag it cannot see your files. The syntax is `host_path:container_path`.
-  `$(pwd)` expands to your current directory, so run this command from the
-  repository root.
-- `/workspace` — a conventional mount point inside containers. The name is
-  arbitrary, but using a fixed path like `/workspace` (instead of mirroring
-  your host path) keeps scripts portable: the same R/Python code works on any
-  machine because it always references `/workspace`, regardless of where the
-  repository lives on the host.
-- `--pwd /workspace` — sets the working directory inside the container. Without
-  it, Apptainer warns that the host working directory does not exist in the
-  container and falls back to `$HOME`.
-- `scrnaseq.sif` — the container image built in step 1.
-- `/bin/bash` — the shell to run inside the container.
+`--bind $(pwd):/workspace` mounts your current directory as `/workspace` inside
+the container (containers are isolated and cannot see host files otherwise).
+`/workspace` is a conventional name that keeps scripts portable across machines.
+`--pwd` sets the initial working directory.
 
 If this step fails (for example with `squashfuse not found` or `Operation not
 permitted`), see "Troubleshooting Singularity/Apptainer" in the Supplementary
