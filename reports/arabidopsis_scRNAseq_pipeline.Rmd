@@ -937,7 +937,7 @@ ath_sc <- reduce(seurat_list, merge) %>%
     selection.method = "vst", nfeatures = 2000, verbose = FALSE
   ) %>%
   ScaleData(verbose = FALSE) %>%
-  RunPCA(npcs = 50, verbose = FALSE)
+  RunPCA(npcs = 30, verbose = FALSE)
 
 
 # Elbow plot: shows variance explained by each PC to help choose dims for UMAP
