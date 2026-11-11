@@ -1,0 +1,120 @@
+# =============================================================================
+# params.yaml - OPTIONAL: every editable value of the workflow in one file
+# =============================================================================
+# The step scripts and the report already contain these same values (their
+# defaults) in each code block. This file is only needed to run the workflow
+# with other values WITHOUT editing the scripts:
+#   bash workflow/run_all.sh                      # Steps 1-3 with this file
+#   PARAMS_FILE=/workspace/params.yaml Rscript workflow/step1_singlecell.R
+# A value written here replaces the default of the script (opt("a.b", default));
+# a key that is missing, or set to null, keeps the default of the script.
+# Paths are relative to project.data_dir unless they start with "/".
+# See Supplementary Section S5 of the report.
+# =============================================================================
+
+project:
+  data_dir: /workspace/.        # repository root (mounted as /workspace in the container)
+  seed: 1807                    # random seed (R); Python trajectories use their own seed (pseudotime.runs)
+  results_dir: results          # output folder, inside data_dir
+
+outputs:                        # names (without extension) of the objects passed between steps
+  annotated_object: ath_sc_annotated          # written by Step 1 (.rds, .h5ad), read by Steps 2 and 3
+  pseudotime_object: ath_sc_pseudotime_final  # written by Step 3 (.h5ad)
+
+# ---- Step 1 (R): single-cell analysis ---------------------------------------
+qc:                             # Sections 1-2
+  mt_pattern: "^ATMG"           # Arabidopsis "^ATMG" | human "^MT-" | mouse "^mt-"
+  min_features: 200             # keep cells with more than this many genes
+  max_mt: 5                     # keep cells with less than this % mitochondrial reads
+  run_doubletfinder: true
+
+samples:                        # Section 1: one entry per Cell Ranger sample
+  - file: ScWT/outs/filtered_feature_bc_matrix
+    label: WT
+    condition: WT
+  - file: Scpifq/outs/filtered_feature_bc_matrix
+    label: pifq
+    condition: pifq
+
+colors:                         # one color per sample label
+  WT: "#66c2a5"
+  pifq: "#fc8d62"
+
+preprocessing:                  # Section 3
+  nfeatures: 2000               # variable features
+  npcs: 30                      # principal components
+
+integration:                    # Section 4 (Harmony)
+  group_by: orig.ident          # metadata column to correct for
+  n_dims: 30                    # Harmony dimensions used for the UMAP
+
+clustering:                     # Sections 5-6
+  resolutions_test: [0.15, 0.35, 0.45, 0.55, 1.0]   # clustree sweep (Section 5)
+  cluster_resolution: 0.35      # final resolution (Section 6)
+  n_dims: 30                    # dimensions: 1:n_dims (check the elbow plot)
+  k_param: 20                   # neighbors for the graph
+
+annotation:                     # Section 7
+  marker_file: data/biblio_marks.txt   # columns: celltype, symbol, ID
+
+expression:                     # Section 8
+  gene: [AT4G21750]             # one gene or several
+
+supplementary:                  # Supplementary Sections S2-S3 (run in the same R session as Step 1)
+  grouping:                     # labels to merge; {} = no grouping
+    Mesophyll.1: Mesophyll
+    Mesophyll.2: Mesophyll
+  inspect_cluster: Mesophyll.1  # cluster whose subclusters are inspected
+  reassign:                     # subcluster -> label ("others" = any ID not listed)
+    Mesophyll:
+      others: Mesophyll
+
+# ---- Step 2 (R): pseudobulk DE, GO and networks -----------------------------
+pseudobulk:                     # Sections 10-11
+  annot_col: celltype           # celltype | celltype_grouped | celltype_curated
+  conditions: null              # null = all conditions
+  n_pseudoreps: 3
+
+de:                             # Sections 12-14
+  comparisons:                  # conds = [reference, treatment]
+    - conds: [WT, pifq]
+      tag: WT_vs_pifq
+  cell_types: null              # null = all cell types
+  volcano_tag: WT_vs_pifq       # contrast used for volcano, GO, heatmap and network
+  padj_cut: 0.05
+  lfc_cut: 1
+
+go:                             # Section 15 (the OrgDb object stays in step2_degs.R)
+  space: BP                     # BP | MF | CC
+  orgdb: org.At.tair.db         # R package with the annotation: org.Hs.eg.db, org.Mm.eg.db ...
+  keytype: TAIR
+  padj_cutoff: 0.05
+
+heatmap:                        # Section 16
+  limits: [-5, 5]               # log2FC color scale
+
+network:                        # Section 17
+  tf_list: data/AtTFDB_loci.txt
+  n_metacells: 50               # metacells per cell type x sample
+  min_module_size: 20           # minimum genes per co-expression module
+  deep_split: 2                 # module-splitting sensitivity (0-4)
+  soft_power: null              # null = auto-detect
+  tom_threshold: 0.2            # minimum co-expression weight to keep an edge
+  n_hub_label: 15               # top hub TFs to label
+
+# ---- Step 3 (Python): pseudotime --------------------------------------------
+pseudotime:                     # Sections 19-23
+  input_h5ad: objects/ath_sc_annotated.h5ad   # relative to results/
+  annotation_col: celltype
+  n_jobs: 4
+  trajectory_clusters: ["Epidermis Cotyledon"]
+  root_cluster: "Epidermis Cotyledon"
+  runs:                         # one trajectory per entry
+    - {nodes: 100, sigma: 0.1, lambda_value: 20, eigs: 3, seed: 3}
+  plot_genes: [AT4G21750]       # Section 22
+  plot_gene_titles: ["ATML1 (AT4G21750)"]
+  plot_filename: trajectory_genes_ATML1.pdf
+  spline_df: 3                  # Section 23
+  top_n: 10
+  highlight_genes: [AT4G21750]
+  ordering: max

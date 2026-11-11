@@ -849,12 +849,32 @@ def _append_fitted_genes(adata, adata_fitted, genes, n_jobs=4):
     return ad.concat([adata_fitted, new], axis=1, join="outer", merge="first", uns_merge="first")
 
 
+# Highlighted genes that are not in a saved fit (they were not significant) are fitted
+# on their own (seconds), appended to it and the saved file is updated, so the full
+# computation is never repeated.
+def _add_missing_genes(adata, adata_fitted, genes, fitted_path, n_jobs=4):
+    genes   = genes or []
+    missing = [g for g in genes if g not in adata_fitted.var_names]
+    addable = [g for g in missing if g in adata.var_names]
+    if addable:
+        print(f"Fitting {len(addable)} extra gene(s) and adding them to the saved fit: "
+              f"{', '.join(addable)}")
+        adata_fitted = _append_fitted_genes(adata, adata_fitted, addable, n_jobs)
+        adata_fitted.write_h5ad(fitted_path)
+        print(f"✓ Saved fit updated: {fitted_path}")
+    not_found = [g for g in missing if g not in adata.var_names]
+    if not_found:
+        print(f"custom selection: genes not found in adata: {', '.join(not_found)}")
+    return adata_fitted
+
+
 # Gene trends, in two steps so the plots can be redrawn without recomputing:
 #   1) compute_gene_trends(): association test + fitted curves (slow, ~15 min).
 #      The fitted object is saved in <run_dir>/gene_trends/gene_trends_fitted.h5ad
 #      and reused on the next call (reuse=True).
-#   2) plot_gene_trends(): the heatmaps (seconds). Change top_n, the highlighted
-#      genes, the ordering or spread_top and run only this step again.
+#   2) plot_gene_trends(): the heatmaps and one plot per highlighted gene (seconds).
+#      Change top_n, the highlighted genes, the ordering or spread_top and run only
+#      this step again. Pass adata to fit highlighted genes missing from the saved fit.
 def compute_gene_trends(
     adata,
     run_dir,
@@ -875,19 +895,7 @@ def compute_gene_trends(
     if reuse and os.path.exists(fitted_path):
         adata_fitted = sc.read_h5ad(fitted_path)
         print(f"Loaded fitted gene trends: {fitted_path} ({adata_fitted.n_vars} genes)")
-        missing = [g for g in custom_genes if g not in adata_fitted.var_names]
-        addable = [g for g in missing if g in adata.var_names]
-        if addable:
-            # Custom genes that were not in the saved fit are fitted on their own
-            # (seconds) and appended to it, so the full computation is not repeated.
-            print(f"Fitting {len(addable)} extra gene(s) and adding them to the saved fit: "
-                  f"{', '.join(addable)}")
-            adata_fitted = _append_fitted_genes(adata, adata_fitted, addable, n_jobs)
-            adata_fitted.write_h5ad(fitted_path)
-            print(f"✓ Saved fit updated: {fitted_path}")
-        not_found = [g for g in missing if g not in adata.var_names]
-        if not_found:
-            print(f"custom selection: genes not found in adata: {', '.join(not_found)}")
+        adata_fitted = _add_missing_genes(adata, adata_fitted, custom_genes, fitted_path, n_jobs)
         return adata_fitted
 
     ensure_expression_in_X(adata)
@@ -928,14 +936,22 @@ def compute_gene_trends(
 def plot_gene_trends(
     adata_fitted,
     run_dir,
-    name         = "trajectory",
-    custom_genes = None,
-    top_n        = 10,
-    ordering     = "max",
-    spread_top   = True,
+    name              = None,
+    custom_genes      = None,
+    top_n             = 10,
+    ordering          = "max",
+    spread_top        = True,
+    adata             = None,
+    n_jobs            = 4,
+    single_gene_plots = True,
 ):
+    name = name or os.path.basename(run_dir)
     output_dir = os.path.join(run_dir, "gene_trends")
     os.makedirs(output_dir, exist_ok=True)
+
+    if adata is not None:
+        fitted_path  = os.path.join(output_dir, "gene_trends_fitted.h5ad")
+        adata_fitted = _add_missing_genes(adata, adata_fitted, custom_genes, fitted_path, n_jobs)
 
     fit_features = list(adata_fitted.var_names)
 
@@ -984,8 +1000,12 @@ def plot_gene_trends(
         save_trends_plot(axes_list, custom_pdf, title=f"{name} — custom selection")
         print(f"✓ Custom selection gene trends saved: {custom_pdf}")
 
+    if single_gene_plots:
+        for gene in genes_present:
+            plot_single_gene_trend(adata_fitted, gene, run_dir)
+
     print("STEP 29 COMPLETE: gene trends saved")
-    return top_pdf, custom_pdf
+    return adata_fitted
 
 
 def plot_single_gene_trend(
@@ -1042,30 +1062,6 @@ def plot_single_gene_trend(
     plt.close(fig)
     print(f"✓ Single gene trend saved: {outfile}")
     return outfile
-
-
-# One-call gene trends: compute (cached) + trend heatmaps + one plot per highlighted gene.
-# The slow fit is saved in <run_dir>/gene_trends/gene_trends_fitted.h5ad and reused,
-# so changing top_n / ordering and calling again only redraws the plots.
-def run_gene_trends(
-    adata,
-    run_dir,
-    genes     = None,
-    top_n     = 10,
-    ordering  = "max",
-    spline_df = 3,
-    n_jobs    = 4,
-    name      = None,
-):
-    name  = name or os.path.basename(run_dir)
-    genes = genes or []
-    adata_fitted = compute_gene_trends(adata, run_dir, name=name, custom_genes=genes,
-                                       n_jobs=n_jobs, spline_df=spline_df)
-    plot_gene_trends(adata_fitted, run_dir, name=name, custom_genes=genes,
-                     top_n=top_n, ordering=ordering)
-    for gene in genes:
-        plot_single_gene_trend(adata_fitted, gene, run_dir)
-    return adata_fitted
 
 
 # One-call version (compute + plot), kept for convenience.

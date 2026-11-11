@@ -290,6 +290,7 @@ SingleCell/
 |-- Dockerfile
 |-- docker-compose.yml
 |-- README.md
+|-- params.yaml                          # optional: all editable values in one file (Supplementary S5)
 |-- data/
 |   |-- AtTFDB_loci.txt
 |   |-- biblio_marks.txt
@@ -297,6 +298,7 @@ SingleCell/
 |   `-- Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
 `-- workflow/
     |-- load_libraries.R                 # R packages
+    |-- run_all.sh                       # optional: runs Steps 1-3 with params.yaml (Supplementary S5)
     |-- init.R                           # init_pipeline() for R (Steps 1-2)
     |-- init.py                          # init_pipeline() for Python (Step 3)
     |-- load_libraries_python.py         # Python packages
@@ -644,7 +646,9 @@ to `init_pipeline()`. It has two arguments:
 
 The function loads the R packages and the helper functions of the workflow, sets
 the seed, enables the Seurat 5 compatibility option, moves R into `data_dir` and
-creates the output folders used by the rest of the workflow.
+creates the output folders used by the rest of the workflow. (Optionally, these
+and all the other values that appear in the code blocks can be set from a single
+file, `params.yaml`; see Supplementary Section S5.)
 
 
 ```{r initialization}
@@ -1878,15 +1882,14 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 ## Section 23 - Gene trends
 
 This section fits gene-expression trends along pseudotime for the epidermis
-cotyledon trajectory calculated above, with a single call to `run_gene_trends()`.
-Internally it runs `compute_gene_trends()`, which tests genes for association with
-pseudotime and fits smooth expression curves; this is the slow part (about 15
-minutes). Its result is saved in `gene_trends/gene_trends_fitted.h5ad` inside the
-trajectory run folder and reused on the next call. It then runs
-`plot_gene_trends()`, which ranks the genes by their trend signal and draws the
-trend heatmaps, and `plot_single_gene_trend()` for each highlighted gene. Because
-the fit is reused, `TOP_N`, `HIGHLIGHT_GENES` or `ORDERING` can be changed and the
-call run again in seconds.
+cotyledon trajectory calculated above. It runs in two blocks. The first one,
+`compute_gene_trends()`, tests genes for association with pseudotime and fits
+smooth expression curves; this is the slow part (about 15 minutes). Its result is
+saved in `gene_trends/gene_trends_fitted.h5ad` inside the trajectory run folder, so
+a later call loads it instead of recomputing. The second one, `plot_gene_trends()`,
+ranks the genes by their trend signal, draws the trend heatmaps and plots each
+highlighted gene over pseudotime; it takes seconds, so `TOP_N`, `HIGHLIGHT_GENES`
+or `ORDERING` can be changed and only this block run again.
 
 For this report, the run shown here uses the already selected epidermis
 cotyledon trajectory: `nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, and
@@ -1896,25 +1899,35 @@ is significant, so it is already part of the fit. A highlighted gene that is not
 (it was not significant when the fit was computed) is fitted on its own and added to it, which
 takes seconds.
 
-```{python section_23_gene_trends, eval=FALSE}
+```{python section_23_compute_gene_trends, eval=FALSE}
+# selected_trajectory_dir points to the epidermis cotyledon run:
+# results/09_pseudotime/trajectory/n100_s0.1_l20_e3_seed3
+SPLINE_DF = 3
+
+# Step 1 - compute (slow, ~15 min). The fitted trends are saved in
+# <run>/gene_trends/gene_trends_fitted.h5ad and reused if you run it again.
+adata_fitted = compute_gene_trends(
+    adata_traj, selected_trajectory_dir,
+    n_jobs    = N_JOBS,
+    spline_df = SPLINE_DF,
+)
+```
+
+```{python section_23_plot_gene_trends, eval=FALSE}
 TOP_N           = 10
 HIGHLIGHT_GENES = ["AT4G21750"]
 ORDERING        = "max"
-SPLINE_DF       = 3
 
-# selected_trajectory_dir points to the epidermis cotyledon run:
-# results/09_pseudotime/trajectory/n100_s0.1_l20_e3_seed3
-
-# The first call is slow (~15 min): the fitted trends are saved in
-# <run>/gene_trends/gene_trends_fitted.h5ad and reused afterwards, so changing
-# TOP_N, HIGHLIGHT_GENES or ORDERING and running this call again only redraws the plots.
-adata_fitted = run_gene_trends(
-    adata_traj, selected_trajectory_dir,
-    genes     = HIGHLIGHT_GENES,
-    top_n     = TOP_N,
-    ordering  = ORDERING,
-    spline_df = SPLINE_DF,
-    n_jobs    = N_JOBS,
+# Step 2 - select genes and plot (seconds). Change TOP_N, HIGHLIGHT_GENES or
+# ORDERING and run only this block again; nothing is recomputed. A highlighted
+# gene that is not in the fit is fitted on its own and added to it.
+adata_fitted = plot_gene_trends(
+    adata_fitted, selected_trajectory_dir,
+    custom_genes = HIGHLIGHT_GENES,
+    top_n        = TOP_N,
+    ordering     = ORDERING,
+    adata        = adata_traj,
+    n_jobs       = N_JOBS,
 )
 
 print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
@@ -2238,6 +2251,49 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 This approach is useful when the Gulati score (number of detected genes) does
 not correctly identify the progenitor population, for example in datasets where
 differentiated cells have higher transcriptional diversity than progenitors.
+
+## Supplementary Section S5 - Running the workflow from a parameter file {-}
+
+This section is optional. The workflow is run exactly as described in the previous
+sections: every value that you may want to change is written in the code blocks of
+this document and of `workflow/step*.R|py`.
+
+The repository also contains `params.yaml`, a single file that gathers all those
+values, grouped by step: project folder, seed and results folder (`project`), names of
+the objects passed between steps (`outputs`), samples, colors and QC thresholds,
+resolutions, annotation file, genes, pseudobulk comparisons, GO and network settings,
+the optional supplementary sections S2-S3, and the trajectory settings of the Python
+step (`pseudotime`). It is meant for running the workflow with other values without
+editing the scripts, for example to repeat it on other samples.
+
+The scripts of `workflow/` do not read `params.yaml`. The tool
+`workflow/make_param_steps.py` makes, from them, copies in which every editable value
+is read from `params.yaml` and, if the file does not give it, keeps the value of the
+script. The copies are generated every time, so they always match the scripts.
+`workflow/run_all.sh` generates them and runs the analysis steps (R, R, Python):
+
+```bash
+# all analysis steps (1, 2 and 3), one after the other, with params.yaml
+bash workflow/run_all.sh
+
+# only some steps
+bash workflow/run_all.sh "2 3"
+
+# a single step: generate the copies, then run the one you want
+python3 workflow/make_param_steps.py results/params_steps
+PARAMS_FILE=/workspace/params.yaml Rscript results/params_steps/step1_singlecell.R
+```
+
+Each step writes its log to `results/logs/stepN.log`, and the run stops at the first
+step that fails. Step 0 (Cell Ranger) is not part of the default run because it
+needs a signed 10x download URL, and it does not read `params.yaml`;
+`step1_supplementary.R` is not run either, because it continues the R session of
+Step 1 (its generated copy is in the same folder, for manual use). A run with a
+parameter file does not stop to look at figures, so the resolution of Section 6 and
+the annotation file of Section 7 are the ones written in the file: for new data, look
+at the elbow plot and the clustree (Section 5) first and set
+`clustering: cluster_resolution` accordingly. The Python step needs PyYAML to read the
+file (`pip install pyyaml`).
 
 \newpage
 

@@ -141,13 +141,16 @@ SingleCell/
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
 │   ├── biblio_marks.txt             # cell-type marker table (celltype, symbol, ID)
 │   └── AtTFDB_loci.txt                 # Arabidopsis transcription-factor loci, one per line
+├── params.yaml                         # optional: all editable values in one file
 ├── workflow/
 │   ├── step0_cellranger.sh             # Part 0: FASTQ download + mkref + cellranger count
 │   ├── step1_singlecell.R              # Part 1: Sections 1-9 (QC → annotated object)
 │   ├── step1_supplementary.R           # Optional steps S1-S3 (annotated clustree, grouping, curation)
 │   ├── step2_degs.R                    # Part 2: Sections 10-17 (pseudobulk DE → networks)
 │   ├── step3_pseudotime.py             # Part 3: Sections 18-24 (pseudotime trajectory)
-│   ├── init.R / init.py                # init_pipeline(): one call loads libraries + functions, sets seed, creates results folders
+│   ├── run_all.sh                      # optional: runs Steps 1-3 with params.yaml
+│   ├── make_param_steps.py             # optional: generates parameter-driven copies of the steps (used by run_all.sh)
+│   ├── init.R / init.py                # init_pipeline(): loads libraries + functions, sets seed, creates results folders
 │   ├── load_libraries.R                # loads every R package the pipeline needs
 │   ├── load_libraries_python.py        # loads every Python package Part 3 needs
 │   ├── ScRNA_Analysis_Functions.R      # 75 R functions backing Parts 1-2 (documented below)
@@ -172,6 +175,32 @@ results/
 `results/` itself is not tracked in git — it is generated fresh by running the pipeline against your own data.
 
 ---
+
+## Optional: running with a parameter file (`params.yaml`, `run_all.sh`)
+
+The step scripts and the report contain, in each code block, the values you may want to change. Nothing else is needed to follow the workflow.
+
+**`params.yaml`** gathers all those values in one file (project folder, seed, results folder, names of the objects passed between steps, samples and colors, QC thresholds, resolutions, annotation file, genes, pseudobulk comparisons, GO and network settings, supplementary sections S2-S3, trajectory settings). It is for running the workflow with other values without editing the scripts.
+
+The scripts in `workflow/` do not read it. `workflow/make_param_steps.py` generates, from them, copies where every value is read from `params.yaml` (and keeps the script's value if the file does not give one); `run_all.sh` generates them and runs them. The copies are always rebuilt, so they cannot drift from the scripts.
+
+```bash
+# inside the container, repository mounted at /workspace
+bash workflow/run_all.sh                 # Steps 1, 2 and 3 with params.yaml
+bash workflow/run_all.sh "2 3"           # only some steps
+bash workflow/run_all.sh "0 1 2 3"       # also Step 0 (needs Cell Ranger and a signed 10x URL)
+
+# a single step
+python3 workflow/make_param_steps.py results/params_steps
+PARAMS_FILE=/workspace/params.yaml Rscript results/params_steps/step1_singlecell.R
+```
+
+- Logs are written to `results/logs/stepN.log`; the run stops at the first step that fails.
+- Step 0 is not in the default run (signed, account-tied download URL) and does not read `params.yaml`.
+- `step1_supplementary.R` is not run by `run_all.sh`: it continues the R session of Step 1 (its generated copy is in `results/params_steps/`).
+- An unattended run uses the clustering resolution and annotation file written in `params.yaml`. For new data, look at the elbow plot and the clustree (Section 5) first.
+- If you rename or reformat a line that holds an editable value, `make_param_steps.py` stops with an error naming the rule to update.
+- The parameter-driven Python step needs PyYAML (`pip install pyyaml`; it is in the `Dockerfile`, but an older image may not have it).
 
 ## Pipeline walkthrough
 
@@ -227,7 +256,7 @@ These steps start from the annotation of Section 7. They are not needed by the r
 | 20 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
 | 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → root selection (see [Root selection for pseudotime](#root-selection-for-pseudotime)) → pseudotime assignment; supports sweeping multiple parameter sets in one call |
 | 22 | Gene expression plotted directly on the force-directed trajectory graph |
-| 23 | `run_gene_trends` — `scFates.tl.test_association` + `.fit` (cached), top-N and custom-gene trend heatmaps, one plot per highlighted gene |
+| 23 | `compute_gene_trends` — `scFates.tl.test_association` + `.fit` (saved and reused); then `plot_gene_trends` — top-N and custom-gene trend heatmaps, one plot per highlighted gene |
 | 24 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
 
 ### Root selection for pseudotime
@@ -602,7 +631,8 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `strip_segment_frames(ax)` | Removes stray unfilled rectangle artifacts scFates leaves behind on trend plots |
 | `save_trends_plot(axes_list, pdf_path)` | Saves gene-trend axes at 24×18 in (wider than the standard 18×18 — the dendrogram panel needs the extra width) |
 | `plot_genes_on_trajectory(adata, genes, run_dir, titles=None)` | Step 28: draws the genes on the force-directed trajectory graph and saves it automatically as `<run_dir>/gene_plots/trajectory_gene_<AGI>.pdf` (18×18 in), named after the plotted genes (several genes are joined with `_`), where `run_dir` is the trajectory run folder; puts the expression in `.X` if needed, prints and returns the saved path |
-| `run_gene_trends(adata, run_dir, genes=None, top_n=10, ordering="max", spline_df=3, n_jobs=4, name=None)` | One call for Section 23: `compute_gene_trends` (fit saved and reused) → `plot_gene_trends` → `plot_single_gene_trend` per gene; returns the fitted AnnData |
+| `compute_gene_trends(adata, run_dir, custom_genes=None, n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001, reuse=True)` | Slow part of Section 23: `scFates.tl.test_association` + `.fit`; the fit is saved in `<run_dir>/gene_trends/gene_trends_fitted.h5ad` and reused |
+| `plot_gene_trends(adata_fitted, run_dir, custom_genes=None, top_n=10, ordering="max", spread_top=True, adata=None, n_jobs=4, single_gene_plots=True)` | Fast part: trend heatmaps (top-N + highlighted genes) and one plot per highlighted gene; with `adata`, highlighted genes missing from the fit are fitted on their own and added to it. Returns the (updated) fitted AnnData |
 | `run_step29_gene_trends(adata, run_dir, name="trajectory", custom_genes=None, top_n=50, ordering="max", n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001)` | Step 28/29: `scFates.tl.test_association` + `.fit`, then two trend heatmaps — top-N most variable genes and a custom highlighted gene list (force-included even if not significant) |
 
 `load_libraries_python.py` additionally auto-detects Jupyter vs. script execution (`IPKernelApp` in the IPython shell config) to pick the inline vs. `Agg` matplotlib backend, and silences warnings globally.

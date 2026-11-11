@@ -85,21 +85,30 @@ print("SECTION 22 COMPLETE: gene trajectory plots saved")
 # ==============================================================================
 # Section 23 - Gene trends
 # ==============================================================================
+SPLINE_DF = 3
+
+# Step 1 - compute (slow, ~15 min). The fitted trends are saved in
+# <run>/gene_trends/gene_trends_fitted.h5ad and reused if you run it again.
+adata_fitted = compute_gene_trends(
+    adata_traj, selected_trajectory_dir,
+    n_jobs    = N_JOBS,
+    spline_df = SPLINE_DF,
+)
+
 TOP_N           = 10
 HIGHLIGHT_GENES = ["AT4G21750"]
 ORDERING        = "max"
-SPLINE_DF       = 3
 
-# The first call is slow (~15 min): the fitted trends are saved in
-# <run>/gene_trends/gene_trends_fitted.h5ad and reused afterwards, so changing
-# TOP_N, HIGHLIGHT_GENES or ORDERING and running this call again only redraws the plots.
-adata_fitted = run_gene_trends(
-    adata_traj, selected_trajectory_dir,
-    genes     = HIGHLIGHT_GENES,
-    top_n     = TOP_N,
-    ordering  = ORDERING,
-    spline_df = SPLINE_DF,
-    n_jobs    = N_JOBS,
+# Step 2 - select genes and plot (seconds). Change TOP_N, HIGHLIGHT_GENES or
+# ORDERING and run only this block again; nothing is recomputed. A highlighted
+# gene that is not in the fit is fitted on its own and added to it.
+adata_fitted = plot_gene_trends(
+    adata_fitted, selected_trajectory_dir,
+    custom_genes = HIGHLIGHT_GENES,
+    top_n        = TOP_N,
+    ordering     = ORDERING,
+    adata        = adata_traj,
+    n_jobs       = N_JOBS,
 )
 
 print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
