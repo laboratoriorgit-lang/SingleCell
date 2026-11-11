@@ -619,6 +619,74 @@ filter_sample <- function(obj,
 }
 
 
+#' Merge Samples and Run the Initial Preprocessing
+#'
+#' Merges the filtered samples and runs NormalizeData, FindVariableFeatures
+#' (vst), ScaleData, RunPCA and RunUMAP (on the PCA). The result is NOT yet
+#' integrated across samples (see Harmony in the next section). Saving the
+#' UMAP and the object is left to the caller.
+#'
+#' @param seurat_list Named list of filtered Seurat objects.
+#' @param nfeatures   Number of variable features (default 2000).
+#' @param npcs        Number of principal components (default 30).
+#' @param dims        PCs used for the UMAP (default 1:npcs).
+#' @return Merged Seurat object with PCA and UMAP.
+#' @export
+merge_and_preprocess <- function(seurat_list, nfeatures = 2000, npcs = 30,
+                                 dims = 1:npcs) {
+  reduce(seurat_list, merge) %>%
+    NormalizeData(verbose = FALSE) %>%
+    FindVariableFeatures(
+      selection.method = "vst", nfeatures = nfeatures, verbose = FALSE
+    ) %>%
+    ScaleData(verbose = FALSE) %>%
+    RunPCA(npcs = npcs, verbose = FALSE) %>%
+    RunUMAP(reduction = "pca", dims = dims, verbose = FALSE)
+}
+
+
+#' Harmony Integration and Post-Harmony UMAP
+#'
+#' Runs Harmony on the PCA using a metadata column (usually the sample) and
+#' recalculates the UMAP from the corrected embedding. Harmony only changes the
+#' embedding; gene counts are not modified. Saving the UMAP and the object is
+#' left to the caller.
+#'
+#' @param obj      Merged Seurat object with PCA (see merge_and_preprocess()).
+#' @param group_by Metadata column to correct for (default "orig.ident").
+#' @param dims     Harmony dimensions used for the UMAP (default 1:30).
+#' @return Seurat object with the "harmony" reduction and a UMAP on it.
+#' @export
+run_harmony_umap <- function(obj, group_by = "orig.ident", dims = 1:30) {
+  obj %>%
+    RunHarmony(group_by, plot_convergence = FALSE) %>%
+    RunUMAP(reduction = "harmony", dims = dims, verbose = FALSE)
+}
+
+
+#' Final Clustering on the Harmony Embedding
+#'
+#' Recomputes the UMAP, builds the nearest-neighbor graph and clusters the
+#' cells (Leiden, algorithm = 4) on the Harmony reduction. The clusters are
+#' stored in `seurat_clusters`. Setting the identities and saving the UMAP is
+#' left to the caller.
+#'
+#' @param obj        Seurat object with a "harmony" reduction.
+#' @param resolution Clustering resolution (chosen from the clustree).
+#' @param dims       Harmony dimensions to use (default 1:30).
+#' @param k_param    Number of nearest neighbors for the graph (default 20).
+#' @return Seurat object with UMAP, neighbor graph and `seurat_clusters`.
+#' @export
+cluster_cells <- function(obj, resolution, dims = 1:30, k_param = 20) {
+  obj %>%
+    RunUMAP(reduction = "harmony", dims = dims, verbose = FALSE) %>%
+    FindNeighbors(
+      reduction = "harmony", dims = dims, k.param = k_param, verbose = FALSE
+    ) %>%
+    FindClusters(resolution = resolution, algorithm = 4, verbose = FALSE)
+}
+
+
 # =============================================================================
 # 4. BULK / PSEUDOBULK UTILITIES
 # =============================================================================

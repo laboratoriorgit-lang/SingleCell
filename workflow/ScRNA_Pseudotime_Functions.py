@@ -1044,6 +1044,30 @@ def plot_single_gene_trend(
     return outfile
 
 
+# One-call gene trends: compute (cached) + trend heatmaps + one plot per highlighted gene.
+# The slow fit is saved in <run_dir>/gene_trends/gene_trends_fitted.h5ad and reused,
+# so changing top_n / ordering and calling again only redraws the plots.
+def run_gene_trends(
+    adata,
+    run_dir,
+    genes     = None,
+    top_n     = 10,
+    ordering  = "max",
+    spline_df = 3,
+    n_jobs    = 4,
+    name      = None,
+):
+    name  = name or os.path.basename(run_dir)
+    genes = genes or []
+    adata_fitted = compute_gene_trends(adata, run_dir, name=name, custom_genes=genes,
+                                       n_jobs=n_jobs, spline_df=spline_df)
+    plot_gene_trends(adata_fitted, run_dir, name=name, custom_genes=genes,
+                     top_n=top_n, ordering=ordering)
+    for gene in genes:
+        plot_single_gene_trend(adata_fitted, gene, run_dir)
+    return adata_fitted
+
+
 # One-call version (compute + plot), kept for convenience.
 def run_step29_gene_trends(
     adata,

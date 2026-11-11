@@ -4,43 +4,20 @@
 # Helper functions live in workflow/ and are sourced by the init block below.
 
 # ==============================================================================
-# Configuration
-# ==============================================================================
-# CONFIGURATION - Edit only this block before running the pipeline
-# =============================================================================
-
-# Directory containing the pipeline helper scripts.
-# The cloned repository itself is mounted as /workspace.
-PIPELINE_DIR <- "/workspace/workflow"
-
-# Root directory for your project data and results.
-# All result files will be written to DATA_DIR/results/<step>/
-DATA_DIR   <- "/workspace/."
-base_dir   <- file.path(DATA_DIR, "results")
-
-# =============================================================================
-
-# ==============================================================================
 # Initialization
 # ==============================================================================
-# INITIALIZATION
+# INITIALIZATION - Edit only this block before running the pipeline
 # =============================================================================
 
-# -- Load helper scripts --------------------------------------------------------
-# Each file is fully documented at https://github.com/laboratoriorgit-lang/SingleCell
-source(file.path(PIPELINE_DIR, "load_libraries.R"))          # all R packages
-source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))# analysis functions
-
-set.seed(1807)
-options(Seurat.allow.s4 = FALSE)  # required for Seurat 5 compatibility
-setwd(DATA_DIR)
-
-# -- Create per-step output directories ----------------------------------------
-list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)  # creates output folders and loads their paths as variables
-
-# output_dir is the global variable used by save_pdf / save_qc / save_vln helpers.
-# It is reassigned at the start of each section to the appropriate step directory.
-output_dir <- base_dir
+# data_dir: root of the project (the cloned repository is mounted as /workspace).
+#   Input paths are resolved relative to it, and all result files are written
+#   to data_dir/results/<step>/.
+# seed: random seed, fixed so that reruns give comparable results.
+# init_pipeline() loads the packages and helper functions, sets the seed,
+# moves R into data_dir and creates the results folders (dir_01 ... dir_08,
+# dir_objects). It also defines DATA_DIR, PIPELINE_DIR, base_dir and output_dir.
+source("/workspace/workflow/init.R")
+init_pipeline(data_dir = "/workspace/.", seed = 1807)
 
 
 # =============================================================================
@@ -124,14 +101,7 @@ message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
 # ==============================================================================
 output_dir <- dir_01
 
-ath_sc <- reduce(seurat_list, merge) %>%
-  NormalizeData(verbose = FALSE) %>%
-  FindVariableFeatures(
-    selection.method = "vst", nfeatures = 2000, verbose = FALSE
-  ) %>%
-  ScaleData(verbose = FALSE) %>%
-  RunPCA(npcs = 30, verbose = FALSE) %>%
-  RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+ath_sc <- merge_and_preprocess(seurat_list, nfeatures = 2000, npcs = 30)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -147,9 +117,7 @@ message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 # ==============================================================================
 output_dir <- dir_01
 
-ath_sc <- ath_sc %>%
-  RunHarmony("orig.ident", plot_convergence = FALSE) %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
+ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = 1:30)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -182,12 +150,9 @@ cluster_resolution <- 0.35
 cluster_dims       <- 1:30   # default; fewer dimensions change the UMAP and clusters (see the elbow plot)
 output_dir <- dir_02
 
-ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = cluster_dims, verbose = FALSE) %>%
-  FindNeighbors(
-    reduction = "harmony", dims = cluster_dims, k.param = 20, verbose = FALSE
-  ) %>%
-  FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
+ath_sc <- cluster_cells(
+  ath_sc, resolution = cluster_resolution, dims = cluster_dims, k_param = 20
+)
 
 Idents(ath_sc) <- "seurat_clusters"
 save_pdf(

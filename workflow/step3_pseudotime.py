@@ -5,17 +5,11 @@
 # ==============================================================================
 # Section 18 - Setup
 # ==============================================================================
-import os
-
-PIPELINE_DIR = "/workspace/workflow"
-DATA_DIR     = "/workspace/."
-base_dir     = os.path.join(DATA_DIR, "results")
-
-exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
-exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
-
-dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
-os.makedirs(dir_pseudotime, exist_ok=True)
+# data_dir: root of the project (the cloned repository is mounted as /workspace).
+# init_pipeline() loads the Python packages and helper functions and creates
+# results/09_pseudotime/. It defines DATA_DIR, PIPELINE_DIR, base_dir and dir_pseudotime.
+exec(open("/workspace/workflow/init.py").read(), globals())
+init_pipeline(data_dir="/workspace/.")
 
 print("SECTION 18 COMPLETE: setup done")
 
@@ -96,31 +90,19 @@ HIGHLIGHT_GENES = ["AT4G21750"]
 ORDERING        = "max"
 SPLINE_DF       = 3
 
-name = os.path.basename(selected_trajectory_dir)
-
-# Step 1 - compute (slow, ~15 min). The fitted curves are saved in
-# <run>/gene_trends/gene_trends_fitted.h5ad and reused if you run it again.
-adata_fitted = compute_gene_trends(
-    adata        = adata_traj,
-    run_dir      = selected_trajectory_dir,
-    name         = name,
-    custom_genes = HIGHLIGHT_GENES,
-    n_jobs       = N_JOBS,
-    spline_df    = SPLINE_DF,
+# The first call is slow (~15 min): the fitted trends are saved in
+# <run>/gene_trends/gene_trends_fitted.h5ad and reused afterwards, so changing
+# TOP_N, HIGHLIGHT_GENES or ORDERING and running this call again only redraws the plots.
+adata_fitted = run_gene_trends(
+    adata_traj, selected_trajectory_dir,
+    genes     = HIGHLIGHT_GENES,
+    top_n     = TOP_N,
+    ordering  = ORDERING,
+    spline_df = SPLINE_DF,
+    n_jobs    = N_JOBS,
 )
 
-# Step 2 - plot (seconds). Change TOP_N, HIGHLIGHT_GENES or ORDERING and run only
-# this call again; nothing is recomputed.
-top_path, highlight_path = plot_gene_trends(
-    adata_fitted,
-    run_dir      = selected_trajectory_dir,
-    name         = name,
-    custom_genes = HIGHLIGHT_GENES,
-    top_n        = TOP_N,
-    ordering     = ORDERING,
-)
-
-print("SECTION 23 COMPLETE: gene trend plots saved")
+print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
 
 # ==============================================================================
 # Section 24 - Final export

@@ -147,6 +147,7 @@ SingleCell/
 │   ├── step1_supplementary.R           # Optional steps S1-S3 (annotated clustree, grouping, curation)
 │   ├── step2_degs.R                    # Part 2: Sections 10-17 (pseudobulk DE → networks)
 │   ├── step3_pseudotime.py             # Part 3: Sections 18-24 (pseudotime trajectory)
+│   ├── init.R / init.py                # init_pipeline(): one call loads libraries + functions, sets seed, creates results folders
 │   ├── load_libraries.R                # loads every R package the pipeline needs
 │   ├── load_libraries_python.py        # loads every Python package Part 3 needs
 │   ├── ScRNA_Analysis_Functions.R      # 75 R functions backing Parts 1-2 (documented below)
@@ -186,10 +187,10 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 |---|---|
 | 1 | Load each CellRanger `filtered_feature_bc_matrix/` (`load_seurat_samples`), compute `percent.mt`, save pre-filter QC violins (`plot_qc_batch`) |
 | 2 | Filter cells (`filter_seurat_samples`/`filter_sample`), save post-filter QC, checkpoint `.rds` |
-| 3 | Merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony) |
-| 4 | `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP |
+| 3 | `merge_and_preprocess` — merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony); the UMAP and `.rds` are saved in the step |
+| 4 | `run_harmony_umap` — `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP; the UMAP and `.rds` are saved in the step |
 | 5 | Optional elbow plot (`plot_resolution_elbow`) to check how many PCs to use, and `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
-| 6 | Final `FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution, on `cluster_dims` (default `1:30`) |
+| 6 | `cluster_cells` — final `RunUMAP`/`FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution, on `cluster_dims` (default `1:30`); identities and UMAP are set/saved in the step |
 | 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
 | 8 | Gene expression violin + feature plots for genes of interest |
 | 9 | Export the annotated object as `.rds` and, via `export_to_scanpy`, as `.h5ad` for Part 3 |
@@ -221,12 +222,12 @@ These steps start from the annotation of Section 7. They are not needed by the r
 
 | Section | What happens |
 |---|---|
-| 18 | Setup: load `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, create `results/09_pseudotime/` |
+| 18 | Setup: `init_pipeline()` (`init.py`) loads `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, creates `results/09_pseudotime/` |
 | 19 | `load_curated_object` — read the Part 1 `.h5ad`, fix Seurat→scanpy `obsm` key names, plot overview UMAP |
 | 20 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
 | 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → root selection (see [Root selection for pseudotime](#root-selection-for-pseudotime)) → pseudotime assignment; supports sweeping multiple parameter sets in one call |
 | 22 | Gene expression plotted directly on the force-directed trajectory graph |
-| 23 | `run_step29_gene_trends` — `scFates.tl.test_association` + `.fit`, top-N and custom-gene trend plots along pseudotime |
+| 23 | `run_gene_trends` — `scFates.tl.test_association` + `.fit` (cached), top-N and custom-gene trend heatmaps, one plot per highlighted gene |
 | 24 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
 
 ### Root selection for pseudotime
@@ -297,6 +298,15 @@ Applies `filter_sample` to every element of a named Seurat list via `lapply`, pr
 
 #### `filter_sample(obj, min_features = 200, max_features = Inf, min_counts = 0, max_counts = Inf, max_mt = 5, run_doubletfinder = TRUE)`
 QC-threshold `subset()` on nFeature/nCount/%mt, then optionally runs `doubletfinder_pipeline` on the filtered cells.
+
+#### `merge_and_preprocess(seurat_list, nfeatures = 2000, npcs = 30, dims = 1:npcs)`
+Merges the filtered samples and runs `NormalizeData` → `FindVariableFeatures` (vst) → `ScaleData` → `RunPCA` → `RunUMAP` (on the PCA). Returns the merged, not yet integrated, Seurat object; saving the UMAP and the `.rds` is done in the step.
+
+#### `run_harmony_umap(obj, group_by = "orig.ident", dims = 1:30)`
+`RunHarmony` on the metadata column `group_by`, then `RunUMAP` on the `harmony` reduction. Returns the corrected Seurat object; saving the UMAP and the `.rds` is done in the step.
+
+#### `cluster_cells(obj, resolution, dims = 1:30, k_param = 20)`
+`RunUMAP` + `FindNeighbors` + `FindClusters` (Leiden, `algorithm = 4`) on the `harmony` reduction. Returns the Seurat object with `seurat_clusters`; setting `Idents` and saving the UMAP is done in the step.
 
 ---
 
@@ -592,6 +602,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `strip_segment_frames(ax)` | Removes stray unfilled rectangle artifacts scFates leaves behind on trend plots |
 | `save_trends_plot(axes_list, pdf_path)` | Saves gene-trend axes at 24×18 in (wider than the standard 18×18 — the dendrogram panel needs the extra width) |
 | `plot_genes_on_trajectory(adata, genes, run_dir, titles=None)` | Step 28: draws the genes on the force-directed trajectory graph and saves it automatically as `<run_dir>/gene_plots/trajectory_gene_<AGI>.pdf` (18×18 in), named after the plotted genes (several genes are joined with `_`), where `run_dir` is the trajectory run folder; puts the expression in `.X` if needed, prints and returns the saved path |
+| `run_gene_trends(adata, run_dir, genes=None, top_n=10, ordering="max", spline_df=3, n_jobs=4, name=None)` | One call for Section 23: `compute_gene_trends` (fit saved and reused) → `plot_gene_trends` → `plot_single_gene_trend` per gene; returns the fitted AnnData |
 | `run_step29_gene_trends(adata, run_dir, name="trajectory", custom_genes=None, top_n=50, ordering="max", n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001)` | Step 28/29: `scFates.tl.test_association` + `.fit`, then two trend heatmaps — top-N most variable genes and a custom highlighted gene list (force-included even if not significant) |
 
 `load_libraries_python.py` additionally auto-detects Jupyter vs. script execution (`IPKernelApp` in the IPython shell config) to pick the inline vs. `Agg` matplotlib backend, and silences warnings globally.

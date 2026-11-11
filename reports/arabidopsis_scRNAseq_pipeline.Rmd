@@ -297,6 +297,8 @@ SingleCell/
 |   `-- Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
 `-- workflow/
     |-- load_libraries.R                 # R packages
+    |-- init.R                           # init_pipeline() for R (Steps 1-2)
+    |-- init.py                          # init_pipeline() for Python (Step 3)
     |-- load_libraries_python.py         # Python packages
     |-- ScRNA_Analysis_Functions.R       # helper functions (Steps 1-2)
     |-- ScRNA_Pseudotime_Functions.py    # helper functions (Step 3)
@@ -614,8 +616,8 @@ Start R:
 R
 ```
 
-The next two steps, Configuration and Initialization, set up the paths and
-helper functions used by every section that follows.
+The next step, Initialization, sets up the paths and helper functions used by
+every section that follows.
 
 **Note: the processed matrices are already in the repository.** The Cell Ranger
 output of both samples is included in the repository, so this part can be started
@@ -628,75 +630,29 @@ files read by the sample manifest of Section 1 are:
 The Cell Ranger summaries (`outs/metrics_summary.csv` and `outs/web_summary.html`)
 of each sample are in the same folders.
 
-## Configuration
-
-
-This block defines the main paths used by the pipeline: the working directory, the folder where the workflow scripts are stored, and the folder where all results will be written. Edit these values before running the analysis if your project is mounted in a different location.
-
-
-```{r configuration}
-# CONFIGURATION - Edit only this block before running the pipeline
-# =============================================================================
-
-# Folder containing the pipeline helper scripts.
-# This tells R where to find files such as load_libraries.R and
-# ScRNA_Analysis_Functions.R. Inside the container, the cloned repository
-# is mounted as /workspace.
-PIPELINE_DIR <- "/workspace/workflow"
-
-# Working directory for the analysis.
-# Input folders are resolved relative to DATA_DIR, and all result files
-# will be written to DATA_DIR/results/<step>/
-DATA_DIR   <- "/workspace/."
-base_dir   <- file.path(DATA_DIR, "results")
-
-# =============================================================================
-```
-
-
 ## Initialization
 
+This block prepares the R session before running the analysis with a single call
+to `init_pipeline()`. It has two arguments:
 
-This block prepares the R session before running the analysis. It loads the
-pipeline helper scripts, sets a fixed random seed for reproducibility, configures
-Seurat compatibility options, moves R into the project working directory, and
-creates the output folders used by the rest of the workflow. The seed is
-important because some analysis steps include random components; keeping it fixed
-helps obtain comparable results when the pipeline is rerun.
+- `data_dir`: the project folder (the cloned repository, mounted as `/workspace`
+  in the container). Input folders are resolved relative to it, and all result
+  files are written to `data_dir/results/<step>/`. Edit it if your project is
+  mounted in a different location.
+- `seed`: the random seed. Some analysis steps include random components, so
+  keeping it fixed helps obtain comparable results when the pipeline is rerun.
+
+The function loads the R packages and the helper functions of the workflow, sets
+the seed, enables the Seurat 5 compatibility option, moves R into `data_dir` and
+creates the output folders used by the rest of the workflow.
 
 
 ```{r initialization}
-# INITIALIZATION
+# INITIALIZATION - Edit only this block before running the pipeline
 # =============================================================================
 
-# -- Load helper scripts --------------------------------------------------------
-# load_libraries.R loads the required R packages.
-# ScRNA_Analysis_Functions.R loads the custom functions used in the workflow.
-source(file.path(PIPELINE_DIR, "load_libraries.R"))
-source(file.path(PIPELINE_DIR, "ScRNA_Analysis_Functions.R"))
-
-# Set a fixed random seed so steps with random components are reproducible.
-# Using the same seed helps obtain comparable results when rerunning the pipeline.
-set.seed(1807)
-
-# Enable compatibility behavior required by Seurat 5.
-options(Seurat.allow.s4 = FALSE)
-
-# Suppress ComplexHeatmap messages about raster mode.
-ComplexHeatmap::ht_opt$message <- FALSE
-
-# Set the working directory for the analysis.
-# From this point, relative paths are interpreted from DATA_DIR.
-setwd(DATA_DIR)
-
-# -- Create per-step output directories ----------------------------------------
-# create_pipeline_dirs() creates folders such as 01_qc, 02_clustering, etc.
-# list2env() loads their paths into the R session as variables such as dir_01.
-list2env(create_pipeline_dirs(base_dir), envir = .GlobalEnv)
-
-# output_dir is the variable used by plotting/saving helper functions.
-# It is updated at the start of each section to point to the correct folder.
-output_dir <- base_dir
+source("/workspace/workflow/init.R")
+init_pipeline(data_dir = "/workspace/.", seed = 1807)
 
 
 # =============================================================================
@@ -705,8 +661,8 @@ output_dir <- base_dir
 ```
 
 After this block runs, the R session is ready to execute the analysis sections.
-The helper functions are available, the project paths are fixed, and the results
-folders have been created. Each following section only needs to set `output_dir`
+The helper functions are available, the project paths (`DATA_DIR`, `base_dir`) are
+fixed, and the results folders have been created. Each following section only needs to set `output_dir`
 to the corresponding folder before saving figures or objects.
 
 \newpage
@@ -925,20 +881,18 @@ data call for it:
 | `RunUMAP` | `min.dist` | 0.3 | How tightly cells are allowed to pack together in the plot |
 | `FindNeighbors` (Section 6) | `k.param` | 20 | Neighbors per cell in the graph used for clustering |
 
+The function `merge_and_preprocess()` runs all the steps above in this order; its
+arguments `nfeatures` and `npcs` are the number of variable features and of PCs
+(the UMAP uses the same PCs). The UMAP and the object are then saved from the
+block below.
+
 The output is saved as `results/objects/ath_sc_preharmony.rds`, and the UMAP
 before Harmony integration is saved as `results/01_qc/umap_preharmony.pdf`.
 
 ```{r section_03_merge_and_initial_preprocessing}
 output_dir <- dir_01
 
-ath_sc <- reduce(seurat_list, merge) %>%
-  NormalizeData(verbose = FALSE) %>%
-  FindVariableFeatures(
-    selection.method = "vst", nfeatures = 2000, verbose = FALSE
-  ) %>%
-  ScaleData(verbose = FALSE) %>%
-  RunPCA(npcs = 30, verbose = FALSE) %>%
-  RunUMAP(reduction = "pca", dims = 1:30, verbose = FALSE)
+ath_sc <- merge_and_preprocess(seurat_list, nfeatures = 2000, npcs = 30)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -979,15 +933,17 @@ After Harmony, the UMAP is recalculated using the corrected representation. This
 second UMAP helps check whether samples mix better while still preserving
 biological structure.
 
+The function `run_harmony_umap()` runs `RunHarmony` on the sample identity given in
+`group_by` and then recalculates the UMAP from the corrected PCs (`dims`). The UMAP
+and the object are then saved from the block below.
+
 The corrected object is saved as `results/objects/ath_sc_postharmony.rds`, and
 the post-Harmony UMAP is saved as `results/01_qc/umap_postharmony.pdf`.
 
 ```{r section_04_harmony_batch_correction}
 output_dir <- dir_01
 
-ath_sc <- ath_sc %>%
-  RunHarmony("orig.ident", plot_convergence = FALSE) %>%
-  RunUMAP(reduction = "harmony", dims = 1:30, verbose = FALSE)
+ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = 1:30)
 
 save_pdf(
   plot_umap(ath_sc, "orig.ident", colors),
@@ -1080,7 +1036,9 @@ This is a judgment call, not a fixed rule: with another dataset, choose the
 resolution where the clustree is stable and the number of clusters still
 matches the cell populations you expect.
 
-`FindNeighbors` builds a graph that connects each cell to its `k.param = 20`
+The function `cluster_cells()` runs `RunUMAP`, `FindNeighbors` and `FindClusters` on
+the Harmony embedding, using `resolution`, `dims` and `k_param` as arguments.
+`FindNeighbors` builds a graph that connects each cell to its `k_param = 20`
 nearest neighbors in Harmony space, and `FindClusters` then splits that graph
 into communities. A smaller `k.param` gives finer, more local clusters; a larger
 one gives smoother, broader ones.
@@ -1097,12 +1055,9 @@ cluster_resolution <- 0.35
 cluster_dims       <- 1:30     # default; fewer dimensions change the UMAP and clusters
 output_dir <- dir_02
 
-ath_sc <- ath_sc %>%
-  RunUMAP(reduction = "harmony", dims = cluster_dims, verbose = FALSE) %>%
-  FindNeighbors(
-    reduction = "harmony", dims = cluster_dims, k.param = 20, verbose = FALSE
-  ) %>%
-  FindClusters(resolution = cluster_resolution, algorithm = 4, verbose = FALSE)
+ath_sc <- cluster_cells(
+  ath_sc, resolution = cluster_resolution, dims = cluster_dims, k_param = 20
+)
 
 Idents(ath_sc) <- "seurat_clusters"
 save_pdf(
@@ -1694,26 +1649,18 @@ python3
 
 ## Section 18 - Setup
 
-This section starts the Python part of the pipeline. It defines the same project
-paths used earlier, loads the Python helper scripts, and creates the pseudotime
-output folder.
+This section starts the Python part of the pipeline. A single call to
+`init_pipeline()` loads the Python packages and helper scripts, defines the project
+paths (`DATA_DIR`, `base_dir`) and creates the pseudotime output folder. `data_dir`
+is the project folder; edit it if your project is mounted elsewhere.
 
 Use this block first after leaving R and starting Python inside the
 container. After it runs, the functions needed for trajectory analysis are
 available in the Python session.
 
 ```{python section_18_setup, eval=FALSE}
-import os
-
-PIPELINE_DIR = "/workspace/workflow"
-DATA_DIR     = "/workspace/."
-base_dir     = os.path.join(DATA_DIR, "results")
-
-exec(open(os.path.join(PIPELINE_DIR, "load_libraries_python.py")).read(), globals())
-exec(open(os.path.join(PIPELINE_DIR, "ScRNA_Pseudotime_Functions.py")).read(), globals())
-
-dir_pseudotime = os.path.join(base_dir, "09_pseudotime")
-os.makedirs(dir_pseudotime, exist_ok=True)
+exec(open("/workspace/workflow/init.py").read(), globals())
+init_pipeline(data_dir="/workspace/.")
 
 print("SECTION 18 COMPLETE: setup done")
 ```
@@ -1931,13 +1878,15 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 ## Section 23 - Gene trends
 
 This section fits gene-expression trends along pseudotime for the epidermis
-cotyledon trajectory calculated above. It runs in two steps. `compute_gene_trends()`
-tests genes for association with pseudotime and fits smooth expression curves; this
-is the slow part (about 15 minutes), and its result is saved in
-`gene_trends/gene_trends_fitted.h5ad` inside the trajectory run folder, so the next
-call loads it instead of recomputing. `plot_gene_trends()` ranks the genes by their
-trend signal and draws the trend heatmaps; it takes seconds, so `TOP_N`,
-`HIGHLIGHT_GENES` or `ORDERING` can be changed and only this step run again.
+cotyledon trajectory calculated above, with a single call to `run_gene_trends()`.
+Internally it runs `compute_gene_trends()`, which tests genes for association with
+pseudotime and fits smooth expression curves; this is the slow part (about 15
+minutes). Its result is saved in `gene_trends/gene_trends_fitted.h5ad` inside the
+trajectory run folder and reused on the next call. It then runs
+`plot_gene_trends()`, which ranks the genes by their trend signal and draws the
+trend heatmaps, and `plot_single_gene_trend()` for each highlighted gene. Because
+the fit is reused, `TOP_N`, `HIGHLIGHT_GENES` or `ORDERING` can be changed and the
+call run again in seconds.
 
 For this report, the run shown here uses the already selected epidermis
 cotyledon trajectory: `nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, and
@@ -1955,33 +1904,18 @@ SPLINE_DF       = 3
 
 # selected_trajectory_dir points to the epidermis cotyledon run:
 # results/09_pseudotime/trajectory/n100_s0.1_l20_e3_seed3
-name = os.path.basename(selected_trajectory_dir)
 
-ensure_expression_in_X(adata_traj)
-
-# Step 1 - compute (slow, ~15 min); saved and reused on the next call
-adata_fitted = compute_gene_trends(
-    adata        = adata_traj,
-    run_dir      = selected_trajectory_dir,
-    name         = name,
-    custom_genes = HIGHLIGHT_GENES,
-    n_jobs       = N_JOBS,
-    spline_df    = SPLINE_DF,
+# The first call is slow (~15 min): the fitted trends are saved in
+# <run>/gene_trends/gene_trends_fitted.h5ad and reused afterwards, so changing
+# TOP_N, HIGHLIGHT_GENES or ORDERING and running this call again only redraws the plots.
+adata_fitted = run_gene_trends(
+    adata_traj, selected_trajectory_dir,
+    genes     = HIGHLIGHT_GENES,
+    top_n     = TOP_N,
+    ordering  = ORDERING,
+    spline_df = SPLINE_DF,
+    n_jobs    = N_JOBS,
 )
-
-# Step 2 - plot (seconds); rerun only this call after changing the settings
-top_path, highlight_path = plot_gene_trends(
-    adata_fitted,
-    run_dir      = selected_trajectory_dir,
-    name         = name,
-    custom_genes = HIGHLIGHT_GENES,
-    top_n        = TOP_N,
-    ordering     = ORDERING,
-)
-
-# Step 3 - single gene plot (expression over pseudotime for one gene)
-for gene in HIGHLIGHT_GENES:
-    plot_single_gene_trend(adata_fitted, gene, selected_trajectory_dir)
 
 print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
 ```
