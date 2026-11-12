@@ -15,7 +15,7 @@ def run_pseudotime(input_h5ad, clusters, root_cluster, runs,
                    annotation_col="celltype", n_jobs=4,
                    plot_genes=None, plot_titles=None, plot_filename="trajectory_genes.pdf",
                    spline_df=3, top_n=10, highlight_genes=None, ordering="max"):
-    """Sections 19-24: load, select, trajectory, gene plots, gene trends, export.
+    """Sections 19-23: load, select, trajectory, gene plots, gene trends.
 
     Returns (adata_traj, selected_trajectory_dir, adata_fitted).
     """
@@ -52,9 +52,4 @@ def run_pseudotime(input_h5ad, clusters, root_cluster, runs,
         adata=adata_traj, n_jobs=n_jobs)
     print("SECTION 23 COMPLETE: gene trends saved")
 
-    # Section 24 - final export
-    final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
-    os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
-    adata_traj.write_h5ad(final_h5ad)
-    print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
     return adata_traj, selected_trajectory_dir, adata_fitted

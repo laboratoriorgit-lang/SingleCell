@@ -709,13 +709,12 @@ ath_sc <- run_clustering(
 
 \newpage
 
-## Sections 7-9 - Annotation, gene expression and export
+## Sections 7-8 - Annotation and gene expression
 
 `run_annotation()` finds the cluster markers, annotates the cell types from the
-bibliography marker table (Section 7), plots the expression of `gene` (Section 8,
-optional: use `gene = NULL` to skip it) and exports the annotated object as
-`.rds` and `.h5ad` to `results/objects/` (Section 9). Results go to
-`results/03_annotation/` and `results/04_expression/`.
+bibliography marker table (Section 7), and plots the expression of `gene` (Section 8,
+optional: use `gene = NULL` to skip it). Results go to `results/03_annotation/` and
+`results/04_expression/`.
 
 ```{r sections_07_09_annotation}
 ath_sc <- run_annotation(
@@ -727,6 +726,25 @@ ath_sc <- run_annotation(
 
 ![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio.png){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio.png){width=30%}
 ![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_AT4G21750.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_AT4G21750.png){width=30%}
+
+## Section 9 - Export the annotated object
+
+The annotated object is saved as an `.rds` checkpoint and exported to AnnData
+(`.h5ad`) for the Python trajectory analysis. Both files are written to
+`results/objects/`. Restore the checkpoint in a later session with
+`ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))`.
+
+```{r section_09_export}
+saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
+
+export_to_scanpy(
+  ath_sc,
+  file.path(dir_objects, "ath_sc_annotated.h5ad")
+)
+
+message("\\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
+```
+
 
 \newpage
 
@@ -824,13 +842,12 @@ init_pipeline(data_dir="/workspace/.")
 exec(open("/workspace/workflow/ScRNA_Pseudotime_Wrappers.py").read(), globals())
 ```
 
-## Sections 19-24 - Trajectory inference, gene trends and export
+## Sections 19-23 - Trajectory inference and gene trends
 
 `run_pseudotime()` loads the annotated object (Section 19), selects the cell types
 (Section 20), infers the trajectory (Section 21), plots genes on the trajectory
-(Section 22, optional), computes and plots the gene trends (Section 23) and saves
-the final object (Section 24). Results go to `results/09_pseudotime/` and
-`results/objects/ath_sc_pseudotime_final.h5ad`.
+(Section 22, optional) and computes and plots the gene trends (Section 23).
+Results go to `results/09_pseudotime/`.
 
 - `input_h5ad`, `annotation_col`: the exported object and the annotation column
   (`celltype`, `celltype_grouped` or `celltype_curated`, depending on the
@@ -867,6 +884,19 @@ adata_traj, selected_trajectory_dir, adata_fitted = run_pseudotime(
 ![Trajectory graph for the epidermis-cotyledon-only run (`nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=85%}
 ![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=85%}
 ![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=85%}
+
+## Section 24 - Final export
+
+The final pseudotime object, with the trajectory, pseudotime values and layout
+coordinates, is saved in `results/objects/` as `ath_sc_pseudotime_final.h5ad`.
+
+```{python section_24_final_export, eval=FALSE}
+final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
+os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
+adata_traj.write_h5ad(final_h5ad)
+
+print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+```
 
 This is the last step of the pipeline. Leave the Python REPL by exiting it
 explicitly, mirroring `q()` on the R side:

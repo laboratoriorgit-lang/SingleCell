@@ -80,7 +80,7 @@ run_clustering <- function(ath_sc,
   ath_sc
 }
 
-#' Sections 7-9: markers, annotation, expression plots, export (.rds + .h5ad)
+#' Sections 7-8: markers, annotation, expression plots
 #' @return the annotated Seurat object
 run_annotation <- function(ath_sc, marker_file, gene = NULL) {
   marker_file  <- file.path(DATA_DIR, marker_file)
@@ -108,10 +108,6 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
   }
 
-  # Section 9 - export
-  saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
-  export_to_scanpy(ath_sc, file.path(dir_objects, "ath_sc_annotated.h5ad"))
-  message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
   ath_sc
 }
 
