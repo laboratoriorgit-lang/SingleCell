@@ -12,5 +12,7 @@ reports/*
 !reports/assets/
 !reports/arabidopsis_scRNAseq_pipeline.Rmd
 !reports/arabidopsis_scRNAseq_pipeline.pdf
+!reports/arabidopsis_scRNAseq_pipeline_version_RG.Rmd
+!reports/arabidopsis_scRNAseq_pipeline_version_RG.pdf
 !reports/lang_box.lua
 !reports/latex_header.tex
