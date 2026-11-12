@@ -164,7 +164,7 @@ reference genome, annotation, and marker gene set used for cell-type calling.
 
 ## About this document {-}
 
-**Condensed version (version_RG).** This variant of the guide runs the same analysis as the step-by-step guide, but each chapter is a single call to a high-level function (`run_preprocessing()`, `run_clustering()`, `run_annotation()`, `run_pseudobulk_de()`, `run_tf_network()` in R and `run_pseudotime()` in Python). Each function runs several consecutive sections, with the same calls and the same saved PDFs and objects as the step-by-step guide. The functions are defined in `workflow/ScRNA_Pipeline_Wrappers.R` and `workflow/ScRNA_Pseudotime_Wrappers.py`.
+**Condensed version (version_RG).** This variant of the guide runs the same analysis as the step-by-step guide, but each chapter is a single call to a high-level function (`run_qc_filtering()`, `run_umap_integration()`, `run_clustering()`, `run_annotation()`, `run_pseudobulk_de()`, `run_tf_network()` in R and `run_pseudotime()` in Python). Each function runs several consecutive sections, with the same calls and the same saved PDFs and objects as the step-by-step guide. The functions are defined in `workflow/ScRNA_Pipeline_Wrappers.R` and `workflow/ScRNA_Pseudotime_Wrappers.py`.
 
 **Important: this guide uses a subset of the published data.** The study
 by Han et al. (2023) contains many more samples than the two analyzed here.
@@ -643,14 +643,12 @@ source("/workspace/workflow/ScRNA_Pipeline_Wrappers.R")
 
 \newpage
 
-## Sections 1-4 - Preprocessing: QC, filtering, merging and Harmony
+## Sections 1-2 - Quality control and cell filtering
 
-`run_preprocessing()` runs, in order: data loading and pre-filter QC (Section 1),
-cell filtering and doublet detection (Section 2), merging, normalization and PCA
-(Section 3), and Harmony batch correction (Section 4). It saves the QC violin plots
-and the UMAPs before and after Harmony to `results/01_qc/`, and the intermediate
-objects (`seurat_list_postfilter.rds`, `ath_sc_preharmony.rds`,
-`ath_sc_postharmony.rds`) to `results/objects/`.
+`run_qc_filtering()` loads the samples and draws the pre-filter QC violin plots
+(Section 1), then removes low-quality cells and doublets and draws the post-filter
+plots (Section 2). Plots go to `results/01_qc/` and the filtered list of samples is
+saved to `results/objects/seurat_list_postfilter.rds`.
 
 - `samples`: one entry per sample, with the path of its `filtered_feature_bc_matrix/`
   folder (relative to `data_dir`), a unique `label` and the experimental `condition`.
@@ -658,31 +656,48 @@ objects (`seurat_list_postfilter.rds`, `ath_sc_preharmony.rds`,
 - `mt_pattern`: regular expression for mitochondrial genes (`"^ATMG"` for
   Arabidopsis, `"^MT-"` for human, `"^mt-"` for mouse).
 - `min_features`, `max_mt`, `run_doubletfinder`: filtering thresholds.
-- `nfeatures`, `npcs`, `dims`: variable features, principal components, and
-  dimensions used by Harmony/UMAP.
 
-```{r sections_01_04_preprocessing}
+```{r sections_01_02_qc_filtering}
 samples <- list(
   list(file = "ScWT/outs/filtered_feature_bc_matrix",   label = "WT",   condition = "WT"),
   list(file = "Scpifq/outs/filtered_feature_bc_matrix", label = "pifq", condition = "pifq")
 )
 colors <- c("WT" = "#66c2a5", "pifq" = "#fc8d62")
 
-pre <- run_preprocessing(
+seurat_list <- run_qc_filtering(
   samples, colors,
   mt_pattern        = "^ATMG",
   min_features      = 200,
   max_mt            = 5,
-  run_doubletfinder = TRUE,
-  nfeatures         = 2000,
-  npcs              = 30,
-  dims              = 1:30
+  run_doubletfinder = TRUE
 )
-ath_sc <- pre$ath_sc
 ```
 
 ![Pre-filter QC violin plots.](assets/qc_prefilter.png){width=30%}
 ![Post-filter QC violin plots.](assets/qc_postfilter.png){width=30%}
+
+\newpage
+
+## Sections 3-4 - UMAP and Harmony integration
+
+`run_umap_integration()` merges the filtered samples, normalizes, runs PCA and UMAP
+(Section 3), and corrects the batch effect between samples with Harmony (Section 4).
+It saves the UMAP colored by sample before and after Harmony to `results/01_qc/`,
+and the objects `ath_sc_preharmony.rds` and `ath_sc_postharmony.rds` to
+`results/objects/`.
+
+- `nfeatures`, `npcs`: variable features and principal components.
+- `dims`: dimensions used by Harmony and UMAP.
+
+```{r sections_03_04_umap_integration}
+ath_sc <- run_umap_integration(
+  seurat_list, colors,
+  nfeatures = 2000,
+  npcs      = 30,
+  dims      = 1:30
+)
+```
+
 ![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
 ![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony.png){width=30%}
 

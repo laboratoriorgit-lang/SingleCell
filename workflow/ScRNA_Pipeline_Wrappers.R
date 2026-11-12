@@ -16,16 +16,13 @@
 # -- internal: point save_pdf()/save_qc() to a folder ------------------------
 .set_output_dir <- function(d) assign("output_dir", d, envir = globalenv())
 
-#' Sections 1-4: load, QC, filter, merge, Harmony
-#' @return list(ath_sc, seurat_list)
-run_preprocessing <- function(samples, colors,
-                              mt_pattern        = "^ATMG",
-                              min_features      = 200,
-                              max_mt            = 5,
-                              run_doubletfinder = TRUE,
-                              nfeatures         = 2000,
-                              npcs              = 30,
-                              dims              = 1:30) {
+#' Sections 1-2: load samples, QC plots, cell filtering and doublet removal
+#' @return filtered list of Seurat objects (one per sample)
+run_qc_filtering <- function(samples, colors,
+                             mt_pattern        = "^ATMG",
+                             min_features      = 200,
+                             max_mt            = 5,
+                             run_doubletfinder = TRUE) {
   .set_output_dir(dir_01)
 
   # Section 1 - loading and pre-filter QC
@@ -42,20 +39,29 @@ run_preprocessing <- function(samples, colors,
   plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
   saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
   message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
+  seurat_list
+}
 
-  # Section 3 - merge and preprocessing
+#' Sections 3-4: merge, normalize, PCA/UMAP, Harmony integration and UMAP
+#' @return integrated Seurat object
+run_umap_integration <- function(seurat_list, colors,
+                                 nfeatures = 2000,
+                                 npcs      = 30,
+                                 dims      = 1:30) {
+  .set_output_dir(dir_01)
+
+  # Section 3 - merge and preprocessing (UMAP before Harmony)
   ath_sc <- merge_and_preprocess(seurat_list, nfeatures = nfeatures, npcs = npcs)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_preharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
   message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
 
-  # Section 4 - Harmony
+  # Section 4 - Harmony (UMAP after Harmony)
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_postharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
   message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
-
-  list(ath_sc = ath_sc, seurat_list = seurat_list)
+  ath_sc
 }
 
 #' Sections 5-6: elbow, resolution sweep (clustree) and final clustering
