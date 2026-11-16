@@ -137,7 +137,7 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
     for i, ct in enumerate(sorted(adata.obs[annotation_col].unique()), 1):
         print(f"  {i:2d}.  {ct:<30s}  {counts[ct]:>5d} cells")
 
-    print("\n3.2 COMPLETE: full object loaded")
+    print("\n[done] full object loaded")
     return adata, n_jobs
 
 
@@ -160,7 +160,7 @@ def preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime
     plot_celltype_umap(adata_sub, annotation_col,
                        os.path.join(dir_pseudotime, "umap_selection.pdf"))
 
-    print("\n3.3 COMPLETE: continue only if this UMAP looks biologically sensible")
+    print("\n[done] continue only if this UMAP looks biologically sensible")
     return adata_sub
 
 
@@ -739,7 +739,7 @@ def run_trajectory_runs(
         raise ValueError(f"selected_run '{selected_run}' not found. Available: {available}")
 
     selected = trajectory_runs[selected_run]
-    print(f"\n3.4 COMPLETE")
+    print(f"\n[done] trajectory runs complete")
     print(f"Selected run: {selected_run}")
     print(f"Selected folder: {selected['output_dir']}")
 
@@ -1004,7 +1004,7 @@ def plot_gene_trends(
         for gene in genes_present:
             plot_single_gene_trend(adata_fitted, gene, run_dir)
 
-    print("3.6 COMPLETE: gene trends saved")
+    print("[done] gene trends saved")
     return adata_fitted
 
 

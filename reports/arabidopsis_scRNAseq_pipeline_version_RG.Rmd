@@ -857,9 +857,7 @@ exec(open("/workspace/workflow/ScRNA_Pseudotime_Wrappers.py").read(), globals())
 
 ## 3.2 - Trajectory inference and gene trends {-}
 
-`run_pseudotime()` loads the annotated object (Step 3.2), selects the cell types
-(Step 3.3), infers the trajectory (Step 3.4), plots genes on the trajectory
-(Step 3.5, optional) and computes and plots the gene trends (Step 3.6).
+`run_pseudotime()` loads the annotated object, selects the cell types, infers the trajectory, plots genes on the trajectory (optional) and computes and plots the gene trends.
 Results go to `results/09_pseudotime/`.
 
 - `input_h5ad`, `annotation_col`: the exported object and the annotation column
@@ -898,7 +896,7 @@ adata_traj, selected_trajectory_dir, adata_fitted = run_pseudotime(
 ![Pseudotime overlaid on the epidermis-cotyledon-only force-directed layout (`eigs=3`).](assets/pseudotime_trajectory_time.pdf){width=85%}
 ![Root cell (red) set automatically at the tip of the tree with the highest mean number of detected genes — pseudotime = 0 here.](assets/pseudotime_root_cell.pdf){width=85%}
 
-## 3.7 - Final export {-}
+## 3.3 - Final export {-}
 
 The final pseudotime object, with the trajectory, pseudotime values and layout
 coordinates, is saved in `results/objects/` as `ath_sc_pseudotime_final.h5ad`.
@@ -908,7 +906,7 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"OK 3.3 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 ```
 
 This is the last step of the pipeline. Leave the Python REPL by exiting it
@@ -1004,7 +1002,7 @@ results/
 `06_de_results`/`07_go` (one subfolder per `comparisons` tag, Step 2.1) and
 `08_networks` from Part 3 (`step2_degs.R`); `09_pseudotime` from Part 4
 (`step3_pseudotime.py`), one `trajectory/<run_name>/` per entry in
-`TRAJECTORY_RUNS` (Step 3.4). `<gene>`, `<cluster>`, `<cell_type>`, and
+`TRAJECTORY_RUNS`. `<gene>`, `<cluster>`, `<cell_type>`, and
 `<tag>` depend on the values used when running each section, not on fixed
 names.
 ```{=latex}
@@ -1172,7 +1170,7 @@ from Step 1.4.*
 
 ## Supplementary Section S4 - Manual root override {-}
 
-If the automatic root selection (Step 3.4) does not match the expected
+If the automatic root selection does not match the expected
 biological starting point, the root can be set manually by specifying a tree
 node number. This requires two runs:
 
