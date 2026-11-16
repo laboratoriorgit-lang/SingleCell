@@ -24,7 +24,7 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Part 1 — Single-cell analysis (R)  ·  Sections 1-9                     │
+│  Part 1 — Single-cell analysis (R)  ·  Steps 1.1-1.9                    │
 │                                          workflow/step1_singlecell.R    │
 │                                                                          │
 │   load + QC → filter → doublets → merge → Harmony integration           │
@@ -39,8 +39,8 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
               ▼                                       ▼
 ┌─────────────────────────────────────┐   ┌─────────────────────────────────┐
 │ Part 2 — Pseudobulk DE / GO /        │   │ Part 3 — Pseudotime (Python)    │
-│  co-expression networks (R)          │   │  Sections 18-24                 │
-│  Sections 10-17                      │   │  workflow/step3_pseudotime.py   │
+│  co-expression networks (R)          │   │  Steps 3.1-3.7                │
+│  Steps 2.1-2.8                       │   │  workflow/step3_pseudotime.py   │
 │  workflow/step2_degs.R               │   │                                 │
 │                                       │   │  cell-type selection            │
 │  pseudobulk per cell type            │   │    → Palantir diffusion maps    │
@@ -144,10 +144,10 @@ SingleCell/
 ├── params.yaml                         # optional: all editable values in one file
 ├── workflow/
 │   ├── step0_cellranger.sh             # Part 0: FASTQ download + mkref + cellranger count
-│   ├── step1_singlecell.R              # Part 1: Sections 1-9 (QC → annotated object)
+│   ├── step1_singlecell.R              # Part 1: Steps 1.1-1.9 (QC → annotated object)
 │   ├── step1_supplementary.R           # Optional steps S1-S3 (annotated clustree, grouping, curation)
-│   ├── step2_degs.R                    # Part 2: Sections 10-17 (pseudobulk DE → networks)
-│   ├── step3_pseudotime.py             # Part 3: Sections 18-24 (pseudotime trajectory)
+│   ├── step2_degs.R                    # Part 2: Steps 2.1-2.8 (pseudobulk DE → networks)
+│   ├── step3_pseudotime.py             # Part 3: Steps 3.1-3.7 (pseudotime trajectory)
 │   ├── run_all.sh                      # optional: runs Steps 1-3 with params.yaml
 │   ├── make_param_steps.py             # optional: generates parameter-driven copies of the steps (used by run_all.sh)
 │   ├── init.R / init.py                # init_pipeline(): loads libraries + functions, sets seed, creates results folders
@@ -198,7 +198,7 @@ PARAMS_FILE=/workspace/params.yaml Rscript results/params_steps/step1_singlecell
 - Logs are written to `results/logs/stepN.log`; the run stops at the first step that fails.
 - Step 0 is not in the default run (signed, account-tied download URL) and does not read `params.yaml`.
 - `step1_supplementary.R` is not run by `run_all.sh`: it continues the R session of Step 1 (its generated copy is in `results/params_steps/`).
-- An unattended run uses the clustering resolution and annotation file written in `params.yaml`. For new data, look at the elbow plot and the clustree (Section 5) first.
+- An unattended run uses the clustering resolution and annotation file written in `params.yaml`. For new data, look at the elbow plot and the clustree (Step 1.5) first.
 - If you rename or reformat a line that holds an editable value, `make_param_steps.py` stops with an error naming the rule to update.
 - The parameter-driven Python step needs PyYAML (`pip install pyyaml`; it is in the `Dockerfile`, but an older image may not have it).
 
@@ -210,7 +210,7 @@ PARAMS_FILE=/workspace/params.yaml Rscript results/params_steps/step1_singlecell
 
 Reference script (not meant to run unattended): install Cell Ranger 9.0.1, download FASTQ for accession CRA010863 (WT = CRR775298, *pifq* = CRR775297) from the BIG Data Center, build the Cell Ranger reference from the bundled TAIR10.1 genome + Araport11 GTF (`cellranger mkref`), then run `cellranger count` per sample. Requires a signed, account-tied 10x download URL that cannot be hard-coded — copy it from the 10x Genomics downloads page.
 
-### Part 1 — Single-cell analysis (`workflow/step1_singlecell.R`, Sections 1–9)
+### Part 1 — Single-cell analysis (`workflow/step1_singlecell.R`, Steps 1.1–1.9)
 
 | Section | What happens |
 |---|---|
@@ -226,7 +226,7 @@ Reference script (not meant to run unattended): install Cell Ranger 9.0.1, downl
 
 ### Supplementary steps (optional, `workflow/step1_supplementary.R`)
 
-These steps start from the annotation of Section 7. They are not needed by the rest of the workflow.
+These steps start from the annotation of Step 1.7. They are not needed by the rest of the workflow.
 
 | Step | What happens |
 |---|---|
@@ -234,7 +234,7 @@ These steps start from the annotation of Section 7. They are not needed by the r
 | S2 | Merge duplicate cluster labels into `celltype_grouped` |
 | S3 | Subcluster inspection and curation (`inspect_subcluster_markers`, `curate_clusters`) → `celltype_curated` |
 
-### Part 2 — Pseudobulk DE, GO enrichment, networks (`workflow/step2_degs.R`, Sections 10–17)
+### Part 2 — Pseudobulk DE, GO enrichment, networks (`workflow/step2_degs.R`, Steps 2.1–2.8)
 
 | Section | What happens |
 |---|---|
@@ -247,7 +247,7 @@ These steps start from the annotation of Section 7. They are not needed by the r
 | 16 | `build_logfc_heatmap` — staircase-ordered log2FC heatmap across cell types |
 | 17 | `run_hdwgcna_tf_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
 
-### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Sections 18–24)
+### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Steps 3.1–3.7)
 
 | Section | What happens |
 |---|---|
@@ -303,8 +303,8 @@ Violin grid for `nFeature_RNA`, `nCount_RNA`, and `percent.mt` for one Seurat ob
 Boxplot + jitter of `nFeature_RNA` across a list of Seurat objects, combined with printed quartile/quintile summary tables (`cowplot::plot_grid`). `labels` auto-generates `"Group1"`, `"Group2"`, … if `NULL`; `colores` defaults to a 5-color palette.
 
 #### `plot_resolution_elbow(seurat_obj, output_dir, filename = "elbow_plot.pdf", ndims = 30)`
-Used in Section 5 as an optional check of how many PCs to use. All steps use `dims = 1:30` by default; fewer dimensions change the UMAP and the clusters.
-Standard Deviation per principal component (`Seurat::ElbowPlot`, `reduction = "pca"`), saved as a PDF. Read the flattening point manually to pick how many PCs (`elbow_dims`) to carry into clustering in Section 6 — this does not decide the number of clusters, see `run_resolution_sweep()` below for that.
+Used in Step 1.5 as an optional check of how many PCs to use. All steps use `dims = 1:30` by default; fewer dimensions change the UMAP and the clusters.
+Standard Deviation per principal component (`Seurat::ElbowPlot`, `reduction = "pca"`), saved as a PDF. Read the flattening point manually to pick how many PCs (`elbow_dims`) to carry into clustering in Step 1.6 — this does not decide the number of clusters, see `run_resolution_sweep()` below for that.
 
 #### `run_resolution_sweep(seurat_obj, resolutions, output_dir, filename = "clustree.pdf", pca_dims = 1:30, knn_k = 20)`
 Recomputes UMAP/neighbors on the Harmony embedding, runs `FindClusters` (Leiden, `algorithm = 4`) across every candidate resolution, and saves a `clustree` diagnostic showing how clusters split or stay stable as resolution changes. Returns the Seurat object with one `RNA_snn_res.<r>` column per tested resolution.
@@ -488,7 +488,7 @@ Hierarchical heatmap of a log2FC matrix (same logic as `plot_heatmap`, self-cont
 #### `build_coexpression_modules(Mz, output_dir, min_genes = 1, deepSplit_val = 0, network_power = 6, network_type = c("signed","unsigned"), cor_method = "spearman", tom_pdf = "tom_heatmap.pdf")`
 Rank-based gene-gene correlation → adjacency → TOM → TOM modules (`cutreeDynamic`) from a log2FC matrix; exports TOM heatmap + module assignment table.
 
-#### `run_go_for_gene_clusters(...)` — see section 8 (used here to enrich the modules produced above).
+#### `run_go_for_gene_clusters(...)` — see step 1.8 (used here to enrich the modules produced above).
 
 ---
 
@@ -555,19 +555,19 @@ Filters an edge list to pairs involving ≥1 TF, classifies each gene's directio
 Draws the TF graph via `ggraph`, colored by DE direction (red = up, blue = down, grey = mixed), shaped by role (triangle = TF, circle = co-expression partner), labels the top hub TFs. Supports `"fr"`, `"lgl"`, or any native `ggraph` layout (e.g. `"stress"`, `"graphopt"`).
 
 #### `run_hdwgcna_tf_network(seurat_obj, de_table_path, tf_list_path, output_dir, annot_col, contrast_tag, sample_col = "orig.ident", n_metacells = 50, min_module_size = 20, deep_split = 2, soft_power = NULL, tom_threshold = 0.2, n_hub_label = 15)`
-Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Section 17 calls. The previous name, `run_tf_coexpression_network()`, still works as a deprecated alias.
+Single-call wrapper chaining: `run_unified_hdwgcna` (gene-gene network on significant DE genes) → `plot_hdwgcna_network` (export edges only) → filter to TF-containing edges → `build_tf_network` + `plot_tf_de_network`. This is what `step2_degs.R` Step 2.8 calls. The previous name, `run_tf_coexpression_network()`, still works as a deprecated alias.
 
 ---
 
 ### 13. Chapter-Level Pipelines
 
 #### `run_pseudobulk_pipeline(obj, comparisons, orgdb, keytype, annot_col = "celltype_grouped", n_reps = 3, padj_cut = 0.05, lfc_cut = 1, go_space = "BP", qval = 0.05, nivel_poda = 6, dir_pseudobulk, dir_deseq2, dir_volcano, dir_heatmaps, dir_go)`
-Runs Sections 11–17 in one call: replicate correlation → per-cell-type subsets + pseudo-replicates → DESeq2 → volcano → DE tables + heatmaps → GO enrichment (full + simplified, raw + level-pruned).
+Runs Steps 2.2–2.8 in one call: replicate correlation → per-cell-type subsets + pseudo-replicates → DESeq2 → volcano → DE tables + heatmaps → GO enrichment (full + simplified, raw + level-pruned).
 
 #### `run_pseudobulk_deseq2_analysis(cell_type_subsets_replicates, comparisons, output_dir, cell_types = NULL, pseudobulk_dir = NULL)`
-Intermediate orchestrator: writes pseudobulk count tables (`save_pseudobulk_tables`), filters to requested cell types, runs `run_deseq2` for each with progress separators. This is what `step2_degs.R` Section 12 calls.
+Intermediate orchestrator: writes pseudobulk count tables (`save_pseudobulk_tables`), filters to requested cell types, runs `run_deseq2` for each with progress separators. This is what `step2_degs.R` Step 2.3 calls.
 
-#### `run_network_inference_pipeline(...)` — see section 11 (GENIE3/WGCNA/SYNERGY orchestrator).
+#### `run_network_inference_pipeline(...)` — see step 2.2 (GENIE3/WGCNA/SYNERGY orchestrator).
 
 #### `create_pipeline_dirs(base_dir)`
 Creates the standard output folder structure under `base_dir` — `01_qc` … `08_networks` + `objects` — and returns a named list of paths (`list2env()`'d into the global environment by `step1_singlecell.R`/`step2_degs.R`).
@@ -631,7 +631,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `strip_segment_frames(ax)` | Removes stray unfilled rectangle artifacts scFates leaves behind on trend plots |
 | `save_trends_plot(axes_list, pdf_path)` | Saves gene-trend axes at 24×18 in (wider than the standard 18×18 — the dendrogram panel needs the extra width) |
 | `plot_genes_on_trajectory(adata, genes, run_dir, titles=None)` | Step 28: draws the genes on the force-directed trajectory graph and saves it automatically as `<run_dir>/gene_plots/trajectory_gene_<AGI>.pdf` (18×18 in), named after the plotted genes (several genes are joined with `_`), where `run_dir` is the trajectory run folder; puts the expression in `.X` if needed, prints and returns the saved path |
-| `compute_gene_trends(adata, run_dir, custom_genes=None, n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001, reuse=True)` | Slow part of Section 23: `scFates.tl.test_association` + `.fit`; the fit is saved in `<run_dir>/gene_trends/gene_trends_fitted.h5ad` and reused |
+| `compute_gene_trends(adata, run_dir, custom_genes=None, n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001, reuse=True)` | Slow part of Step 3.6: `scFates.tl.test_association` + `.fit`; the fit is saved in `<run_dir>/gene_trends/gene_trends_fitted.h5ad` and reused |
 | `plot_gene_trends(adata_fitted, run_dir, custom_genes=None, top_n=10, ordering="max", spread_top=True, adata=None, n_jobs=4, single_gene_plots=True)` | Fast part: trend heatmaps (top-N + highlighted genes) and one plot per highlighted gene; with `adata`, highlighted genes missing from the fit are fitted on their own and added to it. Returns the (updated) fitted AnnData |
 | `run_step29_gene_trends(adata, run_dir, name="trajectory", custom_genes=None, top_n=50, ordering="max", n_jobs=4, spline_df=5, A_cut=0.3, p_val_cut=0.001)` | Step 28/29: `scFates.tl.test_association` + `.fit`, then two trend heatmaps — top-N most variable genes and a custom highlighted gene list (force-included even if not significant) |
 
@@ -646,7 +646,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
 | `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
 | `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 28 genes, 9 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
-| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 17) |
+| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Step 2.8) |
 
 ---
 

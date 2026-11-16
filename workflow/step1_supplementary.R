@@ -1,6 +1,6 @@
 # Step 1 (supplementary) - optional steps of the single-cell analysis (R)
-# Run after Section 7 of step1_singlecell.R (needs `ath_sc` annotated, `marker_table`,
-# the directories created in the init block and, for S1, `clu` from Section 5).
+# Run after Step 1.7 of step1_singlecell.R (needs `ath_sc` annotated, `marker_table`,
+# the directories created in the init block and, for S1, `clu` from Step 1.5).
 # These steps are not needed by the rest of the workflow.
 
 # ==============================================================================

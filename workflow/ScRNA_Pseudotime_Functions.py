@@ -32,7 +32,7 @@ def ensure_expression_in_X(adata, layer="logcounts"):
 
 
 # The R workflow can export up to three annotation columns depending on which
-# optional sections were run: "celltype" (Section 7, always present), plus
+# optional sections were run: "celltype" (Step 1.7, always present), plus
 # "celltype_grouped" (Supplementary Section S2) and/or "celltype_curated" (Supplementary Section S3) if
 # the curation steps were used. Checked here so a missing ANNOTATION_COL fails
 # with a clear message instead of a raw KeyError deep inside sc.pl.umap.
@@ -41,7 +41,7 @@ KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
 
 # Notebook wrapper for Step 25. Loads the full curated object, fixes Seurat-style
 # coordinate names, plots the overview UMAP, and prints available cell types.
-# UMAP in the same format as the R figures (Section 7): visible x/y axes with
+# UMAP in the same format as the R figures (Step 1.7): visible x/y axes with
 # "umap 1" / "umap 2" labels, no title, cell-type names on the clusters and a
 # legend with one swatch per cell type on the right. Sizes are in points.
 def plot_celltype_umap(adata, annotation_col, path,
@@ -137,7 +137,7 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
     for i, ct in enumerate(sorted(adata.obs[annotation_col].unique()), 1):
         print(f"  {i:2d}.  {ct:<30s}  {counts[ct]:>5d} cells")
 
-    print("\nSTEP 3.2 COMPLETE: full object loaded")
+    print("\n3.2 COMPLETE: full object loaded")
     return adata, n_jobs
 
 
@@ -160,7 +160,7 @@ def preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime
     plot_celltype_umap(adata_sub, annotation_col,
                        os.path.join(dir_pseudotime, "umap_selection.pdf"))
 
-    print("\nSTEP 3.3 COMPLETE: continue only if this UMAP looks biologically sensible")
+    print("\n3.3 COMPLETE: continue only if this UMAP looks biologically sensible")
     return adata_sub
 
 
@@ -739,7 +739,7 @@ def run_trajectory_runs(
         raise ValueError(f"selected_run '{selected_run}' not found. Available: {available}")
 
     selected = trajectory_runs[selected_run]
-    print(f"\nSTEP 3.4 COMPLETE")
+    print(f"\n3.4 COMPLETE")
     print(f"Selected run: {selected_run}")
     print(f"Selected folder: {selected['output_dir']}")
 
@@ -752,7 +752,7 @@ def run_trajectory_runs(
 # Draws one or more genes on the force-directed trajectory graph and saves them in
 # <run_dir>/gene_plots/trajectory_gene_<AGI>.pdf (18x18 in), where run_dir is the
 # trajectory run folder (selected_trajectory_dir). The file is named after the
-# plotted genes, as in Section 8: one gene -> trajectory_gene_AT4G21750.pdf, several
+# plotted genes, as in Step 1.8: one gene -> trajectory_gene_AT4G21750.pdf, several
 # -> trajectory_gene_AT3G24140_AT4G21750.pdf. Puts the expression in .X if needed,
 # creates the folder, closes the figure, and returns the saved path.
 def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=38,
@@ -1004,7 +1004,7 @@ def plot_gene_trends(
         for gene in genes_present:
             plot_single_gene_trend(adata_fitted, gene, run_dir)
 
-    print("STEP 3.6 COMPLETE: gene trends saved")
+    print("3.6 COMPLETE: gene trends saved")
     return adata_fitted
 
 
@@ -1085,7 +1085,7 @@ def run_step29_gene_trends(
                             top_n=top_n, ordering=ordering, spread_top=spread_top)
 
 
-# Redraws the three trajectory figures of Section 21 (nodes, pseudotime, root cell)
+# Redraws the three trajectory figures of Step 3.4 (nodes, pseudotime, root cell)
 # from the saved <run_dir>/<name>_trajectory.h5ad, without running the inference
 # again. Use it after changing a plotting function.
 def replot_trajectory_figures(run_dir, annotation_col="celltype"):

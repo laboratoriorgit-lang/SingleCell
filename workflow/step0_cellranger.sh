@@ -64,7 +64,7 @@ cellranger mkref \
 # Cell Ranger count for each sample
 # ==============================================================================
 # Use the resulting filtered_feature_bc_matrix/ path in the sample manifest in
-# Step 1, Section 1.
+# Step 1.1.
 # --localcores is set to 10 here as a portable default; adjust it up or down
 # to match the number of CPU cores actually available on your machine.
 cellranger count --localcores=10 --id=ScWT --fastqs=/workspace/fastq/CRA010863 \

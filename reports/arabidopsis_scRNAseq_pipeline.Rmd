@@ -9,11 +9,11 @@ output:
   html_document:
     toc: true
     toc_depth: 3
-    number_sections: true
+    number_sections: false
   pdf_document:
     toc: true
     toc_depth: 3
-    number_sections: true
+    number_sections: false
     latex_engine: pdflatex
     includes:
       in_header: latex_header.tex
@@ -194,7 +194,7 @@ The pipeline has two stages with different requirements:
 requirements at https://www.10xgenomics.com/support/software/cell-ranger/downloads/cr-system-requirements.
 Cell Ranger is CPU- and memory-intensive; 8+ cores and 64+ GB RAM are typical.
 
-**R/Python analysis (Section 2 onwards):** lighter requirements, suitable for a
+**R/Python analysis (Part 2 onwards):** lighter requirements, suitable for a
 personal computer with ~10,000 cells.
 
 | Component | Minimum | Recommended |
@@ -311,7 +311,7 @@ SingleCell/
 ```
 
 The bibliography marker table (`data/biblio_marks.txt`) is part of the
-repository for this WT vs pifq run (see Section 1).
+repository for this WT vs pifq run (see Step 1.1).
 
 ## Container startup (Docker or Singularity)
 
@@ -426,7 +426,7 @@ above) so it survives a dropped connection.
 
 **Run this whole section inside the container**, same as every other part of
 this pipeline: `cd` into the cloned repository and `singularity exec` into it
-(Section 1.2) before running any of the commands below. Write the Cell Ranger
+(see "Container startup" above) before running any of the commands below. Write the Cell Ranger
 outputs into the cloned repository directory so they are visible from inside
 the container (which mounts that same directory as `/workspace`).
 
@@ -477,7 +477,7 @@ skipped. `ScWT/` and `Scpifq/` sit at the top level of the repository and contai
 only the files the workflow needs: `outs/filtered_feature_bc_matrix/`
 (`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`), plus
 `outs/metrics_summary.csv` and `outs/web_summary.html`. They are the exact paths
-read by the sample manifest of Section 2, so after cloning the repository you can
+read by the sample manifest of Step 1.1, so after cloning the repository you can
 go directly to Part 1. The rest of this section is only needed to reproduce these
 matrices from the FASTQ files or to process other samples.
 
@@ -566,7 +566,7 @@ cellranger count --localcores=10 --id=Scpifq --fastqs=/workspace/fastq/CRA010863
 successfully!`. Inside `outs/`, `web_summary.html` is a self-contained QC
 report worth opening first (cell count, reads/cell, sequencing saturation);
 `filtered_feature_bc_matrix/` is the per-cell count matrix this whole pipeline
-is built on, and its path is what goes into the sample manifest in Section 1.
+is built on, and its path is what goes into the sample manifest in Step 1.1.
 This is the slowest step here, taking roughly 30-60 minutes per sample.
 
 `--localcores=10` is used here as a portable default that keeps the example
@@ -604,7 +604,7 @@ the two samples with each other and to spot samples that look clearly different
 from the other.
 
 Cell Ranger's cell calling is only a first pass: the QC filtering in Part 2
-(Section 2) removes low-quality cells and doublets from this set, so the cell
+(Step 1.2) removes low-quality cells and doublets from this set, so the cell
 number reported here is expected to be larger than the one used downstream.
 
 \newpage
@@ -624,7 +624,7 @@ every section that follows.
 **Note: the processed matrices are already in the repository.** The Cell Ranger
 output of both samples is included in the repository, so this part can be started
 directly from here, without running Part 1 (FASTQ download and Cell Ranger). The
-files read by the sample manifest of Section 1 are:
+files read by the sample manifest of Step 1.1 are:
 
 - `ScWT/outs/filtered_feature_bc_matrix/` (`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`)
 - `Scpifq/outs/filtered_feature_bc_matrix/` (`matrix.mtx.gz`, `features.tsv.gz`, `barcodes.tsv.gz`)
@@ -671,7 +671,7 @@ to the corresponding folder before saving figures or objects.
 
 \newpage
 
-## Section 1 - Data loading and pre-filter QC
+## 1.1 - Data loading and pre-filter QC {-}
 
 This section loads each sample from the Cell Ranger output and creates the first
 quality-control plots before filtering.
@@ -689,7 +689,7 @@ used in the QC plots and later visualizations.
 The mitochondrial gene pattern tells the pipeline how to identify mitochondrial
 reads. For Arabidopsis, mitochondrial genes usually start with `ATMG`; this is
 the default used in this report. The resulting mitochondrial percentage
-(`percent.mt`) is used to filter cells in Section 2.
+(`percent.mt`) is used to filter cells in Step 1.2.
 
 After running the block, the pipeline creates one raw Seurat object per sample
 and saves the pre-filter QC plot in `results/01_qc/qc_prefilter.pdf`. This plot
@@ -697,11 +697,11 @@ is used to inspect sample quality before choosing filtering thresholds in the
 next section.
 
 ```{r section_01_data_loading_and_pre_filter_qc}
-# SECTION 1 - DATA LOADING AND PRE-FILTER QC
+# 1.1 - DATA LOADING AND PRE-FILTER QC
 # =============================================================================
 # Each sample is loaded from its input file and the mitochondrial read
 # fraction is computed per cell to guide filtering thresholds in
-# Section 2. Pre-filter violin plots are saved to 01_qc/.
+# Step 1.2. Pre-filter violin plots are saved to 01_qc/.
 #
 # +- CHANGE FOR YOUR ORGANISM --------------------------------------------------
 #   Arabidopsis : mt_pattern = "^ATMG"
@@ -749,16 +749,16 @@ plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
 # =============================================================================
 
-message("\nOK STEP 1.1 COMPLETE: QC pre-filter plots saved")
+message("\nOK 1.1 COMPLETE: QC pre-filter plots saved")
 ```
 
-Representative output from Section 1:
+Representative output from Step 1.1:
 
 ![Pre-filter QC violin plots.](assets/qc_prefilter.png){width=30%}
 
 \newpage
 
-## Section 2 - Cell filtering and doublet detection
+## 1.2 - Cell filtering and doublet detection {-}
 
 This section filters low-quality cells, then runs **DoubletFinder** to flag and
 remove doublets (droplets that captured two cells instead of one, which would
@@ -799,20 +799,20 @@ plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
 saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
-message("\nOK STEP 1.2 COMPLETE: filtering and doublet detection complete")
+message("\nOK 1.2 COMPLETE: filtering and doublet detection complete")
 ```
 
-Representative output from Section 2:
+Representative output from Step 1.2:
 
 ![Post-filter QC violin plots.](assets/qc_postfilter.png){width=30%}
 
 \newpage
 
-## Section 3 - Merge and initial preprocessing
+## 1.3 - Merge and initial preprocessing {-}
 
 This section merges the two filtered samples into a single Seurat object and runs
 the standard preprocessing steps on it. The result is a merged object that has
-**not** yet been integrated across samples (that is Section 4).
+**not** yet been integrated across samples (that is Step 1.4).
 
 **What the data look like.** At this point every sample is a matrix with one row
 per gene and one column per cell; each entry is the number of transcripts (UMIs)
@@ -868,7 +868,7 @@ this order:
    for visualization. It is useful to see how the samples look before Harmony.
 
 **Number of PCs.** By default all 30 PCs are used in every later step (Harmony,
-UMAP and clustering use `dims = 1:30`). The elbow plot in Section 5 shows how many
+UMAP and clustering use `dims = 1:30`). The elbow plot in Step 1.5 shows how many
 of them carry signal.
 
 **Default parameters used here.** Several important settings are not written in
@@ -883,7 +883,7 @@ data call for it:
 | `RunPCA` | `npcs` | 30 | Number of PCs computed (set explicitly here) |
 | `RunUMAP` | `n.neighbors` | 30 | Neighbors used to build the map; lower values emphasize local structure |
 | `RunUMAP` | `min.dist` | 0.3 | How tightly cells are allowed to pack together in the plot |
-| `FindNeighbors` (Section 6) | `k.param` | 20 | Neighbors per cell in the graph used for clustering |
+| `FindNeighbors` (Step 1.6) | `k.param` | 20 | Neighbors per cell in the graph used for clustering |
 
 The function `merge_and_preprocess()` runs all the steps above in this order; its
 arguments `nfeatures` and `npcs` are the number of variable features and of PCs
@@ -905,23 +905,23 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
-message("\nOK STEP 1.3 COMPLETE: merge and preprocessing complete")
+message("\nOK 1.3 COMPLETE: merge and preprocessing complete")
 ```
 
-Representative output from Section 3:
+Representative output from Step 1.3:
 
 ![UMAP before Harmony correction, colored by sample.](assets/umap_preharmony.png){width=30%}
 
 \newpage
 
-## Section 4 - Harmony integration
+## 1.4 - Harmony integration {-}
 
 The two samples in this guide are different genotypes (WT and pifq), so they
 differ for biological reasons as well as for technical ones. Left as they are,
 cells can cluster by *sample* instead of by *cell type*, which would hide the
 cell populations that both samples share. This section applies **Harmony** to
 reduce those sample-associated differences in the PCA representation calculated
-in Section 3, so that cells of the same type from both samples are placed
+in Step 1.3, so that cells of the same type from both samples are placed
 together. The correction is done using the sample identity stored in
 `orig.ident`.
 
@@ -956,16 +956,16 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
-message("\nOK STEP 1.4 COMPLETE: Harmony integration complete")
+message("\nOK 1.4 COMPLETE: Harmony integration complete")
 ```
 
-Representative output from Section 4:
+Representative output from Step 1.4:
 
 ![UMAP after Harmony correction, colored by sample.](assets/umap_postharmony.png){width=30%}
 
 \newpage
 
-## Section 5 - Elbow plot (optional) and clustering resolution
+## 1.5 - Elbow plot (optional) and clustering resolution {-}
 
 This section has two parts: an optional check of how many principal components
 to use for clustering, and the choice of the clustering resolution.
@@ -974,7 +974,7 @@ to use for clustering, and the choice of the clustering resolution.
 principal component. By default this guide keeps `dims = 1:30` in every step after
 Harmony, which includes all the informative components. If the curve flattens
 earlier (for example around PC 15), you can use fewer dimensions by changing
-`cluster_dims` in Section 6. This is optional, and it has consequences: using
+`cluster_dims` in Step 1.6. This is optional, and it has consequences: using
 fewer dimensions changes how the UMAP is laid out and can change the clusters,
 and so everything that comes after Harmony (annotation, differential expression,
 networks and pseudotime). Decide it here, before continuing, and keep the same
@@ -990,7 +990,7 @@ more, smaller ones. The values in `resolutions_test` are only the range of
 candidates to compare; widen or narrow it if the useful region lies outside it.
 
 The outputs are saved in `results/02_clustering/` as `elbow_plot.pdf` and
-`clustree.pdf`. Use the clustree to choose `cluster_resolution` in Section 6.
+`clustree.pdf`. Use the clustree to choose `cluster_resolution` in Step 1.6.
 
 ```{r section_05_resolution_optimization}
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
@@ -1003,10 +1003,10 @@ clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK STEP 1.5 COMPLETE: elbow plot and clustree saved")
+message("\nOK 1.5 COMPLETE: elbow plot and clustree saved")
 ```
 
-Representative outputs from Section 5:
+Representative outputs from Step 1.5:
 
 ```{=latex}
 \begin{center}
@@ -1018,20 +1018,20 @@ Representative outputs from Section 5:
 
 \newpage
 
-## Section 6 - Final clustering
+## 1.6 - Final clustering {-}
 
 This section groups cells that look transcriptionally similar into discrete
 clusters, using the **Leiden algorithm** (`algorithm = 4`) -- a standard
 community-detection method for single-cell data. Each cluster is a candidate
-cell population; cell-type labels are only assigned afterward, in Section 7.
+cell population; cell-type labels are only assigned afterward, in Step 1.7.
 The resolution is set in `cluster_resolution`, chosen from the clustree in
-Section 5. Lower resolutions produce fewer, broader clusters; higher resolutions
+Step 1.5. Lower resolutions produce fewer, broader clusters; higher resolutions
 produce more, smaller ones. Clustering uses the Harmony dimensions in
 `cluster_dims`, which by default are the first 30 (`1:30`); change it only if you
-decided on fewer after looking at the elbow plot in Section 5.
+decided on fewer after looking at the elbow plot in Step 1.5.
 
 The resolution used here is `cluster_resolution <- 0.35`. In the clustree
-(Section 5), 0.35 is one of the most stable resolutions: its clusters mostly
+(Step 1.5), 0.35 is one of the most stable resolutions: its clusters mostly
 trace back to a single cluster of the previous resolution (solid arrows).
 Raising the resolution beyond it (0.45 and above) starts to split clusters into
 many smaller ones and cells begin to move between branches (the pale crossing
@@ -1069,16 +1069,16 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK STEP 1.6 COMPLETE: final clustering complete")
+message("\nOK 1.6 COMPLETE: final clustering complete")
 ```
 
-Representative output from Section 6:
+Representative output from Step 1.6:
 
 ![Final UMAP colored by numbered Seurat clusters.](assets/umap_seuratclusters.png){width=30%}
 
 \newpage
 
-## Section 7 - Cell-type annotation
+## 1.7 - Cell-type annotation {-}
 
 This section assigns biological cell-type labels to the clusters using a marker
 gene table from the literature. The marker file is read from
@@ -1153,10 +1153,10 @@ save_pdf(
   "umap_annotation_biblio.pdf"
 )
 
-message("\nOK STEP 1.7 COMPLETE: cell-type annotation complete")
+message("\nOK 1.7 COMPLETE: cell-type annotation complete")
 ```
 
-Representative outputs from Section 7:
+Representative outputs from Step 1.7:
 
 ```{=latex}
 \begin{center}
@@ -1168,7 +1168,7 @@ Representative outputs from Section 7:
 
 \newpage
 
-## Section 8 - Gene expression visualization
+## 1.8 - Gene expression visualization {-}
 
 This section plots the expression of one selected gene across the annotated
 cell types. The gene to inspect is set in the `gene` variable.
@@ -1203,10 +1203,10 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK STEP 1.8 COMPLETE: gene expression visualization saved")
+message("\nOK 1.8 COMPLETE: gene expression visualization saved")
 ```
 
-Representative outputs from Section 8:
+Representative outputs from Step 1.8:
 
 ```{=latex}
 \begin{center}
@@ -1218,7 +1218,7 @@ Representative outputs from Section 8:
 
 \newpage
 
-## Section 9 - Export the annotated object
+## 1.9 - Export the annotated object {-}
 
 This section closes the R part of the workflow by saving the final object in two
 formats. The `.rds` file is used to continue working in R, and the `.h5ad` file
@@ -1245,7 +1245,7 @@ export_to_scanpy(
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK STEP 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 \newpage
@@ -1262,7 +1262,7 @@ networks.
 ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 ```
 
-## Section 10 - Cell-type subsets
+## 2.1 - Cell-type subsets {-}
 
 The annotation column used to define cell types is a user choice. Depending on
 how Part 1 was run, this is one of `celltype` (bibliography annotation),
@@ -1280,7 +1280,7 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK STEP 2.1 COMPLETE: cell-type subsets created")
+message("\nOK 2.1 COMPLETE: cell-type subsets created")
 ```
 
 Cells per cell type (annotation `celltype`; Mesophyll is split into two
@@ -1301,7 +1301,7 @@ this stage):
 | endodermis | 67 |
 | guard cell | 31 |
 
-## Section 11 - Pseudo-replicate assignment
+## 2.2 - Pseudo-replicate assignment {-}
 
 This section creates pseudo-replicates for the pseudobulk analysis. Instead of
 treating each single cell as an independent replicate, cells from the same cell
@@ -1335,7 +1335,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Epidermis_Cotyledon"]]$replicate)
 
-message("\nOK STEP 2.2 COMPLETE: pseudo-replicates assigned")
+message("\nOK 2.2 COMPLETE: pseudo-replicates assigned")
 ```
 
 Cell types present in only one condition are dropped, since a WT vs pifq
@@ -1358,7 +1358,7 @@ different numbers of cells (WT has fewer here):
 | Epidermis Cotyledon | WT_rep2 | 147 |
 | Epidermis Cotyledon | WT_rep3 | 142 |
 
-## Section 12 - Pseudobulk tables and DESeq2
+## 2.3 - Pseudobulk tables and DESeq2 {-}
 
 Testing every single cell as its own replicate overstates statistical
 confidence, since cells from the same sample are not independent. This
@@ -1397,7 +1397,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK STEP 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 ```
 
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
@@ -1412,10 +1412,10 @@ AT1G01020   119.88      0.204           0.168      1.212   2.3e-01     3.6e-01
 AT1G01030   417.65     -0.605           0.172     -3.521   4.3e-04     1.8e-03
 ```
 
-## Section 13 - Volcano plots
+## 2.4 - Volcano plots {-}
 
 This section creates volcano plots from the DESeq2 result tables generated in
-Section 15. Each plot summarizes one cell type for the selected comparison.
+Step 2.6. Each plot summarizes one cell type for the selected comparison.
 
 The `volcano_tag` selects which comparison folder to use. The thresholds
 `padj_cut` and `lfc_cut` define which genes are highlighted as significant in
@@ -1438,14 +1438,14 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK STEP 2.4 COMPLETE: volcano plots saved")
+message("\nOK 2.4 COMPLETE: volcano plots saved")
 ```
 
-Representative output from Section 13:
+Representative output from Step 2.4:
 
 ![Volcano plot for Mesophyll.1, WT vs pifq.](assets/volcano_mesophyll.png){width=30%}
 
-## Section 14 - Differential gene tables
+## 2.5 - Differential gene tables {-}
 
 This section summarizes the DESeq2 results into combined differential gene
 tables. It uses the same significance thresholds defined for the volcano plots:
@@ -1470,7 +1470,7 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK STEP 2.5 COMPLETE: differential gene tables saved")
+message("\nOK 2.5 COMPLETE: differential gene tables saved")
 ```
 
 This writes two combined matrices (genes x cell types). The class matrix
@@ -1488,7 +1488,7 @@ AT1G01060     1      1     0          AT1G01060     1.47    4.55    NA
 AT1G01120    -1      1     0          AT1G01120    -1.72    1.22    NA
 ```
 
-## Section 15 - GO enrichment
+## 2.6 - GO enrichment {-}
 
 This section tests whether the significant genes from each cell type are
 enriched for Gene Ontology terms. In simple terms, it asks whether the genes that
@@ -1521,14 +1521,14 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK STEP 2.6 COMPLETE: GO enrichment complete")
+message("\nOK 2.6 COMPLETE: GO enrichment complete")
 ```
 
-Representative output from Section 15:
+Representative output from Step 2.6:
 
 ![GO enrichment (BP) for Mesophyll.1, WT vs pifq.](assets/go_mesophyll.png){width=30%}
 
-## Section 16 - Log2FC heatmap
+## 2.7 - Log2FC heatmap {-}
 
 This section turns the differential expression tables into a heatmap of log2FC
 values. It is used to compare how strongly genes change across cell types in the
@@ -1553,16 +1553,16 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK STEP 2.7 COMPLETE: log2FC heatmap saved")
+message("\nOK 2.7 COMPLETE: log2FC heatmap saved")
 ```
 
-Representative output from Section 16:
+Representative output from Step 2.7:
 
 ![log2FC heatmap: rows hierarchically clustered, columns in marker-table order (unannotated clusters last), WT vs pifq.](assets/heatmap_wt_pifq.png){width=30%}
 
 \newpage
 
-## Section 17 - Gene-gene co-expression network (hdWGCNA) and TF network
+## 2.8 - Gene-gene co-expression network (hdWGCNA) and TF network {-}
 
 This section builds a gene-gene co-expression network with **hdWGCNA**
 (high-dimensional weighted gene co-expression network analysis; Morabito et al.,
@@ -1579,7 +1579,7 @@ gives a network with a scale-free-like structure, computes the **topological
 overlap matrix (TOM)** between genes, and detects **modules** of co-expressed
 genes. The TOM value is the weight of each gene-gene edge.
 
-The main input is the log2FC table produced in Section 17. The wrapper function
+The main input is the log2FC table produced in Step 2.8. The wrapper function
 `run_hdwgcna_tf_network()` (its name says which method it runs) takes the Seurat
 object, the differential expression results and the annotation column, runs
 hdWGCNA, keeps the strong gene-gene edges, and draws the TF network colored by
@@ -1630,10 +1630,10 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK STEP 2.8 COMPLETE: TF coexpression network saved")
+message("\nOK 2.8 COMPLETE: TF coexpression network saved")
 ```
 
-Representative output from Section 17:
+Representative output from Step 2.8:
 
 ![TF co-expression network, colored by DE direction.](assets/network_tf_DE_direction.png){width=30%}
 
@@ -1651,7 +1651,7 @@ q()          # leave R (do not save the workspace)
 python3
 ```
 
-## Section 18 - Setup
+## 3.1 - Setup {-}
 
 This section starts the Python part of the pipeline. A single call to
 `init_pipeline()` loads the Python packages and helper scripts, defines the project
@@ -1666,12 +1666,12 @@ available in the Python session.
 exec(open("/workspace/workflow/init.py").read(), globals())
 init_pipeline(data_dir="/workspace/.")
 
-print("STEP 3.1 COMPLETE: setup done")
+print("3.1 COMPLETE: setup done")
 ```
 
 \newpage
 
-## Section 19 - Load annotated object
+## 3.2 - Load annotated object {-}
 
 This section loads the `.h5ad` object exported at the end of the R workflow. The
 `INPUT_H5AD` path points to that file, and `ANNOTATION_COL` selects which cell
@@ -1680,7 +1680,7 @@ type annotation column will be used for plotting and selecting cells.
 Up to three annotation columns can be present, depending on which optional
 (supplementary) steps were run in Step 1:
 
-- `celltype` -- the direct output of Section 7 (bibliography-marker annotation).
+- `celltype` -- the direct output of Step 1.7 (bibliography-marker annotation).
   The rawest of the three, and always present.
 - `celltype_grouped` -- present only if Supplementary Section S2 was run. Same as `celltype`,
   but with related subclusters merged into a single label (e.g. the two
@@ -1695,7 +1695,7 @@ went in Step 1: `celltype` if Supplementary Sections S2 and S3 were skipped,
 
 The example below uses `celltype`. With the current marker table the cotyledon
 epidermis is a single label, `Epidermis Cotyledon`, which is the one used in
-Sections 20 and 21.
+Steps 3.3 and 21.
 
 The function also standardizes coordinate names so the object works cleanly with
 Scanpy. It prints the annotation columns available in the loaded object -- use
@@ -1705,7 +1705,7 @@ cells in the next section.
 
 ```{python section_19_load_object, eval=FALSE}
 INPUT_H5AD     = "/workspace/results/objects/ath_sc_annotated.h5ad"
-# "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
+# "celltype" (Step 1.7) is always present. Switch to "celltype_grouped" if
 # Supplementary Section S2 was used, or "celltype_curated" if Supplementary Section S3 was used.
 ANNOTATION_COL = "celltype"
 N_JOBS         = 4
@@ -1718,23 +1718,23 @@ adata, N_JOBS = load_curated_object(
 )
 ```
 
-Representative output from Section 19:
+Representative output from Step 3.2:
 
 ![Overview UMAP colored by annotated cell type.](assets/pseudotime_umap_overview.pdf){width=30%}
 
 \newpage
 
-## Section 20 - Cell type selection
+## 3.3 - Cell type selection {-}
 
 This section selects which cell types will be used for trajectory inference. The
 list is set in `TRAJECTORY_CLUSTERS`, and the names must match the cell-type
-labels printed in Section 19.
+labels printed in Step 3.2.
 
 In this report, only the cotyledon epidermis is selected. With the current marker
 table it is a single label, `Epidermis Cotyledon`. The preview UMAP shows these
 cells before fitting the trajectory, which helps confirm that the intended
 population was chosen. If you used the optional grouping or curation
-(Supplementary Sections S2 and S3), set `ANNOTATION_COL` in Section 19 to that
+(Supplementary Sections S2 and S3), set `ANNOTATION_COL` in Step 3.2 to that
 column and use its labels here.
 
 ```{python section_20_cell_selection, eval=FALSE}
@@ -1747,16 +1747,16 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("STEP 3.3 COMPLETE: cell type selection saved")
+print("3.3 COMPLETE: cell type selection saved")
 ```
 
-Representative output from Section 20:
+Representative output from Step 3.3:
 
 ![UMAP of the epidermis cotyledon cells selected for the trajectory.](assets/pseudotime_umap_selection.pdf){width=30%}
 
 \newpage
 
-## Section 21 - Trajectory inference
+## 3.4 - Trajectory inference {-}
 
 This section fits the pseudotime trajectory for the selected cells and sets its
 root (starting point). A trajectory tree has no intrinsic direction — the start
@@ -1818,12 +1818,12 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("STEP 3.4 COMPLETE: trajectory inference saved")
+print("3.4 COMPLETE: trajectory inference saved")
 ```
 
 \newpage
 
-Representative outputs from Section 21 for the epidermis-cotyledon-only trajectory using
+Representative outputs from Step 3.4 for the epidermis-cotyledon-only trajectory using
 `nodes=100`, `sigma=0.1`, `lambda=20`, and `eigs=3`:
 
 ![Trajectory graph for the epidermis-cotyledon-only run (`nodes=100`, `sigma=0.1`, `lambda=20`, `eigs=3`, `seed=3`).](assets/pseudotime_trajectory_annotation.pdf){width=85%}
@@ -1836,7 +1836,7 @@ Representative outputs from Section 21 for the epidermis-cotyledon-only trajecto
 \clearpage
 ```
 
-## Section 22 - Plot genes on trajectory
+## 3.5 - Plot genes on trajectory {-}
 
 This section plots the expression of a selected gene on the fitted epidermis
 cotyledon trajectory. `plot_genes_on_trajectory()` takes the genes (and optional
@@ -1862,10 +1862,10 @@ plot_genes_on_trajectory(
     filename = "trajectory_genes_ATML1.pdf",
 )
 
-print("STEP 3.5 COMPLETE: gene trajectory plots saved")
+print("3.5 COMPLETE: gene trajectory plots saved")
 ```
 
-Representative output from Section 22:
+Representative output from Step 3.5:
 
 ```{=latex}
 \begin{center}
@@ -1879,7 +1879,7 @@ ATML1 (`AT4G21750`) expression on the epidermis cotyledon trajectory.
 \clearpage
 ```
 
-## Section 23 - Gene trends
+## 3.6 - Gene trends {-}
 
 This section fits gene-expression trends along pseudotime for the epidermis
 cotyledon trajectory calculated above. It runs in two blocks. The first one,
@@ -1930,10 +1930,10 @@ adata_fitted = plot_gene_trends(
     n_jobs       = N_JOBS,
 )
 
-print("STEP 3.6 COMPLETE: epidermis cotyledon gene trends saved")
+print("3.6 COMPLETE: epidermis cotyledon gene trends saved")
 ```
 
-Representative outputs from Section 23 — epidermis cotyledon gene trends:
+Representative outputs from Step 3.6 — epidermis cotyledon gene trends:
 
 ```{=latex}
 \begin{center}
@@ -1946,7 +1946,7 @@ Representative outputs from Section 23 — epidermis cotyledon gene trends:
 Left: 10 variable genes spread along pseudotime for the epidermis cotyledon trajectory.
 Right: ATML1 (`AT4G21750`) highlighted from the same fitted trend workflow.
 
-## Section 24 - Final export
+## 3.7 - Final export {-}
 
 This section saves the final pseudotime object after trajectory inference and
 gene-trend analysis. The exported `.h5ad` file keeps the trajectory results,
@@ -1960,7 +1960,7 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"STEP 3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 ```
 
 This is the last step of the pipeline. Leave the Python REPL the same way
@@ -2053,10 +2053,10 @@ results/
 ```
 
 `01_qc`-`05_curation` and `objects/` come from Part 2 (`step1_singlecell.R`);
-`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Section 12) and
+`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Step 2.3) and
 `08_networks` from Part 3 (`step2_degs.R`); `09_pseudotime` from Part 4
 (`step3_pseudotime.py`), one `trajectory/<run_name>/` per entry in
-`TRAJECTORY_RUNS` (Section 21). `<gene>`, `<cluster>`, `<cell_type>`, and
+`TRAJECTORY_RUNS` (Step 3.4). `<gene>`, `<cluster>`, `<cell_type>`, and
 `<tag>` depend on the values used when running each section, not on fixed
 names.
 ```{=latex}
@@ -2067,7 +2067,7 @@ names.
 
 # Supplementary methods {-}
 
-The three steps below are optional. They start from the annotation of Section 7
+The three steps below are optional. They start from the annotation of Step 1.7
 and write their results to separate columns (`celltype_grouped`,
 `celltype_curated`) or figures, so the main workflow runs without them. If you
 use one of them, set the annotation column of Supplementary Section S2 accordingly. The code is
@@ -2075,8 +2075,8 @@ also available in `workflow/step1_supplementary.R`.
 
 ## Supplementary Section S1 - Annotated clustree {-}
 
-This section adds the cell-type labels from Section 7 onto the clustering tree
-from Section 5. Instead of showing only numeric clusters, each node is labeled
+This section adds the cell-type labels from Step 1.7 onto the clustering tree
+from Step 1.5. Instead of showing only numeric clusters, each node is labeled
 with the most common cell type found in that cluster.
 
 This makes it easier to see how stable the annotated cell types are across
@@ -2218,13 +2218,13 @@ decide whether to keep or split the label):
 *In this example the Mesophyll subclusters are mapped back to `Mesophyll` (no
 relabeling), which shows the inspect-then-curate mechanism without changing any
 label. The main workflow does not need this step: it continues with the labels
-from Section 7.*
+from Step 1.7.*
 
 \newpage
 
 ## Supplementary Section S4 - Manual root override {-}
 
-If the automatic root selection (Section 21) does not match the expected
+If the automatic root selection (Step 3.4) does not match the expected
 biological starting point, the root can be set manually by specifying a tree
 node number. This requires two runs:
 
@@ -2289,9 +2289,9 @@ step that fails. Step 0 (Cell Ranger) is not part of the default run because it
 needs a signed 10x download URL, and it does not read `params.yaml`;
 `step1_supplementary.R` is not run either, because it continues the R session of
 Step 1 (its generated copy is in the same folder, for manual use). A run with a
-parameter file does not stop to look at figures, so the resolution of Section 6 and
-the annotation file of Section 7 are the ones written in the file: for new data, look
-at the elbow plot and the clustree (Section 5) first and set
+parameter file does not stop to look at figures, so the resolution of Step 1.6 and
+the annotation file of Step 1.7 are the ones written in the file: for new data, look
+at the elbow plot and the clustree (Step 1.5) first and set
 `clustering: cluster_resolution` accordingly. The Python step needs PyYAML to read the
 file (`pip install pyyaml`).
 

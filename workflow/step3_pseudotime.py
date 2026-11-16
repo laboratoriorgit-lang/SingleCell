@@ -3,7 +3,7 @@
 # are Python-only, so this step is .py. Run with the container python.
 
 # ==============================================================================
-# Section 18 - Setup
+# 3.1 - Setup
 # ==============================================================================
 # data_dir: root of the project (the cloned repository is mounted as /workspace).
 # init_pipeline() loads the Python packages and helper functions and creates
@@ -11,13 +11,13 @@
 exec(open("/workspace/workflow/init.py").read(), globals())
 init_pipeline(data_dir="/workspace/.")
 
-print("STEP 3.1 COMPLETE: setup done")
+print("3.1 COMPLETE: setup done")
 
 # ==============================================================================
-# Section 19 - Load curated object
+# 3.2 - Load curated object
 # ==============================================================================
 INPUT_H5AD     = "/workspace/results/objects/ath_sc_annotated.h5ad"
-# "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
+# "celltype" (Step 1.7) is always present. Switch to "celltype_grouped" if
 # Supplementary Section S2 was used, or "celltype_curated" if Supplementary Section S3 was used.
 ANNOTATION_COL = "celltype"
 N_JOBS         = 4
@@ -30,7 +30,7 @@ adata, N_JOBS = load_curated_object(
 )
 
 # ==============================================================================
-# Section 20 - Cell type selection
+# 3.3 - Cell type selection
 # ==============================================================================
 TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
 
@@ -41,10 +41,10 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("STEP 3.3 COMPLETE: cell type selection saved")
+print("3.3 COMPLETE: cell type selection saved")
 
 # ==============================================================================
-# Section 21 - Trajectory inference
+# 3.4 - Trajectory inference
 # ==============================================================================
 # ROOT_CLUSTER is the root cell type when the trajectory has two or more cell types
 # (the root is its most-connected cell). With a single cell type, as here, the root
@@ -66,10 +66,10 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("STEP 3.4 COMPLETE: trajectory inference saved")
+print("3.4 COMPLETE: trajectory inference saved")
 
 # ==============================================================================
-# Section 22 - Plot genes on trajectory
+# 3.5 - Plot genes on trajectory
 # ==============================================================================
 # ATML1, the gene of interest, with a readable panel title
 plot_genes_on_trajectory(
@@ -80,10 +80,10 @@ plot_genes_on_trajectory(
     filename = "trajectory_genes_ATML1.pdf",
 )
 
-print("STEP 3.5 COMPLETE: gene trajectory plots saved")
+print("3.5 COMPLETE: gene trajectory plots saved")
 
 # ==============================================================================
-# Section 23 - Gene trends
+# 3.6 - Gene trends
 # ==============================================================================
 SPLINE_DF = 3
 
@@ -111,10 +111,10 @@ adata_fitted = plot_gene_trends(
     n_jobs       = N_JOBS,
 )
 
-print("STEP 3.6 COMPLETE: epidermis cotyledon gene trends saved")
+print("3.6 COMPLETE: epidermis cotyledon gene trends saved")
 
 # ==============================================================================
-# Section 24 - Final export
+# 3.7 - Final export
 # ==============================================================================
 # Save the fully processed pseudotime object (trajectory tree, pseudotime `t`,
 # milestones, segments and the force-directed layout) as the pipeline's final
@@ -123,4 +123,4 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"STEP 3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")

@@ -25,13 +25,13 @@ init_pipeline(data_dir = "/workspace/.", seed = 1807)
 # =============================================================================
 
 # ==============================================================================
-# Section 1 - Data loading and pre-filter QC
+# 1.1 - Data loading and pre-filter QC
 # ==============================================================================
-# SECTION 1 - DATA LOADING AND PRE-FILTER QC
+# 1.1 - DATA LOADING AND PRE-FILTER QC
 # =============================================================================
 # Each sample is loaded from its input file and the mitochondrial read
 # fraction is computed per cell to guide filtering thresholds in
-# Section 2. Pre-filter violin plots are saved to 01_qc/.
+# Step 1.2. Pre-filter violin plots are saved to 01_qc/.
 #
 # +- CHANGE FOR YOUR ORGANISM --------------------------------------------------
 #   Arabidopsis : mt_pattern = "^ATMG"
@@ -79,10 +79,10 @@ plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
 # =============================================================================
 
-message("\nOK STEP 1.1 COMPLETE: QC pre-filter plots saved")
+message("\nOK 1.1 COMPLETE: QC pre-filter plots saved")
 
 # ==============================================================================
-# Section 2 - Cell filtering and doublet detection
+# 1.2 - Cell filtering and doublet detection
 # ==============================================================================
 output_dir <- dir_01
 
@@ -94,10 +94,10 @@ plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
 saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
-message("\nOK STEP 1.2 COMPLETE: filtering and doublet detection complete")
+message("\nOK 1.2 COMPLETE: filtering and doublet detection complete")
 
 # ==============================================================================
-# Section 3 - Merge and initial preprocessing
+# 1.3 - Merge and initial preprocessing
 # ==============================================================================
 output_dir <- dir_01
 
@@ -110,10 +110,10 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
-message("\nOK STEP 1.3 COMPLETE: merge and preprocessing complete")
+message("\nOK 1.3 COMPLETE: merge and preprocessing complete")
 
 # ==============================================================================
-# Section 4 - Harmony integration
+# 1.4 - Harmony integration
 # ==============================================================================
 output_dir <- dir_01
 
@@ -126,10 +126,10 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
-message("\nOK STEP 1.4 COMPLETE: Harmony integration complete")
+message("\nOK 1.4 COMPLETE: Harmony integration complete")
 
 # ==============================================================================
-# Section 5 - Elbow plot (optional) and clustering resolution
+# 1.5 - Elbow plot (optional) and clustering resolution
 # ==============================================================================
 resolutions_test <- c(0.15, 0.35, 0.45, 0.55, 1.0)
 
@@ -141,10 +141,10 @@ clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK STEP 1.5 COMPLETE: elbow plot and clustree saved")
+message("\nOK 1.5 COMPLETE: elbow plot and clustree saved")
 
 # ==============================================================================
-# Section 6 - Final clustering
+# 1.6 - Final clustering
 # ==============================================================================
 cluster_resolution <- 0.35
 cluster_dims       <- 1:30   # default; fewer dimensions change the UMAP and clusters (see the elbow plot)
@@ -160,10 +160,10 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK STEP 1.6 COMPLETE: final clustering complete")
+message("\nOK 1.6 COMPLETE: final clustering complete")
 
 # ==============================================================================
-# Section 7 - Cell-type annotation
+# 1.7 - Cell-type annotation
 # ==============================================================================
 output_dir <- dir_03
 
@@ -199,10 +199,10 @@ save_pdf(
   "umap_annotation_biblio.pdf"
 )
 
-message("\nOK STEP 1.7 COMPLETE: cell-type annotation complete")
+message("\nOK 1.7 COMPLETE: cell-type annotation complete")
 
 # ==============================================================================
-# Section 8 - Gene expression visualization
+# 1.8 - Gene expression visualization
 # ==============================================================================
 gene <- "AT4G21750"   # one gene, or several: c("gen1", "gen2")
 
@@ -225,10 +225,10 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK STEP 1.8 COMPLETE: gene expression visualization saved")
+message("\nOK 1.8 COMPLETE: gene expression visualization saved")
 
 # ==============================================================================
-# Section 9 - Export the annotated object
+# 1.9 - Export the annotated object
 # ==============================================================================
 # Checkpoint - restore with:
 #   ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
@@ -247,4 +247,4 @@ export_to_scanpy(
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK STEP 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
