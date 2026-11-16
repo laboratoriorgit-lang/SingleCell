@@ -46,7 +46,7 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
+message("\nOK STEP 2.1 COMPLETE: cell-type subsets created")
 
 # ==============================================================================
 # Section 11 - Pseudo-replicate assignment
@@ -63,7 +63,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Epidermis_Cotyledon"]]$replicate)
 
-message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
+message("\nOK STEP 2.2 COMPLETE: pseudo-replicates assigned")
 
 # ==============================================================================
 # Section 12 - Pseudobulk tables and DESeq2
@@ -82,7 +82,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK STEP 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 
 # ==============================================================================
 # Section 13 - Volcano plots
@@ -99,7 +99,7 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK SECTION 13 COMPLETE: volcano plots saved")
+message("\nOK STEP 2.4 COMPLETE: volcano plots saved")
 
 # ==============================================================================
 # Section 14 - Differential gene tables
@@ -114,7 +114,7 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK SECTION 14 COMPLETE: differential gene tables saved")
+message("\nOK STEP 2.5 COMPLETE: differential gene tables saved")
 
 # ==============================================================================
 # Section 15 - GO enrichment
@@ -134,7 +134,7 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
+message("\nOK STEP 2.6 COMPLETE: GO enrichment complete")
 
 # ==============================================================================
 # Section 16 - Log2FC heatmap
@@ -149,7 +149,7 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK SECTION 16 COMPLETE: log2FC heatmap saved")
+message("\nOK STEP 2.7 COMPLETE: log2FC heatmap saved")
 
 # ==============================================================================
 # Section 17 - Gene-gene coexpression and TF network
@@ -169,4 +169,4 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")
+message("\nOK STEP 2.8 COMPLETE: TF coexpression network saved")

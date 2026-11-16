@@ -28,20 +28,20 @@ def run_pseudotime(input_h5ad, clusters, root_cluster, runs,
     preview_trajectory_selection(
         adata=adata, clusters=clusters, annotation_col=annotation_col,
         dir_pseudotime=dir_pseudotime)
-    print("SECTION 20 COMPLETE: cell type selection saved")
+    print("STEP 3.3 COMPLETE: cell type selection saved")
 
     # Section 21 - trajectory inference
     adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
         adata=adata, clusters=clusters, root_cluster=root_cluster,
         annotation_col=annotation_col, output_base_dir=dir_pseudotime, runs=runs)
-    print("SECTION 21 COMPLETE: trajectory inference saved")
+    print("STEP 3.4 COMPLETE: trajectory inference saved")
 
     # Section 22 - genes on the trajectory (optional)
     if plot_genes:
         plot_genes_on_trajectory(
             adata_traj, genes=plot_genes, titles=plot_titles or plot_genes,
             run_dir=selected_trajectory_dir, filename=plot_filename)
-        print("SECTION 22 COMPLETE: gene trajectory plots saved")
+        print("STEP 3.5 COMPLETE: gene trajectory plots saved")
 
     # Section 23 - gene trends (compute once, then select and plot)
     adata_fitted = compute_gene_trends(
@@ -50,6 +50,6 @@ def run_pseudotime(input_h5ad, clusters, root_cluster, runs,
         adata_fitted, selected_trajectory_dir,
         custom_genes=highlight_genes, top_n=top_n, ordering=ordering,
         adata=adata_traj, n_jobs=n_jobs)
-    print("SECTION 23 COMPLETE: gene trends saved")
+    print("STEP 3.6 COMPLETE: gene trends saved")
 
     return adata_traj, selected_trajectory_dir, adata_fitted

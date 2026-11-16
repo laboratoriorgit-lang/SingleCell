@@ -79,7 +79,7 @@ plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
 # =============================================================================
 
-message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
+message("\nOK STEP 1.1 COMPLETE: QC pre-filter plots saved")
 
 # ==============================================================================
 # Section 2 - Cell filtering and doublet detection
@@ -94,7 +94,7 @@ plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
 saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
-message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
+message("\nOK STEP 1.2 COMPLETE: filtering and doublet detection complete")
 
 # ==============================================================================
 # Section 3 - Merge and initial preprocessing
@@ -110,7 +110,7 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
-message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
+message("\nOK STEP 1.3 COMPLETE: merge and preprocessing complete")
 
 # ==============================================================================
 # Section 4 - Harmony integration
@@ -126,7 +126,7 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
-message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
+message("\nOK STEP 1.4 COMPLETE: Harmony integration complete")
 
 # ==============================================================================
 # Section 5 - Elbow plot (optional) and clustering resolution
@@ -141,7 +141,7 @@ clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
+message("\nOK STEP 1.5 COMPLETE: elbow plot and clustree saved")
 
 # ==============================================================================
 # Section 6 - Final clustering
@@ -160,7 +160,7 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK SECTION 6 COMPLETE: final clustering complete")
+message("\nOK STEP 1.6 COMPLETE: final clustering complete")
 
 # ==============================================================================
 # Section 7 - Cell-type annotation
@@ -199,7 +199,7 @@ save_pdf(
   "umap_annotation_biblio.pdf"
 )
 
-message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
+message("\nOK STEP 1.7 COMPLETE: cell-type annotation complete")
 
 # ==============================================================================
 # Section 8 - Gene expression visualization
@@ -225,7 +225,7 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
+message("\nOK STEP 1.8 COMPLETE: gene expression visualization saved")
 
 # ==============================================================================
 # Section 9 - Export the annotated object
@@ -247,4 +247,4 @@ export_to_scanpy(
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK STEP 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")

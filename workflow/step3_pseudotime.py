@@ -11,7 +11,7 @@
 exec(open("/workspace/workflow/init.py").read(), globals())
 init_pipeline(data_dir="/workspace/.")
 
-print("SECTION 18 COMPLETE: setup done")
+print("STEP 3.1 COMPLETE: setup done")
 
 # ==============================================================================
 # Section 19 - Load curated object
@@ -41,7 +41,7 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 20 COMPLETE: cell type selection saved")
+print("STEP 3.3 COMPLETE: cell type selection saved")
 
 # ==============================================================================
 # Section 21 - Trajectory inference
@@ -66,7 +66,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 21 COMPLETE: trajectory inference saved")
+print("STEP 3.4 COMPLETE: trajectory inference saved")
 
 # ==============================================================================
 # Section 22 - Plot genes on trajectory
@@ -80,7 +80,7 @@ plot_genes_on_trajectory(
     filename = "trajectory_genes_ATML1.pdf",
 )
 
-print("SECTION 22 COMPLETE: gene trajectory plots saved")
+print("STEP 3.5 COMPLETE: gene trajectory plots saved")
 
 # ==============================================================================
 # Section 23 - Gene trends
@@ -111,7 +111,7 @@ adata_fitted = plot_gene_trends(
     n_jobs       = N_JOBS,
 )
 
-print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
+print("STEP 3.6 COMPLETE: epidermis cotyledon gene trends saved")
 
 # ==============================================================================
 # Section 24 - Final export
@@ -123,4 +123,4 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"STEP 3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")

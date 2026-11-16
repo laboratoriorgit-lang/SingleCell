@@ -29,7 +29,7 @@ run_qc_filtering <- function(samples, colors,
   seurat_list_raw <- load_seurat_samples(samples = samples, DATA_DIR = DATA_DIR,
                                          mt_pattern = mt_pattern)
   plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
-  message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
+  message("\nOK STEP 1.1 COMPLETE: QC pre-filter plots saved")
 
   # Section 2 - filtering and doublets
   seurat_list <- filter_seurat_samples(
@@ -38,7 +38,7 @@ run_qc_filtering <- function(samples, colors,
   )
   plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
   saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
-  message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
+  message("\nOK STEP 1.2 COMPLETE: filtering and doublet detection complete")
   seurat_list
 }
 
@@ -54,13 +54,13 @@ run_umap_integration <- function(seurat_list, colors,
   ath_sc <- merge_and_preprocess(seurat_list, nfeatures = nfeatures, npcs = npcs)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_preharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
-  message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
+  message("\nOK STEP 1.3 COMPLETE: merge and preprocessing complete")
 
   # Section 4 - Harmony (UMAP after Harmony)
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_postharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
-  message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
+  message("\nOK STEP 1.4 COMPLETE: Harmony integration complete")
   ath_sc
 }
 
@@ -74,7 +74,7 @@ run_clustering <- function(ath_sc,
   # Section 5 - elbow plot and clustree
   plot_resolution_elbow(ath_sc, output_dir = dir_02)
   run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
-  message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
+  message("\nOK STEP 1.5 COMPLETE: elbow plot and clustree saved")
 
   # Section 6 - final clustering
   .set_output_dir(dir_02)
@@ -82,7 +82,7 @@ run_clustering <- function(ath_sc,
                           dims = dims, k_param = k_param)
   Idents(ath_sc) <- "seurat_clusters"
   save_pdf(plot_umap(ath_sc, "seurat_clusters"), "umap_seuratclusters.pdf")
-  message("\nOK SECTION 6 COMPLETE: final clustering complete")
+  message("\nOK STEP 1.6 COMPLETE: final clustering complete")
   ath_sc
 }
 
@@ -101,7 +101,7 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
                       outfile = file.path(dir_03, "dotplot_marker_table_annotation_biblio.pdf"),
                       width = 18, height = 18)
   save_pdf(plot_umap(ath_sc, "celltype"), "umap_annotation_biblio.pdf")
-  message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
+  message("\nOK STEP 1.7 COMPLETE: cell-type annotation complete")
 
   # Section 8 - gene expression (optional)
   if (!is.null(gene)) {
@@ -111,7 +111,7 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     gene_tag <- paste(gene, collapse = "_")
     save_vln(plot_gene_violin(ath_sc, gene), paste0("vln_gene_", gene_tag, ".pdf"))
     save_pdf(plot_gene_umap(ath_sc, gene), paste0("feature_gene_", gene_tag, ".pdf"))
-    message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
+    message("\nOK STEP 1.8 COMPLETE: gene expression visualization saved")
   }
 
   ath_sc
@@ -138,14 +138,14 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
   reps <- assign_pseudoreplicates_batch(subsets,
             pseudobulk_conditions = pseudobulk_conditions,
             n_pseudoreps = n_pseudoreps)
-  message("\nOK SECTIONS 10-11 COMPLETE: subsets and pseudo-replicates")
+  message("\nOK STEPS 2.1-2.2 COMPLETE: subsets and pseudo-replicates")
 
   # Section 12 - pseudobulk + DESeq2 (all comparisons)
   deseq2_results <- run_pseudobulk_deseq2_analysis(
     cell_type_subsets_replicates = reps, comparisons = comparisons,
     output_dir = dir_06, cell_types = cell_types,
     pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates"))
-  message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+  message("\nOK STEP 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 
   # Sections 13-16 - one pass per comparison
   diff_tables <- list(); go_results <- list()
@@ -168,7 +168,7 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
       output_dir = file.path(dir_06, tag), limits = heatmap_limits,
       cell_order = unique(marker_table$cell.types))
   }
-  message("\nOK SECTIONS 13-16 COMPLETE: volcano, tables, GO and heatmap saved")
+  message("\nOK STEPS 2.4-2.7 COMPLETE: volcano, tables, GO and heatmap saved")
   invisible(list(deseq2 = deseq2_results, diff_tables = diff_tables, go = go_results))
 }
 
@@ -185,5 +185,5 @@ run_tf_network <- function(ath_sc, contrast_tag, annot_col = "celltype",
     n_metacells = n_metacells, min_module_size = min_module_size,
     deep_split = deep_split, soft_power = soft_power,
     tom_threshold = tom_threshold, n_hub_label = n_hub_label)
-  message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")
+  message("\nOK STEP 2.8 COMPLETE: TF coexpression network saved")
 }

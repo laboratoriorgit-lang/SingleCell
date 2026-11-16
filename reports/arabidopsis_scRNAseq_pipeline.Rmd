@@ -749,7 +749,7 @@ plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
 
 # =============================================================================
 
-message("\nOK SECTION 1 COMPLETE: QC pre-filter plots saved")
+message("\nOK STEP 1.1 COMPLETE: QC pre-filter plots saved")
 ```
 
 Representative output from Section 1:
@@ -799,7 +799,7 @@ plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
 
 saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
 
-message("\nOK SECTION 2 COMPLETE: filtering and doublet detection complete")
+message("\nOK STEP 1.2 COMPLETE: filtering and doublet detection complete")
 ```
 
 Representative output from Section 2:
@@ -905,7 +905,7 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
 
-message("\nOK SECTION 3 COMPLETE: merge and preprocessing complete")
+message("\nOK STEP 1.3 COMPLETE: merge and preprocessing complete")
 ```
 
 Representative output from Section 3:
@@ -956,7 +956,7 @@ save_pdf(
 
 saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
 
-message("\nOK SECTION 4 COMPLETE: Harmony integration complete")
+message("\nOK STEP 1.4 COMPLETE: Harmony integration complete")
 ```
 
 Representative output from Section 4:
@@ -1003,7 +1003,7 @@ clu <- run_resolution_sweep(
   ath_sc, resolutions = resolutions_test, output_dir = output_dir
 )
 
-message("\nOK SECTION 5 COMPLETE: elbow plot and clustree saved")
+message("\nOK STEP 1.5 COMPLETE: elbow plot and clustree saved")
 ```
 
 Representative outputs from Section 5:
@@ -1069,7 +1069,7 @@ save_pdf(
   "umap_seuratclusters.pdf"
 )
 
-message("\nOK SECTION 6 COMPLETE: final clustering complete")
+message("\nOK STEP 1.6 COMPLETE: final clustering complete")
 ```
 
 Representative output from Section 6:
@@ -1153,7 +1153,7 @@ save_pdf(
   "umap_annotation_biblio.pdf"
 )
 
-message("\nOK SECTION 7 COMPLETE: cell-type annotation complete")
+message("\nOK STEP 1.7 COMPLETE: cell-type annotation complete")
 ```
 
 Representative outputs from Section 7:
@@ -1203,7 +1203,7 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK SECTION 8 COMPLETE: gene expression visualization saved")
+message("\nOK STEP 1.8 COMPLETE: gene expression visualization saved")
 ```
 
 Representative outputs from Section 8:
@@ -1245,7 +1245,7 @@ export_to_scanpy(
 #   file.path(dir_objects, "GuardCell.h5ad")
 # )
 
-message("\nOK SECTION 9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK STEP 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 \newpage
@@ -1280,7 +1280,7 @@ cell_type_subsets <- create_cell_type_subsets(
   ath_sc, annot_col = pseudobulk_annot_col
 )
 
-message("\nOK SECTION 10 COMPLETE: cell-type subsets created")
+message("\nOK STEP 2.1 COMPLETE: cell-type subsets created")
 ```
 
 Cells per cell type (annotation `celltype`; Mesophyll is split into two
@@ -1335,7 +1335,7 @@ cell_type_subsets_replicates <- assign_pseudoreplicates_batch(
 # Inspect cells per pseudo-replicate for one cell type
 table(cell_type_subsets_replicates[["Epidermis_Cotyledon"]]$replicate)
 
-message("\nOK SECTION 11 COMPLETE: pseudo-replicates assigned")
+message("\nOK STEP 2.2 COMPLETE: pseudo-replicates assigned")
 ```
 
 Cell types present in only one condition are dropped, since a WT vs pifq
@@ -1397,7 +1397,7 @@ deseq2_results <- run_pseudobulk_deseq2_analysis(
   pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates")
 )
 
-message("\nOK SECTION 12 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+message("\nOK STEP 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
 ```
 
 One `DESeq2_<cell_type>_WT_vs_pifq.csv` is written per cell type: the standard
@@ -1438,7 +1438,7 @@ render_volcano_plots(
   lfc_cut     = lfc_cut
 )
 
-message("\nOK SECTION 13 COMPLETE: volcano plots saved")
+message("\nOK STEP 2.4 COMPLETE: volcano plots saved")
 ```
 
 Representative output from Section 13:
@@ -1470,7 +1470,7 @@ diff_tables <- build_differential_tables(
   prefix      = diff_prefix
 )
 
-message("\nOK SECTION 14 COMPLETE: differential gene tables saved")
+message("\nOK STEP 2.5 COMPLETE: differential gene tables saved")
 ```
 
 This writes two combined matrices (genes x cell types). The class matrix
@@ -1521,7 +1521,7 @@ go_results <- run_go_enrichment_for_contrast(
   contrast_tag = volcano_tag
 )
 
-message("\nOK SECTION 15 COMPLETE: GO enrichment complete")
+message("\nOK STEP 2.6 COMPLETE: GO enrichment complete")
 ```
 
 Representative output from Section 15:
@@ -1553,7 +1553,7 @@ build_logfc_heatmap(
   cell_order   = unique(marker_table$cell.types)
 )
 
-message("\nOK SECTION 16 COMPLETE: log2FC heatmap saved")
+message("\nOK STEP 2.7 COMPLETE: log2FC heatmap saved")
 ```
 
 Representative output from Section 16:
@@ -1630,7 +1630,7 @@ run_hdwgcna_tf_network(
   n_hub_label     = 15      # number of top hub TFs to label
 )
 
-message("\nOK SECTION 17 COMPLETE: TF coexpression network saved")
+message("\nOK STEP 2.8 COMPLETE: TF coexpression network saved")
 ```
 
 Representative output from Section 17:
@@ -1666,7 +1666,7 @@ available in the Python session.
 exec(open("/workspace/workflow/init.py").read(), globals())
 init_pipeline(data_dir="/workspace/.")
 
-print("SECTION 18 COMPLETE: setup done")
+print("STEP 3.1 COMPLETE: setup done")
 ```
 
 \newpage
@@ -1747,7 +1747,7 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 20 COMPLETE: cell type selection saved")
+print("STEP 3.3 COMPLETE: cell type selection saved")
 ```
 
 Representative output from Section 20:
@@ -1818,7 +1818,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     runs            = TRAJECTORY_RUNS,
 )
 
-print("SECTION 21 COMPLETE: trajectory inference saved")
+print("STEP 3.4 COMPLETE: trajectory inference saved")
 ```
 
 \newpage
@@ -1862,7 +1862,7 @@ plot_genes_on_trajectory(
     filename = "trajectory_genes_ATML1.pdf",
 )
 
-print("SECTION 22 COMPLETE: gene trajectory plots saved")
+print("STEP 3.5 COMPLETE: gene trajectory plots saved")
 ```
 
 Representative output from Section 22:
@@ -1930,7 +1930,7 @@ adata_fitted = plot_gene_trends(
     n_jobs       = N_JOBS,
 )
 
-print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
+print("STEP 3.6 COMPLETE: epidermis cotyledon gene trends saved")
 ```
 
 Representative outputs from Section 23 — epidermis cotyledon gene trends:
@@ -1960,7 +1960,7 @@ final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
 os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
 adata_traj.write_h5ad(final_h5ad)
 
-print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+print(f"STEP 3.7 COMPLETE: final pseudotime object saved -> {final_h5ad}")
 ```
 
 This is the last step of the pipeline. Leave the Python REPL the same way
