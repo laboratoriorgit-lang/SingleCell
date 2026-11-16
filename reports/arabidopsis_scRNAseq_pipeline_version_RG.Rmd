@@ -643,7 +643,7 @@ source("/workspace/workflow/ScRNA_Pipeline_Wrappers.R")
 
 \newpage
 
-## 1.1-1.2 - Quality control and cell filtering {-}
+## 1.1 - Quality control and cell filtering {-}
 
 `run_qc_filtering()` loads the samples and draws the pre-filter QC violin plots
 (Step 1.1), then removes low-quality cells and doublets and draws the post-filter
@@ -678,7 +678,7 @@ seurat_list <- run_qc_filtering(
 
 \newpage
 
-## 1.3-1.4 - UMAP and Harmony integration {-}
+## 1.3 - UMAP and Harmony integration {-}
 
 `run_umap_integration()` merges the filtered samples, normalizes, runs PCA and UMAP
 (Step 1.3), and corrects the batch effect between samples with Harmony (Step 1.4).
@@ -703,7 +703,7 @@ ath_sc <- run_umap_integration(
 
 \newpage
 
-## 1.5-1.6 - Clustering resolution and final clustering {-}
+## 1.5 - Clustering resolution and final clustering {-}
 
 `run_clustering()` saves the elbow plot and the clustree of the candidate
 resolutions (Step 1.5) to `results/02_clustering/`, and then clusters the cells at
@@ -724,7 +724,7 @@ ath_sc <- run_clustering(
 
 \newpage
 
-## 1.7-1.8 - Annotation and gene expression {-}
+## 1.7 - Annotation and gene expression {-}
 
 `run_annotation()` finds the cluster markers, annotates the cell types from the
 bibliography marker table (Step 1.7), and plots the expression of `gene` (Step 1.8,
@@ -772,7 +772,7 @@ session, after the initialization block above, by loading the object:
 ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 ```
 
-## 2.1-2.7 - Pseudobulk, DESeq2, volcano, tables, GO and heatmap {-}
+## 2.1 - Pseudobulk, DESeq2, volcano, tables, GO and heatmap {-}
 
 `run_pseudobulk_de()` creates the cell-type subsets (Step 2.1), assigns
 pseudo-replicates (Step 2.2), aggregates counts and runs DESeq2 (Step 2.3), and
@@ -857,7 +857,7 @@ init_pipeline(data_dir="/workspace/.")
 exec(open("/workspace/workflow/ScRNA_Pseudotime_Wrappers.py").read(), globals())
 ```
 
-## 3.2-3.6 - Trajectory inference and gene trends {-}
+## 3.2 - Trajectory inference and gene trends {-}
 
 `run_pseudotime()` loads the annotated object (Step 3.2), selects the cell types
 (Step 3.3), infers the trajectory (Step 3.4), plots genes on the trajectory
