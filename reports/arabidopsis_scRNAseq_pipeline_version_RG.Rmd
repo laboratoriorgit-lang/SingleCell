@@ -55,13 +55,13 @@ strip_inline_comment <- function(line) {
 
 source_hook <- knitr::knit_hooks$get("source")
 knitr::knit_hooks$set(source = function(x, options) {
+  lines <- strsplit(paste(x, collapse = "\n"), "\n", fixed = TRUE)[[1]]
+  lines <- lines[!grepl("^\\s*(message|print)\\(", lines)]  # progress messages are not shown
   if (isTRUE(options$strip_comments)) {
-    lines <- strsplit(paste(x, collapse = "\n"), "\n", fixed = TRUE)[[1]]
     lines <- vapply(lines, strip_inline_comment, character(1), USE.NAMES = FALSE)
-    lines <- lines[!grepl("^\\s*(message|print)\\(", lines)]  # progress messages are not shown
     lines <- lines[!grepl("^\\s*$", lines)]
-    x <- paste(lines, collapse = "\n")
   }
+  x <- paste(lines, collapse = "\n")
   source_hook(x, options)
 })
 ```
