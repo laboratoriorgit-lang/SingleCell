@@ -58,6 +58,7 @@ knitr::knit_hooks$set(source = function(x, options) {
   if (isTRUE(options$strip_comments)) {
     lines <- strsplit(paste(x, collapse = "\n"), "\n", fixed = TRUE)[[1]]
     lines <- vapply(lines, strip_inline_comment, character(1), USE.NAMES = FALSE)
+    lines <- lines[!grepl("^\\s*(message|print)\\(", lines)]  # progress messages are not shown
     lines <- lines[!grepl("^\\s*$", lines)]
     x <- paste(lines, collapse = "\n")
   }
@@ -755,7 +756,7 @@ export_to_scanpy(
   file.path(dir_objects, "ath_sc_annotated.h5ad")
 )
 
-message("\\nOK 1.5 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\nOK 1.5 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 
