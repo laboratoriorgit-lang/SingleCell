@@ -16,7 +16,7 @@
 # -- internal: point save_pdf()/save_qc() to a folder ------------------------
 .set_output_dir <- function(d) assign("output_dir", d, envir = globalenv())
 
-#' Steps 1.1-1.2: load samples, QC plots, cell filtering and doublet removal
+#' load samples, QC plots, cell filtering and doublet removal
 #' @return filtered list of Seurat objects (one per sample)
 run_qc_filtering <- function(samples, colors,
                              mt_pattern        = "^ATMG",
@@ -25,24 +25,24 @@ run_qc_filtering <- function(samples, colors,
                              run_doubletfinder = TRUE) {
   .set_output_dir(dir_01)
 
-  # 1.1 - loading and pre-filter QC
+  # loading and pre-filter QC
   seurat_list_raw <- load_seurat_samples(samples = samples, DATA_DIR = DATA_DIR,
                                          mt_pattern = mt_pattern)
   plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
-  message("\nOK 1.1 COMPLETE: QC pre-filter plots saved")
+  message("\n[1.1] QC pre-filter plots saved")
 
-  # 1.2 - filtering and doublets
+  # filtering and doublets
   seurat_list <- filter_seurat_samples(
     seurat_list_raw, min_features = min_features, max_mt = max_mt,
     run_doubletfinder = run_doubletfinder
   )
   plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
   saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
-  message("\nOK 1.2 COMPLETE: filtering and doublet detection complete")
+  message("\nOK 1.1 COMPLETE: QC and cell filtering complete")
   seurat_list
 }
 
-#' Steps 1.3-1.4: merge, normalize, PCA/UMAP, Harmony integration and UMAP
+#' merge, normalize, PCA/UMAP, Harmony integration and UMAP
 #' @return integrated Seurat object
 run_umap_integration <- function(seurat_list, colors,
                                  nfeatures = 2000,
@@ -50,49 +50,49 @@ run_umap_integration <- function(seurat_list, colors,
                                  dims      = 1:30) {
   .set_output_dir(dir_01)
 
-  # 1.3 - merge and preprocessing (UMAP before Harmony)
+  # merge and preprocessing (UMAP before Harmony)
   ath_sc <- merge_and_preprocess(seurat_list, nfeatures = nfeatures, npcs = npcs)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_preharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
-  message("\nOK 1.3 COMPLETE: merge and preprocessing complete")
+  message("\n[1.2] merge and preprocessing complete")
 
-  # 1.4 - Harmony (UMAP after Harmony)
+  # Harmony (UMAP after Harmony)
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_postharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
-  message("\nOK 1.4 COMPLETE: Harmony integration complete")
+  message("\nOK 1.2 COMPLETE: UMAP and Harmony integration complete")
   ath_sc
 }
 
-#' Steps 1.5-1.6: elbow, resolution sweep (clustree) and final clustering
+#' elbow, resolution sweep (clustree) and final clustering
 #' @return the Seurat object with seurat_clusters
 run_clustering <- function(ath_sc,
                            resolutions_test   = c(0.15, 0.35, 0.45, 0.55, 1.0),
                            cluster_resolution = 0.35,
                            dims               = 1:30,
                            k_param            = 20) {
-  # 1.5 - elbow plot and clustree
+  # elbow plot and clustree
   plot_resolution_elbow(ath_sc, output_dir = dir_02)
   run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
-  message("\nOK 1.5 COMPLETE: elbow plot and clustree saved")
+  message("\n[1.3] elbow plot and clustree saved")
 
-  # 1.6 - final clustering
+  # final clustering
   .set_output_dir(dir_02)
   ath_sc <- cluster_cells(ath_sc, resolution = cluster_resolution,
                           dims = dims, k_param = k_param)
   Idents(ath_sc) <- "seurat_clusters"
   save_pdf(plot_umap(ath_sc, "seurat_clusters"), "umap_seuratclusters.pdf")
-  message("\nOK 1.6 COMPLETE: final clustering complete")
+  message("\nOK 1.3 COMPLETE: resolution check and final clustering complete")
   ath_sc
 }
 
-#' Steps 1.7-1.8: markers, annotation, expression plots
+#' markers, annotation, expression plots
 #' @return the annotated Seurat object
 run_annotation <- function(ath_sc, marker_file, gene = NULL) {
   marker_file  <- file.path(DATA_DIR, marker_file)
   marker_table <- standardize_marker_table(marker_file)
 
-  # 1.7 - annotation
+  # annotation
   .set_output_dir(dir_03)
   markers <- find_markers(ath_sc, output_file = file.path(dir_03, "FindAllMarkers.tsv"),
                           force = TRUE)
@@ -101,9 +101,9 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
                       outfile = file.path(dir_03, "dotplot_marker_table_annotation_biblio.pdf"),
                       width = 18, height = 18)
   save_pdf(plot_umap(ath_sc, "celltype"), "umap_annotation_biblio.pdf")
-  message("\nOK 1.7 COMPLETE: cell-type annotation complete")
+  message("\n[1.4] cell-type annotation complete")
 
-  # 1.8 - gene expression (optional)
+  # gene expression (optional)
   if (!is.null(gene)) {
     .set_output_dir(dir_04)
     ath_sc <- JoinLayers(ath_sc)
@@ -111,13 +111,14 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     gene_tag <- paste(gene, collapse = "_")
     save_vln(plot_gene_violin(ath_sc, gene), paste0("vln_gene_", gene_tag, ".pdf"))
     save_pdf(plot_gene_umap(ath_sc, gene), paste0("feature_gene_", gene_tag, ".pdf"))
-    message("\nOK 1.8 COMPLETE: gene expression visualization saved")
+    message("\n[1.4] gene expression plots saved")
   }
 
+  message("\nOK 1.4 COMPLETE: cell-type annotation and gene expression complete")
   ath_sc
 }
 
-#' Steps 2.1-2.7: subsets, pseudo-replicates, DESeq2, volcano, tables, GO, heatmap
+#' subsets, pseudo-replicates, DESeq2, volcano, tables, GO, heatmap
 #' @return list(deseq2, diff_tables, go)
 run_pseudobulk_de <- function(ath_sc, marker_file,
                               comparisons,
@@ -133,21 +134,21 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
                               heatmap_limits        = c(-5, 5)) {
   marker_table <- standardize_marker_table(file.path(DATA_DIR, marker_file))
 
-  # 2.1-2.2 - subsets and pseudo-replicates
+  # subsets and pseudo-replicates
   subsets <- create_cell_type_subsets(ath_sc, annot_col = annot_col)
   reps <- assign_pseudoreplicates_batch(subsets,
             pseudobulk_conditions = pseudobulk_conditions,
             n_pseudoreps = n_pseudoreps)
-  message("\nOK 2.1-2.2 COMPLETE: subsets and pseudo-replicates")
+  message("\n[2.1] subsets and pseudo-replicates")
 
-  # 2.3 - pseudobulk + DESeq2 (all comparisons)
+  # pseudobulk + DESeq2 (all comparisons)
   deseq2_results <- run_pseudobulk_deseq2_analysis(
     cell_type_subsets_replicates = reps, comparisons = comparisons,
     output_dir = dir_06, cell_types = cell_types,
     pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates"))
-  message("\nOK 2.3 COMPLETE: pseudobulk aggregation and DESeq2 complete")
+  message("\n[2.1] pseudobulk aggregation and DESeq2 complete")
 
-  # 2.4-2.7 - one pass per comparison
+  # one pass per comparison
   diff_tables <- list(); go_results <- list()
   for (cmp in comparisons) {
     tag <- cmp$tag
@@ -168,11 +169,11 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
       output_dir = file.path(dir_06, tag), limits = heatmap_limits,
       cell_order = unique(marker_table$cell.types))
   }
-  message("\nOK 2.4-2.7 COMPLETE: volcano, tables, GO and heatmap saved")
+  message("\nOK 2.1 COMPLETE: pseudobulk DESeq2, volcano, tables, GO and heatmap complete")
   invisible(list(deseq2 = deseq2_results, diff_tables = diff_tables, go = go_results))
 }
 
-#' Step 2.8: hdWGCNA co-expression and TF network
+#' hdWGCNA co-expression and TF network
 run_tf_network <- function(ath_sc, contrast_tag, annot_col = "celltype",
                            tf_list = "data/AtTFDB_loci.txt",
                            n_metacells = 50, min_module_size = 20, deep_split = 2,
@@ -185,5 +186,5 @@ run_tf_network <- function(ath_sc, contrast_tag, annot_col = "celltype",
     n_metacells = n_metacells, min_module_size = min_module_size,
     deep_split = deep_split, soft_power = soft_power,
     tom_threshold = tom_threshold, n_hub_label = n_hub_label)
-  message("\nOK 2.8 COMPLETE: TF coexpression network saved")
+  message("\nOK 2.2 COMPLETE: TF coexpression network saved")
 }

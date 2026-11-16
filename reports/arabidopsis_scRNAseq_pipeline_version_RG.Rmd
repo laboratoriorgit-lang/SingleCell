@@ -388,7 +388,7 @@ usually restricted to admins). It involves two separate steps:
 singularity build scrnaseq.sif docker://psblab/scrnaseq:latest
 ```
 
-2. **Run it with `exec`.** From the SingleCell directory cloned in Step 1.2, run:
+2. **Run it with `exec`.** From the SingleCell directory cloned in Step 1.1, run:
 
 ```bash
 singularity exec --bind $(pwd):/workspace --pwd /workspace scrnaseq.sif /bin/bash
@@ -608,7 +608,7 @@ the two samples with each other and to spot samples that look clearly different
 from the other.
 
 Cell Ranger's cell calling is only a first pass: the QC filtering in Part 2
-(Step 1.2) removes low-quality cells and doublets from this set, so the cell
+(Step 1.1) removes low-quality cells and doublets from this set, so the cell
 number reported here is expected to be larger than the one used downstream.
 
 \newpage
@@ -645,9 +645,8 @@ source("/workspace/workflow/ScRNA_Pipeline_Wrappers.R")
 
 ## 1.1 - Quality control and cell filtering {-}
 
-`run_qc_filtering()` loads the samples and draws the pre-filter QC violin plots
-(Step 1.1), then removes low-quality cells and doublets and draws the post-filter
-plots (Step 1.2). Plots go to `results/01_qc/` and the filtered list of samples is
+`run_qc_filtering()` loads the samples and draws the pre-filter QC violin plots, then removes low-quality cells and doublets and draws the post-filter
+plots. Plots go to `results/01_qc/` and the filtered list of samples is
 saved to `results/objects/seurat_list_postfilter.rds`.
 
 - `samples`: one entry per sample, with the path of its `filtered_feature_bc_matrix/`
@@ -678,10 +677,9 @@ seurat_list <- run_qc_filtering(
 
 \newpage
 
-## 1.3 - UMAP and Harmony integration {-}
+## 1.2 - UMAP and Harmony integration {-}
 
-`run_umap_integration()` merges the filtered samples, normalizes, runs PCA and UMAP
-(Step 1.3), and corrects the batch effect between samples with Harmony (Step 1.4).
+`run_umap_integration()` merges the filtered samples, normalizes, runs PCA and UMAP, and corrects the batch effect between samples with Harmony.
 It saves the UMAP colored by sample before and after Harmony to `results/01_qc/`,
 and the objects `ath_sc_preharmony.rds` and `ath_sc_postharmony.rds` to
 `results/objects/`.
@@ -703,11 +701,11 @@ ath_sc <- run_umap_integration(
 
 \newpage
 
-## 1.5 - Clustering resolution and final clustering {-}
+## 1.3 - Clustering resolution and final clustering {-}
 
 `run_clustering()` saves the elbow plot and the clustree of the candidate
-resolutions (Step 1.5) to `results/02_clustering/`, and then clusters the cells at
-`cluster_resolution` (Step 1.6), saving the UMAP of the clusters. Review the elbow
+resolutions to `results/02_clustering/`, and then clusters the cells at
+`cluster_resolution`, saving the UMAP of the clusters. Review the elbow
 plot and the clustree, and rerun with a different `cluster_resolution` if needed.
 
 ```{r sections_05_06_clustering}
@@ -724,11 +722,11 @@ ath_sc <- run_clustering(
 
 \newpage
 
-## 1.7 - Annotation and gene expression {-}
+## 1.4 - Annotation and gene expression {-}
 
 `run_annotation()` finds the cluster markers, annotates the cell types from the
-bibliography marker table (Step 1.7), and plots the expression of `gene` (Step 1.8,
-optional: use `gene = NULL` to skip it). Results go to `results/03_annotation/` and
+bibliography marker table, and plots the expression of `gene`
+(optional: use `gene = NULL` to skip it). Results go to `results/03_annotation/` and
 `results/04_expression/`.
 
 ```{r sections_07_09_annotation}
@@ -742,7 +740,7 @@ ath_sc <- run_annotation(
 ![Marker dotplot after bibliography-based cell-type annotation.](assets/dotplot_annotation_biblio.png){width=30%} ![UMAP colored by bibliography-based cell-type annotation.](assets/umap_annotation_biblio.png){width=30%}
 ![Violin plot for the selected gene across all annotated cell types.](assets/vln_gene_AT4G21750.png){width=30%} ![UMAP expression overlay for the selected gene.](assets/feature_gene_AT4G21750.png){width=30%}
 
-## 1.9 - Export the annotated object {-}
+## 1.5 - Export the annotated object {-}
 
 The annotated object is saved as an `.rds` checkpoint and exported to AnnData
 (`.h5ad`) for the Python trajectory analysis. Both files are written to
@@ -757,7 +755,7 @@ export_to_scanpy(
   file.path(dir_objects, "ath_sc_annotated.h5ad")
 )
 
-message("\\nOK 1.9 COMPLETE: annotated object saved (.rds + .h5ad)")
+message("\\nOK 1.5 COMPLETE: annotated object saved (.rds + .h5ad)")
 ```
 
 
@@ -774,11 +772,11 @@ ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
 
 ## 2.1 - Pseudobulk, DESeq2, volcano, tables, GO and heatmap {-}
 
-`run_pseudobulk_de()` creates the cell-type subsets (Step 2.1), assigns
-pseudo-replicates (Step 2.2), aggregates counts and runs DESeq2 (Step 2.3), and
-then, for each comparison, draws the volcano plots (Step 2.4), builds the
-differential gene tables (Step 2.5), runs the GO enrichment (Step 2.6) and draws
-the log2FC heatmap (Step 2.7). Results go to `results/06_de_results/` and
+`run_pseudobulk_de()` creates the cell-type subsets, assigns
+pseudo-replicates, aggregates counts and runs DESeq2, and
+then, for each comparison, draws the volcano plots, builds the
+differential gene tables, runs the GO enrichment and draws
+the log2FC heatmap. Results go to `results/06_de_results/` and
 `results/07_go/`.
 
 - `comparisons`: list of contrasts; each has the two conditions and a `tag`.
@@ -809,7 +807,7 @@ de <- run_pseudobulk_de(
 
 \newpage
 
-## 2.8 - Gene-gene co-expression network (hdWGCNA) and TF network {-}
+## 2.2 - Gene-gene co-expression network (hdWGCNA) and TF network {-}
 
 `run_tf_network()` builds the hdWGCNA co-expression network for each cell type and
 the TF network, colored by the direction of differential expression of the chosen
@@ -1003,7 +1001,7 @@ results/
 ```
 
 `01_qc`-`05_curation` and `objects/` come from Part 2 (`step1_singlecell.R`);
-`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Step 2.3) and
+`06_de_results`/`07_go` (one subfolder per `comparisons` tag, Step 2.1) and
 `08_networks` from Part 3 (`step2_degs.R`); `09_pseudotime` from Part 4
 (`step3_pseudotime.py`), one `trajectory/<run_name>/` per entry in
 `TRAJECTORY_RUNS` (Step 3.4). `<gene>`, `<cluster>`, `<cell_type>`, and
@@ -1017,7 +1015,7 @@ names.
 
 # Supplementary methods {-}
 
-The three steps below are optional. They start from the annotation of Step 1.7
+The three steps below are optional. They start from the annotation of Step 1.4
 and write their results to separate columns (`celltype_grouped`,
 `celltype_curated`) or figures, so the main workflow runs without them. If you
 use one of them, set the annotation column of Supplementary Section S2 accordingly. The code is
@@ -1025,8 +1023,8 @@ also available in `workflow/step1_supplementary.R`.
 
 ## Supplementary Section S1 - Annotated clustree {-}
 
-This section adds the cell-type labels from Step 1.7 onto the clustering tree
-from Step 1.5. Instead of showing only numeric clusters, each node is labeled
+This section adds the cell-type labels from Step 1.4 onto the clustering tree
+from Step 1.3. Instead of showing only numeric clusters, each node is labeled
 with the most common cell type found in that cluster.
 
 This makes it easier to see how stable the annotated cell types are across
@@ -1168,7 +1166,7 @@ decide whether to keep or split the label):
 *In this example the Mesophyll subclusters are mapped back to `Mesophyll` (no
 relabeling), which shows the inspect-then-curate mechanism without changing any
 label. The main workflow does not need this step: it continues with the labels
-from Step 1.7.*
+from Step 1.4.*
 
 \newpage
 
@@ -1239,9 +1237,9 @@ step that fails. Step 0 (Cell Ranger) is not part of the default run because it
 needs a signed 10x download URL, and it does not read `params.yaml`;
 `step1_supplementary.R` is not run either, because it continues the R session of
 Step 1 (its generated copy is in the same folder, for manual use). A run with a
-parameter file does not stop to look at figures, so the resolution of Step 1.6 and
-the annotation file of Step 1.7 are the ones written in the file: for new data, look
-at the elbow plot and the clustree (Step 1.5) first and set
+parameter file does not stop to look at figures, so the resolution of Step 1.3 and
+the annotation file of Step 1.4 are the ones written in the file: for new data, look
+at the elbow plot and the clustree (Step 1.3) first and set
 `clustering: cluster_resolution` accordingly. The Python step needs PyYAML to read the
 file (`pip install pyyaml`).
 
