@@ -70,7 +70,7 @@ init_pipeline <- function(data_dir     = "/workspace/.",
 
   set.seed(seed)
   options(Seurat.allow.s4 = FALSE)            # required for Seurat 5 compatibility
-  ComplexHeatmap::ht_opt$message <- FALSE     # silence ComplexHeatmap raster messages
+  ComplexHeatmap::ht_opt(message = FALSE)     # silence ComplexHeatmap raster messages
   setwd(data_dir)
 
   base_dir <- file.path(data_dir, opt("project.results_dir", "results"))
