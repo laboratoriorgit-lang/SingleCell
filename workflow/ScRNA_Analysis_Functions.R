@@ -5913,12 +5913,16 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
 
 #' subsets, pseudo-replicates, DESeq2, volcano, tables, GO, heatmap
 
-#' export the curated Seurat object (.rds and .h5ad)
+#' export the curated Seurat object as <name>.rds and <name>.h5ad in results/objects/
+#' @param name file name without extension (default "ath_sc_annotated")
 #' @return the Seurat object (invisibly)
-run_export_object <- function(ath_sc) {
-  saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
-  export_to_scanpy(ath_sc, file.path(dir_objects, "ath_sc_annotated.h5ad"))
+run_export_object <- function(ath_sc, name = "ath_sc_annotated") {
+  rds_file  <- file.path(dir_objects, paste0(name, ".rds"))
+  h5ad_file <- file.path(dir_objects, paste0(name, ".h5ad"))
+  saveRDS(ath_sc, rds_file)
+  export_to_scanpy(ath_sc, h5ad_file)
   message("\nOK 2.6 COMPLETE: Exporting the curated Seurat object")
+  message("  saved: ", rds_file, " | ", h5ad_file)
   invisible(ath_sc)
 }
 
