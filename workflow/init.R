@@ -81,6 +81,7 @@ init_pipeline <- function(data_dir     = "/workspace/.",
   assign("base_dir",     base_dir,     envir = .GlobalEnv)
   assign("output_dir",   base_dir,     envir = .GlobalEnv)  # reassigned in each section
 
-  message("\nOK 2.1 COMPLETE: pipeline initialized (seed ", seed, ", data_dir ", data_dir, ")")
+  message("\nOK 2.1 COMPLETE: Initialization")
+  message("  seed = ", seed, " | data_dir = ", data_dir)
   invisible(NULL)
 }

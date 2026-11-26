@@ -5831,7 +5831,7 @@ run_qc_filtering <- function(samples, colors,
   )
   plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
   saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
-  message("\nOK 2.2 COMPLETE: QC and cell filtering complete")
+  message("\nOK 2.2 COMPLETE: Quality control and cell filtering")
   seurat_list
 }
 
@@ -5853,7 +5853,7 @@ run_umap_integration <- function(seurat_list, colors,
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_postharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
-  message("\nOK 2.3 COMPLETE: UMAP and Harmony integration complete")
+  message("\nOK 2.3 COMPLETE: UMAP and Harmony integration")
   ath_sc
 }
 
@@ -5875,7 +5875,7 @@ run_clustering <- function(ath_sc,
                           dims = dims, k_param = k_param)
   Idents(ath_sc) <- "seurat_clusters"
   save_pdf(plot_umap(ath_sc, "seurat_clusters"), "umap_seuratclusters.pdf")
-  message("\nOK 2.4 COMPLETE: resolution check and final clustering complete")
+  message("\nOK 2.4 COMPLETE: Clustering resolution and final clustering")
   ath_sc
 }
 
