@@ -187,13 +187,36 @@ def trajectory_run(nodes=50, sigma=0.2, lambda_value=60, eigs=20, seed=3):
     }
 
 
+# Medoid cell: the most "average" cell. It is the cell with the smallest mean
+# distance to all the other cells (Euclidean, PCA space). If root_cluster is given
+# only the cells of that cell type are used. With more than 5000 cells the mean
+# distance is taken against 2000 random reference cells (fixed seed) to save memory.
+def _medoid_cell(adata, annotation_col, root_cluster=None, space="X_pca", seed=3):
+    from scipy.spatial.distance import cdist
+    if root_cluster:
+        mask = (adata.obs[annotation_col] == root_cluster).to_numpy()
+    else:
+        mask = np.ones(adata.n_obs, dtype=bool)
+    X = np.asarray(adata.obsm[space], dtype=float)[mask]
+    cells = adata.obs_names[mask]
+    if len(cells) > 5000:
+        rng = np.random.default_rng(seed)
+        ref = X[rng.choice(len(cells), 2000, replace=False)]
+    else:
+        ref = X
+    return cells[np.argmin(cdist(X, ref).mean(axis=1))]
+
+
 # Hidden legacy helper, not called by the main workflow unless root_method is
 # "auto" with several cell types or "most_connected": the most-connected cell of the
 # root_cluster population (largest summed connectivity within that population).
 # With a single cell type this is the center of the cloud and it changes with the
 # graph parameters, which is why the single-type case uses the tip rule instead.
 def _most_connected_cell(adata, annotation_col, root_cluster):
-    mask          = (adata.obs[annotation_col] == root_cluster).to_numpy()
+    if root_cluster:   # with root_cluster: only that cell type; empty: all cells
+        mask = (adata.obs[annotation_col] == root_cluster).to_numpy()
+    else:
+        mask = np.ones(adata.n_obs, dtype=bool)
     cluster_cells = adata.obs_names[mask]
     sub_conn      = adata.obsp["connectivities"][mask][:, mask]
     degrees       = np.array(sub_conn.sum(axis=1)).flatten()
@@ -218,7 +241,7 @@ def build_pseudotime_trajectory(
     n_eigs      = 20,   # dimensions retained (must be strictly < n_components)
     n_neighbors = 50,   # neighbors for final graph (higher = smoother layout)
     seed        = 3,    # random seed for reproducibility across runs
-    root_method = "auto",           # "auto" (default), "score" or "tip"; see the root selection notes below
+    root_method = "auto",           # "auto" (default: medoid), "tip", "score" or "most_connected"; see the root selection notes below
     root_score  = "nFeature_RNA",   # obs column or gene ID that anchors the root (single cell type)
     root_lowest = False,            # True = the root is where root_score is lowest
     root_tip    = None,             # "tip": node number of the tip (see the tree figure)
@@ -256,14 +279,17 @@ def build_pseudotime_trajectory(
     )
 
     # Root selection (Gulati et al. 2020: nFeature_RNA as developmental potential proxy).
-    #   "auto" (default): uses root_score (nFeature_RNA by default) to find the tree tip
-    #       with the highest mean score. When multiple cell types are present, only cells
-    #       from root_cluster are considered for scoring, so the root is placed in that
-    #       cell type. With a single cell type, all cells are scored.
+    #   "auto" (default) = "medoid": the root is the most average cell (smallest mean
+    #       distance to all the other cells, PCA space). If root_cluster is given and there
+    #       are several cell types, only the cells of root_cluster are used.
+    #   "score": uses root_score (nFeature_RNA by default) to find the tree tip with the
+    #       highest mean score. With several cell types and a root_cluster, only the cells
+    #       from root_cluster are scored (root_cluster must be a real cell type).
     #   "tip": manual override — the root is the tip with node number root_tip.
-    #   "most_connected": hidden legacy option, not used by the main workflow.
+    #   "most_connected": the root is the most connected cell (summed kNN connectivity) of
+    #       root_cluster; if root_cluster is empty, of all the cells.
     n_types = adata.obs[annotation_col].nunique()
-    method  = root_method if root_method != "auto" else "score"
+    method  = root_method if root_method != "auto" else "medoid"
     label   = f"Gulati score ({root_score})" if method == "score" else method
 
     if method == "tip":
@@ -299,6 +325,12 @@ def build_pseudotime_trajectory(
         adata.obs["is_root"] = adata.obs_names == root_cell
         if "_root_score_masked" in adata.obs.columns:
             del adata.obs["_root_score_masked"]
+    elif method == "medoid":
+        # "auto" default: the root is the most average cell (medoid, PCA space).
+        root_cell = _medoid_cell(adata, annotation_col, root_cluster if n_types > 1 else None)
+        adata.obs["is_root"] = adata.obs_names == root_cell
+        scf.tl.root(adata, root="is_root")
+        scf.tl.pseudotime(adata)
     elif method == "most_connected":
         # Legacy option, kept for backwards compatibility
         root_cell = _most_connected_cell(adata, annotation_col, root_cluster)
@@ -933,6 +965,61 @@ def compute_gene_trends(
     return adata_fitted
 
 
+# Heatmap with ONE pseudotime axis for the whole trajectory (all the cells ordered by t, from
+# 0 to the maximum, branches included). Each gene is the expression of the cells in t order
+# smoothed with a gaussian sliding window (window cells), scaled 0-1, rows ordered by the t of the
+# peak. The branch-specific fitted curves are not used, so branches do not make blocks.
+def _t_expression_matrix(adata_fitted, genes, window=None):
+    t     = adata_fitted.obs["t"].sort_values(kind="stable")
+    X     = adata_fitted[t.index, genes].X
+    X     = X.toarray() if hasattr(X, "toarray") else np.asarray(X)
+    M     = pd.DataFrame(X, index=t.index, columns=genes).T
+    window = window or max(31, len(t) // 8)          # wide window = smooth curves like the fitted ones
+    M     = M.T.rolling(window, center=True, min_periods=1, win_type="gaussian").mean(std=window / 4).T
+    M     = M.apply(lambda x: (x - x.min()) / (x.max() - x.min() + 1e-12), axis=1)
+    M     = M.iloc[M.values.argmax(axis=1).argsort(kind="stable")]
+    return M, t.values
+
+
+def _draw_t_heatmap(M, tvals, title, pdf_path, label_genes=(), custom_genes=()):
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects as pe
+    n, nc = M.shape
+    fig = plt.figure(figsize=(12, 18))
+    axt = fig.add_axes([.08, .915, .70, .025])
+    ax  = fig.add_axes([.08, .06, .70, .85])
+    axt.imshow(tvals[None, :], aspect="auto", cmap="viridis")
+    axt.set_xticks([]); axt.set_yticks([])
+    ax.imshow(M.values, aspect="auto", cmap="RdBu_r", interpolation="nearest", vmin=0, vmax=1)
+    ax.set_yticks([])
+    ax.set_xticks([0, nc / 2, nc - 1])
+    ax.set_xticklabels([f"{tvals[0]:.1f}", f"{tvals[int(nc / 2)]:.1f}", f"{tvals[-1]:.1f}"], fontsize=16)
+    ax.set_xlabel("pseudotime (t), all the cells", fontsize=18)
+    rows = {g: i for i, g in enumerate(M.index)}
+    cset = set(custom_genes)
+    for g in label_genes:
+        if g not in rows:
+            continue
+        y = 1 - (rows[g] + .5) / n
+        ax.annotate(g, xy=(1, y), xycoords="axes fraction", xytext=(1.03, y), textcoords="axes fraction",
+                    fontsize=16, style="italic", va="center", color="red" if g in cset else "black",
+                    path_effects=[pe.withStroke(linewidth=3, foreground="white")],
+                    arrowprops=dict(arrowstyle="-", lw=.6))
+    fig.suptitle(title, fontsize=22, y=.975)
+    fig.savefig(pdf_path, facecolor="white", bbox_inches="tight")
+    plt.close(fig)
+
+
+def _spread_labels(rows, A, top_n):
+    A = A.reindex(rows).fillna(0)
+    out = []
+    for blk in np.array_split(np.arange(len(rows)), top_n):
+        if len(blk):
+            core = blk[int(0.2 * len(blk)): max(int(0.8 * len(blk)), int(0.2 * len(blk)) + 1)]
+            out.append(A.iloc[core].idxmax())
+    return out
+
+
 def plot_gene_trends(
     adata_fitted,
     run_dir,
@@ -944,7 +1031,14 @@ def plot_gene_trends(
     adata             = None,
     n_jobs            = 4,
     single_gene_plots = True,
+    order_by_peak     = True,
+    single_axis       = True,
 ):
+    # single_axis=True (default): ONE heatmap, one pseudotime axis for all the cells (t from 0 to
+    # its maximum), genes ordered by the t of their peak, no tree segments/blocks. False: the
+    # scFates tree heatmap (segments side by side).
+    # order_by_peak=True: the genes (rows) are ordered by the pseudotime t where their fitted
+    # curve peaks (t of the cell with the highest fitted value). False: scFates `ordering`.
     name = name or os.path.basename(run_dir)
     output_dir = os.path.join(run_dir, "gene_trends")
     os.makedirs(output_dir, exist_ok=True)
@@ -954,6 +1048,36 @@ def plot_gene_trends(
         adata_fitted = _add_missing_genes(adata, adata_fitted, custom_genes, fitted_path, n_jobs)
 
     fit_features = list(adata_fitted.var_names)
+    if order_by_peak:
+        _F = pd.DataFrame(adata_fitted.layers["fitted"], index=adata_fitted.obs_names,
+                          columns=adata_fitted.var_names)
+        _peak_t = pd.Series(adata_fitted.obs["t"].values[_F.values.argmax(axis=0)], index=_F.columns)
+        fit_features = list(_peak_t.sort_values(kind="stable").index)
+        ordering = None          # keep the order of `features` (= peak of t)
+
+    if single_axis:
+        custom_genes  = custom_genes or []
+        genes_present = [g for g in custom_genes if g in adata_fitted.var_names]
+        missing       = sorted(set(custom_genes) - set(genes_present))
+        if missing:
+            print(f"custom selection: genes not in the saved fit: {', '.join(missing)}")
+        A = adata_fitted.var["A"] if "A" in adata_fitted.var else pd.Series(1.0, index=fit_features)
+        M, tvals = _t_expression_matrix(adata_fitted, list(adata_fitted.var_names))
+        top_genes = _spread_labels(list(M.index), A, top_n)
+        top_pdf = os.path.join(output_dir, f"step29_gene_trends_top{top_n}_FINAL_24x18.pdf")
+        _draw_t_heatmap(M, tvals, f"{name} — top {top_n} variable genes across pseudotime ({len(M)} genes)",
+                        top_pdf, label_genes=top_genes + genes_present, custom_genes=genes_present)
+        print(f"✓ Top-{top_n} gene trends saved: {top_pdf}")
+        if genes_present:
+            cpdf = os.path.join(output_dir, "step29_gene_trends_highlight_list_FINAL_24x18.pdf")
+            _draw_t_heatmap(M, tvals, f"{name} — custom selection ({len(M)} genes)",
+                            cpdf, label_genes=genes_present, custom_genes=genes_present)
+            print(f"✓ Custom selection gene trends saved: {cpdf}")
+        if single_gene_plots:
+            for gene in genes_present:
+                plot_single_gene_trend(adata_fitted, gene, run_dir)
+        print("STEP 29 COMPLETE: gene trends saved")
+        return adata_fitted
 
     if spread_top:
         top_genes = select_genes_across_pseudotime(adata_fitted, fit_features, top_n, ordering)
@@ -961,6 +1085,7 @@ def plot_gene_trends(
         top_genes = adata_fitted.var.sort_values("A", ascending=False).head(top_n).index.tolist()
     axes_list = scf.pl.trends(
         adata_fitted,
+        features           = fit_features,
         plot_emb           = False,
         highlight_features = top_genes,
         style               = "italic",
@@ -986,6 +1111,7 @@ def plot_gene_trends(
     if genes_present:
         axes_list = scf.pl.trends(
             adata_fitted,
+            features           = fit_features,
             plot_emb           = False,
             highlight_features = genes_present,
             style               = "italic",
