@@ -5831,7 +5831,7 @@ run_qc_filtering <- function(samples, colors,
   )
   plot_qc_batch(seurat_list, colors, "qc_postfilter.pdf")
   saveRDS(seurat_list, file.path(dir_objects, "seurat_list_postfilter.rds"))
-  message("\nOK 1.1 COMPLETE: QC and cell filtering complete")
+  message("\nOK 2.2 COMPLETE: QC and cell filtering complete")
   seurat_list
 }
 
@@ -5853,7 +5853,7 @@ run_umap_integration <- function(seurat_list, colors,
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_postharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_postharmony.rds"))
-  message("\nOK 1.2 COMPLETE: UMAP and Harmony integration complete")
+  message("\nOK 2.3 COMPLETE: UMAP and Harmony integration complete")
   ath_sc
 }
 
@@ -5875,7 +5875,7 @@ run_clustering <- function(ath_sc,
                           dims = dims, k_param = k_param)
   Idents(ath_sc) <- "seurat_clusters"
   save_pdf(plot_umap(ath_sc, "seurat_clusters"), "umap_seuratclusters.pdf")
-  message("\nOK 1.3 COMPLETE: resolution check and final clustering complete")
+  message("\nOK 2.4 COMPLETE: resolution check and final clustering complete")
   ath_sc
 }
 
@@ -5907,7 +5907,7 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     message("\n[1.4] gene expression plots saved")
   }
 
-  message("\nOK 1.4 COMPLETE: cell-type annotation and gene expression complete")
+  message("\nOK 2.5 COMPLETE: cell-type annotation and gene expression complete")
   ath_sc
 }
 
@@ -5962,7 +5962,7 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
       output_dir = file.path(dir_06, tag), limits = heatmap_limits,
       cell_order = unique(marker_table$cell.types))
   }
-  message("\nOK 2.1 COMPLETE: pseudobulk DESeq2, volcano, tables, GO and heatmap complete")
+  message("\nOK 3.1 COMPLETE: pseudobulk DESeq2, volcano, tables, GO and heatmap complete")
   invisible(list(deseq2 = deseq2_results, diff_tables = diff_tables, go = go_results))
 }
 
@@ -5979,5 +5979,5 @@ run_tf_network <- function(ath_sc, contrast_tag, annot_col = "celltype",
     n_metacells = n_metacells, min_module_size = min_module_size,
     deep_split = deep_split, soft_power = soft_power,
     tom_threshold = tom_threshold, n_hub_label = n_hub_label)
-  message("\nOK 2.2 COMPLETE: TF coexpression network saved")
+  message("\nOK 3.2 COMPLETE: TF coexpression network saved")
 }
