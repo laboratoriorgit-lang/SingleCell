@@ -5907,11 +5907,21 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     message("\n[2.5] gene expression plots saved")
   }
 
-  message("\nOK 2.5 COMPLETE: cell-type annotation and gene expression complete")
+  message("\nOK 2.5 COMPLETE: Cell-type annotation and gene expression")
   ath_sc
 }
 
 #' subsets, pseudo-replicates, DESeq2, volcano, tables, GO, heatmap
+
+#' export the curated Seurat object (.rds and .h5ad)
+#' @return the Seurat object (invisibly)
+run_export_object <- function(ath_sc) {
+  saveRDS(ath_sc, file.path(dir_objects, "ath_sc_annotated.rds"))
+  export_to_scanpy(ath_sc, file.path(dir_objects, "ath_sc_annotated.h5ad"))
+  message("\nOK 2.6 COMPLETE: Exporting the curated Seurat object")
+  invisible(ath_sc)
+}
+
 #' @return list(deseq2, diff_tables, go)
 run_pseudobulk_de <- function(ath_sc, marker_file,
                               comparisons,
