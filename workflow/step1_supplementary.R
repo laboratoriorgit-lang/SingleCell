@@ -12,7 +12,7 @@ plot_annotated_clustree(
   ath_sc, clu, annot_col = "celltype", output_dir = output_dir
 )
 
-message("\nOK SUPPLEMENTARY S1 COMPLETE: annotated clustree saved")
+message("\nOK S1 COMPLETE: Annotated clustree")
 
 
 # ==============================================================================
@@ -39,7 +39,7 @@ save_pdf(
   "umap_grouped.pdf"
 )
 
-message("\nOK SUPPLEMENTARY S2 COMPLETE: cell-type grouping complete")
+message("\nOK S2 COMPLETE: Cell-type grouping")
 
 
 # ==============================================================================
@@ -75,6 +75,6 @@ save_pdf(
   "umap_curated.pdf"
 )
 
-message("\nOK SUPPLEMENTARY S3 COMPLETE: curation complete")
+message("\nOK S3 COMPLETE: Subcluster inspection and manual curation")
 
 
