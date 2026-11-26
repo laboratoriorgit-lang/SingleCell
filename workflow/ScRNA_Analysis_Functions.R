@@ -5822,7 +5822,7 @@ run_qc_filtering <- function(samples, colors,
   seurat_list_raw <- load_seurat_samples(samples = samples, DATA_DIR = DATA_DIR,
                                          mt_pattern = mt_pattern)
   plot_qc_batch(seurat_list_raw, colors, "qc_prefilter.pdf")
-  message("\n[1.1] QC pre-filter plots saved")
+  message("\n[2.2] QC pre-filter plots saved")
 
   # filtering and doublets
   seurat_list <- filter_seurat_samples(
@@ -5847,7 +5847,7 @@ run_umap_integration <- function(seurat_list, colors,
   ath_sc <- merge_and_preprocess(seurat_list, nfeatures = nfeatures, npcs = npcs)
   save_pdf(plot_umap(ath_sc, "orig.ident", colors), "umap_preharmony.pdf")
   saveRDS(ath_sc, file.path(dir_objects, "ath_sc_preharmony.rds"))
-  message("\n[1.2] merge and preprocessing complete")
+  message("\n[2.3] merge and preprocessing complete")
 
   # Harmony (UMAP after Harmony)
   ath_sc <- run_harmony_umap(ath_sc, group_by = "orig.ident", dims = dims)
@@ -5867,7 +5867,7 @@ run_clustering <- function(ath_sc,
   # elbow plot and clustree
   plot_resolution_elbow(ath_sc, output_dir = dir_02)
   run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
-  message("\n[1.3] elbow plot and clustree saved")
+  message("\n[2.4] elbow plot and clustree saved")
 
   # final clustering
   .set_output_dir(dir_02)
@@ -5894,7 +5894,7 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
                       outfile = file.path(dir_03, "dotplot_marker_table_annotation_biblio.pdf"),
                       width = 18, height = 18)
   save_pdf(plot_umap(ath_sc, "celltype"), "umap_annotation_biblio.pdf")
-  message("\n[1.4] cell-type annotation complete")
+  message("\n[2.5] cell-type annotation complete")
 
   # gene expression (optional)
   if (!is.null(gene)) {
@@ -5904,7 +5904,7 @@ run_annotation <- function(ath_sc, marker_file, gene = NULL) {
     gene_tag <- paste(gene, collapse = "_")
     save_vln(plot_gene_violin(ath_sc, gene), paste0("vln_gene_", gene_tag, ".pdf"))
     save_pdf(plot_gene_umap(ath_sc, gene), paste0("feature_gene_", gene_tag, ".pdf"))
-    message("\n[1.4] gene expression plots saved")
+    message("\n[2.5] gene expression plots saved")
   }
 
   message("\nOK 2.5 COMPLETE: cell-type annotation and gene expression complete")
@@ -5932,14 +5932,14 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
   reps <- assign_pseudoreplicates_batch(subsets,
             pseudobulk_conditions = pseudobulk_conditions,
             n_pseudoreps = n_pseudoreps)
-  message("\n[2.1] subsets and pseudo-replicates")
+  message("\n[3.1] subsets and pseudo-replicates")
 
   # pseudobulk + DESeq2 (all comparisons)
   deseq2_results <- run_pseudobulk_deseq2_analysis(
     cell_type_subsets_replicates = reps, comparisons = comparisons,
     output_dir = dir_06, cell_types = cell_types,
     pseudobulk_dir = file.path(dir_objects, "pseudobulk_replicates"))
-  message("\n[2.1] pseudobulk aggregation and DESeq2 complete")
+  message("\n[3.1] pseudobulk aggregation and DESeq2 complete")
 
   # one pass per comparison
   diff_tables <- list(); go_results <- list()
