@@ -772,7 +772,7 @@ def run_trajectory_runs(
         raise ValueError(f"selected_run '{selected_run}' not found. Available: {available}")
 
     selected = trajectory_runs[selected_run]
-    print(f"\nSTEP 27 COMPLETE")
+    print("\nOK 4.4 COMPLETE: Trajectory inference and root selection")
     print(f"Selected run: {selected_run}")
     print(f"Selected folder: {selected['output_dir']}")
 

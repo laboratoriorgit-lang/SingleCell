@@ -43,11 +43,10 @@ adata_sub = preview_trajectory_selection(
 # ==============================================================================
 # Section 21 - Trajectory inference
 # ==============================================================================
-# ROOT_CLUSTER is the root cell type when the trajectory has two or more cell types
-# (the root is its most-connected cell). With a single cell type, as here, the root
-# is set automatically at the tip of the tree with the most detected genes (see
-# "Root selection for pseudotime" in the README); root_score, root_lowest, root_tip
-# and root_method of run_trajectory_runs() change it.
+# ROOT_CLUSTER is the cell type used to choose the root when the trajectory has two or more
+# cell types. root_method of run_trajectory_runs() selects how the root is chosen: "auto"
+# (default, the most average cell), "most_connected", "score" or "tip"; see Supplementary
+# Section S4. root_score, root_lowest and root_tip complete "score" and "tip".
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
@@ -62,8 +61,6 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
     output_base_dir = dir_pseudotime,
     runs            = TRAJECTORY_RUNS,
 )
-
-print("SECTION 21 COMPLETE: trajectory inference saved")
 
 # ==============================================================================
 # Section 22 - Plot genes on trajectory

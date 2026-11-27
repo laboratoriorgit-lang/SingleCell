@@ -9,7 +9,6 @@
 # A value written here replaces the default of the script (opt("a.b", default));
 # a key that is missing, or set to null, keeps the default of the script.
 # Paths are relative to project.data_dir unless they start with "/".
-# See Supplementary Section S5 of the report.
 # =============================================================================
 
 project:
