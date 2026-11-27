@@ -1460,13 +1460,14 @@ save_subcluster_composite <- function(subcluster_list, marker_table, output_dir,
 #'   subclustered Seurat object, for later use with
 #'   apply_subcluster_reassignment()), invisibly.
 #' @export
-inspect_subcluster_markers <- function(obj, cluster_id, marker_table,
+inspect_subcluster_markers <- function(obj, cluster_id, marker_table = NULL,
                                         annot_col     = "celltype",
                                         resolution    = 0.3,
                                         dims          = 1:20,
                                         output_dir,
                                         filename      = NULL,
                                         n_marker_cols = 6) {
+  marker_table <- .get_marker_table(marker_table)
 
   sub_obj <- subcluster_cell_type(
     obj, ctype = cluster_id, annot_col = annot_col,
@@ -1570,11 +1571,12 @@ apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
 #' @param dims         Dims for subclustering (default 1:20).
 #' @return Updated Seurat object with dest_col populated.
 #' @export
-curate_clusters <- function(obj, reassign, marker_table, output_dir,
+curate_clusters <- function(obj, reassign, marker_table = NULL, output_dir,
                             annot_col  = "celltype",
                             source_col = "celltype",
                             dest_col   = "celltype_curated",
                             resolution = 0.3, dims = 1:20) {
+  marker_table <- .get_marker_table(marker_table)
   sub_objs <- list()
   for (cl in names(reassign)) {
     res <- inspect_subcluster_markers(
@@ -5818,6 +5820,16 @@ run_tf_coexpression_network <- function(...) {
 # dir_01..dir_08, dir_objects).
 # ==============================================================================
 
+# -- internal: marker table for the subcluster functions (Supplementary S3) ----
+# Uses the table given, else the one left by run_annotation() in this session, else
+# reads data/biblio_marks.txt.
+.get_marker_table <- function(marker_table = NULL, marker_file = "data/biblio_marks.txt") {
+  if (!is.null(marker_table)) return(marker_table)
+  if (exists("marker_table", envir = globalenv(), inherits = FALSE))
+    return(get("marker_table", envir = globalenv()))
+  standardize_marker_table(file.path(DATA_DIR, marker_file))
+}
+
 # -- internal: point save_pdf()/save_qc() to a folder ------------------------
 .set_output_dir <- function(d) assign("output_dir", d, envir = globalenv())
 
@@ -5897,6 +5909,7 @@ run_clustering <- function(ath_sc,
 run_annotation <- function(ath_sc, marker_file, gene = NULL) {
   marker_file  <- file.path(DATA_DIR, marker_file)
   marker_table <- standardize_marker_table(marker_file)
+  assign("marker_table", marker_table, envir = globalenv())   # reused by Supplementary S3
 
   # annotation
   .set_output_dir(dir_03)

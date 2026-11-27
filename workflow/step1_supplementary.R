@@ -1,5 +1,5 @@
 # Step 1 (supplementary) - optional steps of the single-cell analysis (R)
-# Run after Section 7 of step1_singlecell.R (needs `ath_sc` annotated, `marker_table`,
+# Run after Section 7 of step1_singlecell.R (needs `ath_sc` annotated,
 # the directories created in the init block and, for S1, optionally `clu` from run_clustering()).
 # These steps are not needed by the rest of the workflow.
 
@@ -48,8 +48,7 @@ Idents(ath_sc) <- "celltype"
 
 # 1. Inspect a cluster (saves the combined subcluster + marker figure)
 inspect_subcluster_markers(
-  ath_sc, cluster_id = "Mesophyll.1",
-  marker_table = marker_table, output_dir = output_dir
+  ath_sc, cluster_id = "Mesophyll.1", output_dir = output_dir
 )
 
 # 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
@@ -62,8 +61,7 @@ reassign <- list(
   "Mesophyll" = c("others" = "Mesophyll")
 )
 ath_sc <- curate_clusters(
-  ath_sc, reassign,
-  marker_table = marker_table, output_dir = output_dir,
+  ath_sc, reassign, output_dir = output_dir,
   annot_col = "celltype_grouped", source_col = "celltype_grouped"
 )
 
