@@ -866,7 +866,7 @@ This work was supported by the funding ANID-Millennium Science Initiative Progra
 20. L. Faure, R. Soldatov, P. V. Kharchenko, I. Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. Bioinformatics (Oxford, England) 39 (2023).
 21. G. S. Gulati et al., Single-cell transcriptional diversity is a hallmark of developmental potential. Science 367, 405-411 (2020).
 22. D. Grün et al., De novo prediction of stem cell identity using single-cell transcriptome data. Cell Stem Cell 19, 266-277 (2016).
-23. L. Kaufman, P. J. Rousseeuw, Finding Groups in Data: An Introduction to Cluster Analysis (Wiley, 1990).
+23. J. Domingo, T. León, E. Dura, Scellpam: an R package/C++ library to perform parallel partitioning around medoids on scRNAseq data sets. BMC Bioinformatics 24, 342 (2023).
 
 \newpage
 
