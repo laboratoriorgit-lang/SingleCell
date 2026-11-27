@@ -9,29 +9,50 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
 ## Project Map
 
 ```text
-Step 1 - Set up and raw data                     (bash)
-  tmux, clone the repository, start the container, Cell Ranger
-  -> filtered_feature_bc_matrix/ per sample  (ScWT/outs, Scpifq/outs are already included)
-        |
-        v
-Step 2 - Single-cell analysis in R               workflow/init.R, ScRNA_Analysis_Functions.R
-  2.1 Initialization                     init_pipeline()
-  2.2 Quality control and cell filtering run_qc_filtering()
-  2.3 UMAP and Harmony integration       run_umap_integration()
-  2.4 Clustering resolution and final clustering   run_clustering()
-  2.5 Cell-type annotation and gene expression     run_annotation()
-  2.6 Exporting the curated Seurat object          run_export_object()  -> .rds + .h5ad
-        |
-        +--------------------------------------------+
-        v                                            v
-Step 3 - Pseudobulk DE, GO, networks (R)     Step 4 - Pseudotime trajectory (Python)
-  3.1 Assigning pseudo-replicates              4.1 Setting up the Python environment
-      run_pseudobulk_de(): DESeq2, volcano,    4.2 Loading the annotated AnnData object
-      GO, log2FC heatmap                       4.3 Selecting cell types for trajectory inference
-  3.2 Gene co-expression and TF networks       4.4 Trajectory inference and root selection
-      run_tf_network(): hdWGCNA + TF-DE        4.5 Plotting gene expression along the trajectory
-                                               4.6 Gene expression trends along pseudotime
-                                               4.7 Final export (.h5ad)
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Raw data: FASTQ (CRA010863) · TAIR10.1 genome · Araport11 annotation    │
+└──────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Step 1 — Set up and Cell Ranger (bash)     workflow/step0_cellranger.sh │
+│                                                                          │
+│  tmux → clone repository → start container → download FASTQ              │
+│    → cellranger mkref (TAIR10.1+Araport11) → cellranger count            │
+│    → filtered_feature_bc_matrix/ per sample (ScWT/ and Scpifq/ included)  │
+└──────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Step 2 — Single-cell analysis (R)  ·  Steps 2.1-2.6       workflow/init.R │
+│                                                                          │
+│   2.1 init_pipeline → 2.2 QC and filtering (run_qc_filtering)            │
+│     → 2.3 UMAP + Harmony (run_umap_integration)                          │
+│     → 2.4 clustering resolution + final clusters (run_clustering)        │
+│     → 2.5 cell-type annotation (run_annotation)                          │
+│     → 2.6 export curated object (run_export_object, .rds + .h5ad)        │
+│                                                                          │
+│   Helpers: ScRNA_Analysis_Functions.R                                    │
+│   Output:  results/01_qc … 05_curation/, results/objects/                │
+└──────────────────────────────────────────────────────────────────────────┘
+                                 │  ath_sc_annotated.rds / ath_sc_annotated.h5ad
+              ┌──────────────────┴───────────────────┐
+              ▼                                       ▼
+┌─────────────────────────────────────┐   ┌─────────────────────────────────┐
+│ Step 3 — Pseudobulk DE / GO /       │   │ Step 4 — Pseudotime (Python)    │
+│  co-expression networks (R)         │   │  Steps 4.1-4.7                  │
+│  Steps 3.1-3.2                      │   │  workflow/init.py               │
+│                                     │   │                                 │
+│ 3.1 run_pseudobulk_de:              │   │  4.1 environment · 4.2 load     │
+│  pseudo-replicates → DESeq2         │   │  4.3 select cell types          │
+│  → volcano / DE tables → GO         │   │  4.4 Palantir → scFates tree    │
+│  → log2FC heatmap                   │   │    → root + pseudotime          │
+│ 3.2 run_tf_network:                 │   │  4.5 genes on the trajectory    │
+│  hdWGCNA → TF-DE network            │   │  4.6 gene trends (top-N +       │
+│                                     │   │      custom highlight)          │
+│ Output: results/06_de_results,      │   │  4.7 final export (.h5ad)       │
+│  07_go, 08_networks/                │   │ Output: results/09_pseudotime/  │
+└─────────────────────────────────────┘   └─────────────────────────────────┘
 ```
 
 The **Rmd** in `reports/` is the literate, publication-ready version of this workflow: the same commands with narrative text, figures, notes and the supplementary sections. It renders to `reports/reporte_draft.pdf`.
