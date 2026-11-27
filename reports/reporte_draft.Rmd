@@ -500,3 +500,166 @@ Both files are saved in `results/objects/`:
 - `ath_sc_annotated.h5ad`: the corresponding AnnData object for downstream analyses in Python.
 
 Before proceeding, verify that both files were generated successfully. Because conversion between Seurat and AnnData objects may not preserve every data structure or metadata field identically, check that the relevant expression data, cell annotations, dimensionality reductions, and other required metadata are available in the exported object before using it in subsequent analyses.
+
+\newpage
+
+## Step 3. Pseudobulk differential expression and GO {-}
+
+This chapter continues the workflow using the curated single-cell object generated at the end of step 2. Cells are aggregated into pseudobulk profiles for each cell type and biological replicate, enabling differential expression analysis with DESeq2 to compare the wild-type (WT) and *pifq* mutant genotypes. The results are summarized using volcano plots and differential expression tables, followed by Gene Ontology (GO) enrichment analysis, a log~2~ fold-change heatmap, and co-expression network analysis. Together, these analyses identify cell-type-specific transcriptional differences between WT and *pifq* and provide complementary approaches for interpreting the biological processes and gene relationships associated with the mutant phenotype.
+
+```r
+ath_sc <- readRDS(file.path(dir_objects, "ath_sc_annotated.rds"))
+```
+
+### Step 3.1. Assigning pseudo-replicates {-}
+
+The `run_pseudobulk_de()` function performs differential gene expression analysis using a pseudobulk approach. First, it assigns pseudo-replicates to cells within each cell type and condition. The number of pseudo-replicates is controlled by the `n_pseudoreps` parameter. In this workflow, we set `n_pseudoreps = 3`, meaning that cells belonging to each cell type and condition are divided into three groups, provided that a sufficient number of cells is available. Cell types that do not contain cells from both conditions required for a given comparison (e.g., cell types detected in only one condition) are excluded from that differential expression analysis.
+
+For each cell type, aggregated gene counts are analyzed using methods developed for bulk RNA-seq data and implemented in DESeq2 (14). The comparisons are defined using the `comparisons` parameter, in which each entry specifies the two conditions to be compared and a corresponding tag. For each cell type and comparison, the pipeline generates a DESeq2 results table containing one row per gene. In this workflow, we applied a log~2~ fold-change threshold of 1 and an adjusted p-value threshold of 0.05 to identify differentially expressed genes. The results are visualized using volcano plots **(Figure 11)**, which highlight genes with significant expression changes, and log~2~ fold-change heatmaps **(Figure 12)**, which facilitate the comparison of expression patterns across cell types and conditions. The `heatmap_limits` parameter sets the limits of the color scale. In this workflow, the range is set from $-5$ to $5$, allowing negative and positive log~2~ fold changes to be displayed on a common scale.
+
+To identify biological processes associated with the differentially expressed genes in each cell type, the pipeline also performs Gene Ontology (GO) enrichment analysis **(Figure 13)**. The `go_space` parameter specifies the GO category to be analyzed. In this workflow, it is set to `BP` (Biological Process). The organism annotation database is specified using `go_orgdb`, while `go_keytype` defines the gene identifier format used to map genes to the database. For *Arabidopsis thaliana*, these parameters are set to `org.At.tair.db` and `TAIR`, respectively. The resulting differential expression tables and visualizations are saved in `results/06_de_results/`, while GO enrichment results are saved in `results/07_go/`.
+
+```r
+de <- run_pseudobulk_de(
+  ath_sc,
+  marker_file    = "data/biblio_marks.txt",
+  comparisons    = list(
+    list(conds = c("WT", "pifq"), tag = "WT_vs_pifq")
+  ),
+  annot_col      = "celltype",
+  n_pseudoreps   = 3,
+  padj_cut       = 0.05,
+  lfc_cut        = 1,
+  go_space       = "BP",
+  go_orgdb       = org.At.tair.db,
+  go_keytype     = "TAIR",
+  heatmap_limits = c(-5, 5)
+)
+```
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.58\linewidth]{assets/fig11_volcano.png}
+\end{center}
+
+\small
+**Figure 11. Volcano plot showing differential gene expression in mesophyll cells between WT and *pifq* mutant samples.** Each point represents a gene, plotted according to its log~2~ fold change (x-axis) and statistical significance ($-\log_{10}$ adjusted p-value; y-axis). The plot highlights differentially expressed genes, allowing the identification of genes with substantial expression changes and strong statistical support between the two genotypes.
+\normalsize
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.5\linewidth]{assets/fig12_heatmap_log2fc.png}
+\end{center}
+
+\small
+**Figure 12. Heatmap of log~2~ fold changes (log~2~FC) across cell types for the WT vs. *pifq* comparison.** The heatmap summarizes differential gene expression across cell types, with rows representing genes and columns representing cell types. Genes are hierarchically clustered based on their expression-change patterns.
+\normalsize
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.6\linewidth]{assets/fig13_go_enrichment.png}
+\end{center}
+
+\small
+**Figure 13. Gene Ontology (GO) enrichment analysis of Biological Process (BP) terms in mesophyll cells comparing WT and *pifq* mutant samples.** The analysis identifies biological processes significantly enriched among the differentially expressed genes detected in mesophyll cells.
+\normalsize
+
+### Step 3.2. Gene co-expression and transcription factor networks {-}
+
+To investigate gene regulatory networks under PIFQ regulation, the pipeline integrates single-cell transcriptomic data with information on transcription factor (TF)–target gene interactions. This analysis uses hdWGCNA to construct gene co-expression networks from scRNA-seq data and identify potential relationships between TFs and their target genes. By combining gene co-expression patterns with regulatory information, this approach helps identify candidate regulatory relationships and explore how PIFQ influences gene expression across different cell types.
+
+hdWGCNA is an extension of weighted gene co-expression network analysis (WGCNA) adapted for single-cell and single-nucleus RNA-seq datasets (15). It identifies groups of genes, known as co-expression modules, that exhibit similar expression patterns across cells. These modules can reveal coordinated gene expression programs associated with specific cell types or biological conditions.
+
+For simplicity and reproducibility, all hdWGCNA commands required for this analysis, together with the transcription factor list, are implemented in the `run_tf_network()` function. The function includes several parameters that control network construction and visualization, including the number of metacells used to reduce data sparsity, the minimum module size, the `deepSplit` parameter for controlling module detection sensitivity, the TOM threshold, and the number of hub transcription factors labeled in the final network **(Figure 14)**.
+
+```r
+run_tf_network(
+  ath_sc,
+  contrast_tag    = "WT_vs_pifq",
+  annot_col       = "celltype",
+  tf_list         = "data/AtTFDB_loci.txt",
+  n_metacells     = 50,
+  min_module_size = 20,
+  deep_split      = 2,
+  soft_power      = NULL,
+  tom_threshold   = 0.2,
+  n_hub_label     = 15
+)
+```
+
+The resulting network files are saved in `results/08_networks/`. In particular, the `TF_TARGET_interaccion.tsv` file contains the inferred network edges and can be imported into Cytoscape for network visualization and further analysis. For a detailed, step-by-step introduction to gene co-expression network construction and its application to *Arabidopsis thaliana* RNA-seq data, readers are referred to Contreras-López et al. (2018) (16). This resource provides additional methodological guidance on network construction, analysis, and biological interpretation.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.62\linewidth]{assets/fig14_tf_network.png}
+\end{center}
+
+\small
+**Figure 14. Transcription factor (TF)–target gene co-expression network.** The network integrates single-cell transcriptomic data with information on TF–target gene interactions. Gene co-expression networks were constructed using hdWGCNA to identify relationships between TFs and their potential target genes. Each node represents a gene, and nodes are colored according to the direction of differential expression in the WT vs. *pifq* comparison, distinguishing upregulated and downregulated genes. This visualization highlights potential regulatory relationships associated with the *pifq* mutation.
+\normalsize
+
+\newpage
+
+## Step 4. Pseudotime trajectory analysis {-}
+
+Single-cell transcriptomics provides a powerful approach to understanding the dynamics underlying biological processes, such as cell differentiation or transitions between cellular states. Expression-based trajectory inference methods explore variation among cellular states by using similarities in their gene-expression profiles to reconstruct the trajectories (17) while pseudotime assigns each cell a relative position along this inferred progression. Together, these approaches allow researchers to identify genes whose expression patterns change across cellular states.
+
+Two key steps in trajectory inference are dimensionality reduction and root selection, both of which influence the inferred trajectory and its biological interpretation. While previous clustering process aims to identify distinct cell populations, trajectory inference focuses on their relationships and potential transitions between cellular states. Different methods use distinct approaches to reconstruct these trajectories. For example, Monocle 3 learns a trajectory graph from a UMAP representation (18), whereas diffusion-based approaches capture relationships between cellular states across multiple scales (19). Root selection determines the direction of pseudotime and should ideally be guided by biological knowledge, such as known progenitor populations or marker genes.
+
+In this workflow, we use a diffusion-based approach to reconstruct cellular trajectories. Starting from the PCA performed in Step 2, we used Palantir (19) to generate multiscale diffusion map that captures relationships between transcriptional states. We then use scFates (20), to fit a principal tree to this representation, reconstruct protential branching trajectories, and assign pseudotime based on a selected root. The workflow starts from the annotated AnnData object exported at the end of Step 2, `results/objects/ath_sc_annotated.h5ad`. To continue, exit the R session and start Python within the same software container. This allows you to use the Python environment and packages configured for the pipeline without leaving the container.
+
+```r
+q()          # leave R (do not save the workspace)
+```
+
+```bash
+python3
+```
+
+### Step 4.1. Setting up the Python environment {-}
+
+This step initializes the Python environment required for trajectory analysis. It defines the project paths established in the previous steps of the pipeline, loads the necessary Python packages and helper scripts, and creates the output directory for pseudotime analyses.
+
+The first command, `init_pipeline()`, performs these initialization tasks by loading the required Python packages and helper scripts and creating the pseudotime output directory. The second command imports the `run_pseudotime()` function, which consolidates the commands required to perform the subsequent trajectory analysis.
+
+```python
+exec(open("/workspace/workflow/init.py").read(), globals())
+init_pipeline(data_dir="/workspace/.")
+```
+
+### Step 4.2. Loading the annotated AnnData object {-}
+
+This step loads the `.h5ad` object exported at the end of the R workflow. The `INPUT_H5AD` variable specifies the path to the input file, while `ANNOTATION_COL` selects the cell-type annotation column used to visualize the data and select cells for trajectory analysis.
+
+Depending on which optional annotation steps were completed in step 2, the object may contain up to three annotation columns:
+
+- `celltype`: the original annotation generated in Step 2.5 using literature-based marker genes. This column is always present.
+- `celltype_grouped`: available if Supplementary Section S1 was run. Related subclusters are merged into broader cell-type groups.
+- `celltype_curated`: available if Supplementary Section S2 was run. This column contains manually reviewed and curated cell-type labels.
+
+Set `ANNOTATION_COL` according to the annotation workflow used in Step 2:
+
+- Use `celltype` if neither Supplementary Section S1 nor S2 was performed.
+- Use `celltype_grouped` if only Supplementary Section S1 was performed.
+- Use `celltype_curated` if Supplementary Section S2 was performed.
+
+The example in this workflow uses `celltype`. With the current marker table, the cotyledon epidermis is represented by a single label, `Epidermis Cotyledon`, which will be used in Step 4.3 and 4.4.
+
+The loading function also standardizes the coordinate names in the object to ensure compatibility with Scanpy. It prints the available annotation columns so you can verify that `ANNOTATION_COL` matches a column in the loaded object. Finally, it generates an overview UMAP and lists the available cell types. Use this information to select the appropriate cell population for trajectory analysis in the next step.
+
+```python
+INPUT_H5AD = "/workspace/results/objects/ath_sc_annotated.h5ad"
+ANNOTATION_COL = "celltype"
+N_JOBS = 4
+
+adata, N_JOBS = load_curated_object(
+    input_h5ad=INPUT_H5AD,
+    dir_pseudotime=dir_pseudotime,
+    annotation_col=ANNOTATION_COL,
+    n_jobs=N_JOBS,
+)
+```
