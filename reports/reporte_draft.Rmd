@@ -610,7 +610,7 @@ Single-cell transcriptomics provides a powerful approach to understanding the dy
 
 Two key steps in trajectory inference are dimensionality reduction and root selection, both of which influence the inferred trajectory and its biological interpretation. While previous clustering process aims to identify distinct cell populations, trajectory inference focuses on their relationships and potential transitions between cellular states. Different methods use distinct approaches to reconstruct these trajectories. For example, Monocle 3 learns a trajectory graph from a UMAP representation (18), whereas diffusion-based approaches capture relationships between cellular states across multiple scales (19). Root selection determines the direction of pseudotime and should ideally be guided by biological knowledge, such as known progenitor populations or marker genes.
 
-In this workflow, we use a diffusion-based approach to reconstruct cellular trajectories. Starting from the PCA performed in Step 2, we used Palantir (19) to generate multiscale diffusion map that captures relationships between transcriptional states. We then use scFates (20), to fit a principal tree to this representation, reconstruct protential branching trajectories, and assign pseudotime based on a selected root. The workflow starts from the annotated AnnData object exported at the end of Step 2, `results/objects/ath_sc_annotated.h5ad`. To continue, exit the R session and start Python within the same software container. This allows you to use the Python environment and packages configured for the pipeline without leaving the container.
+In this workflow, we use a diffusion-based approach to reconstruct cellular trajectories. Starting from the PCA performed in Step 2, we used Palantir (19) to generate a multiscale diffusion map that captures relationships between transcriptional states. We then use scFates (20) to fit a principal tree to this representation, reconstruct potential branching trajectories, and assign pseudotime based on a selected root. The workflow starts from the annotated AnnData object exported at the end of Step 2, `results/objects/ath_sc_annotated.h5ad`. To continue, exit the R session and start Python within the same software container. This allows you to use the Python environment and packages configured for the pipeline without leaving the container.
 
 ```r
 q()          # leave R (do not save the workspace)
@@ -624,7 +624,7 @@ python3
 
 This step initializes the Python environment required for trajectory analysis. It defines the project paths established in the previous steps of the pipeline, loads the necessary Python packages and helper scripts, and creates the output directory for pseudotime analyses.
 
-The first command, `init_pipeline()`, performs these initialization tasks by loading the required Python packages and helper scripts and creating the pseudotime output directory. The second command imports the `run_pseudotime()` function, which consolidates the commands required to perform the subsequent trajectory analysis.
+The first command loads the `init_pipeline()` function from `init.py`. The second command runs `init_pipeline()`, which performs these initialization tasks by loading the required Python packages and helper scripts and creating the pseudotime output directory.
 
 ```python
 exec(open("/workspace/workflow/init.py").read(), globals())
@@ -827,3 +827,41 @@ This is the final step of the pipeline. Exit the Python REPL explicitly by runni
 ```python
 exit()          # leave Python
 ```
+
+\newpage
+
+# Notes
+
+1. Expected output: `ls /workspace/fastq/CRA010863` should show the four downloaded `.gz` files plus the four renamed symlinks (`ScWT_S1_L001_R1_001.fastq.gz`, etc.). Cell Ranger reads the symlink names, not the original ones, so if a rename step is skipped or misspelled, the next command below fails immediately with a “no input FASTQs found” error.
+
+2. Expected output: this creates a folder named `Ara/` (matching `--genome`) containing the indexed reference Cell Ranger needs, and ends with a line reading `>>> Reference successfully created! <<<`. This only needs to be built once; the same `Ara/` folder is reused for every sample below.
+
+3. Expected output: each run creates a folder named after `--id` (`ScWT/`, `Scpifq/`) containing `outs/`, and ends with `Pipestance completed successfully!`. Inside `outs/`, `web_summary.html` is a self-contained QC report worth opening first (cell count, reads/cell, sequencing saturation); `filtered_feature_bc_matrix/` is the per-cell count matrix this whole pipeline is built on, and its path is what goes into the sample manifest in Step 1. This is the slowest step here, taking roughly 30-60 minutes per sample.
+
+# Acknowledgement {-}
+
+This work was supported by the funding ANID-Millennium Science Initiative Program- Millennium Institute for Integrative Biology (iBio) (ICN_022), ANID- Millennium Science Initiative Program- Millennium Center for Genome Regulation (ICN2021_044), ANID-FONDECYT N°1261744 to R.G., ANID-FONDECYT 11230913 to E.R., ANID- Programa Proyectos de Exploración 13250100 to R.G. and E.R.
+
+# References {-}
+
+1. T. Denyer et al., Spatiotemporal Developmental Trajectories in the Arabidopsis Root Revealed Using High-Throughput Single-Cell RNA Sequencing. Dev Cell 48, 840-852.e845 (2019).
+2. A. W. Zhang et al., Probabilistic cell-type assignment of single-cell RNA-seq for tumor microenvironment profiling. Nature methods 16, 1007-1015 (2019).
+3. G. M. Turco et al., Molecular Mechanisms Driving Switch Behavior in Xylem Cell Differentiation. Cell reports 28, 342-351.e344 (2019).
+4. K. H. Ryu, L. Huang, H. M. Kang, J. Schiefelbein, Single-Cell RNA Sequencing Resolves Molecular Relationships Among Individual Plant Cells. Plant Physiology 179, 1444-1456 (2019).
+5. K. Jean-Baptiste et al., Dynamics of Gene Expression in Single Root Cells of *Arabidopsis thaliana*. The Plant cell 31, 993-1011 (2019).
+6. C. N. Shulse et al., High-Throughput Single-Cell Transcriptome Profiling of Plant Cell Types. Cell reports 27, 2241-2247.e2244 (2019).
+7. R. Shaw, X. Tian, J. Xu, Single-Cell Transcriptome Analysis in Plants: Advances and Challenges. Molecular Plant 14, 115-126 (2021).
+8. A. M. Klein et al., Droplet barcoding for single-cell transcriptomics applied to embryonic stem cells. Cell 161, 1187-1201 (2015).
+9. B. Hwang, J. H. Lee, D. Bang, Single-cell RNA sequencing technologies and bioinformatics pipelines. Exp Mol Med 50, 1-14 (2018).
+10. X. Han et al., Time series single-cell transcriptional atlases reveal cell fate differentiation driven by light in Arabidopsis seedlings. Nature plants 9, 2095-2109 (2023).
+11. R. Satija, J. A. Farrell, D. Gennert, A. F. Schier, A. Regev, Spatial reconstruction of single-cell gene expression data. Nature biotechnology 33, 495-502 (2015).
+12. S. E. Antonsson, P. Melsted, Batch correction methods used in single-cell RNA sequencing analyses are often poorly calibrated. Genome Res 35, 1832-1841 (2025).
+13. I. Korsunsky et al., Fast, sensitive and accurate integration of single-cell data with Harmony. Nature methods 16, 1289-1296 (2019).
+14. M. I. Love, W. Huber, S. Anders, Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2. Genome biology 15, 550 (2014).
+15. S. Morabito, F. Reese, N. Rahimzadeh, E. Miyoshi, V. Swarup, hdWGCNA identifies co-expression networks in high-dimensional transcriptomics data. Cell Rep Methods 3, 100498 (2023).
+16. O. Contreras-López, T. C. Moyano, D. C. Soto, R. A. Gutiérrez, Step-by-Step Construction of Gene Co-expression Networks from High-Throughput Arabidopsis RNA Sequencing Data. Methods in molecular biology 1761, 275-301 (2018).
+17. K. Van den Berge et al., Trajectory-based differential expression analysis for single-cell sequencing data. Nature Communications 11, 1201 (2020).
+18. J. Cao et al., The single-cell transcriptional landscape of mammalian organogenesis. Nature 566, 496-502 (2019).
+19. M. Setty et al., Characterization of cell fate probabilities in single-cell data with Palantir. Nature biotechnology 37, 451-460 (2019).
+20. L. Faure, R. Soldatov, P. V. Kharchenko, I. Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. Bioinformatics (Oxford, England) 39 (2023).
+21. G. S. Gulati et al., Single-cell transcriptional diversity is a hallmark of developmental potential. Science 367, 405-411 (2020).
