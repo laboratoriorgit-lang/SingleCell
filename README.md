@@ -19,12 +19,12 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
 │                                                                          │
 │  tmux → clone repository → start container → download FASTQ              │
 │    → cellranger mkref (TAIR10.1+Araport11) → cellranger count            │
-│    → filtered_feature_bc_matrix/ per sample (ScWT/ and Scpifq/ included)  │
+│    → filtered_feature_bc_matrix/ per sample (ScWT/ and Scpifq/ included) │
 └──────────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Step 2 — Single-cell analysis (R)  ·  Steps 2.1-2.6       workflow/init.R │
+│  Step 2 — Single-cell analysis (R)  ·  Steps 2.1-2.6     workflow/init.R │
 │                                                                          │
 │   2.1 init_pipeline → 2.2 QC and filtering (run_qc_filtering)            │
 │     → 2.3 UMAP + Harmony (run_umap_integration)                          │
