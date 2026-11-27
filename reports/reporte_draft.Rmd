@@ -703,7 +703,7 @@ By default, the pipeline uses `root_method = "auto"` to automatically select the
 
 Users can also customize the root selection criteria using two additional parameters. The `root_score` parameter can specify a cell-level observation column (`obs`) or a gene identifier to guide root selection; set `root_lowest = True` when an end-state marker is expected to have lower expression at the root. The different root selection methods (`auto`, `most_connected`, `score` and `tip`) are described in Supplementary Section S4.
 
-The trajectory configurations to test are defined in `TRAJECTORY_RUNS`. Each run generates a separate output directory, allowing different parameter settings to be compared without overwriting previous results. The example configuration uses 100 nodes, `sigma = 0.1`, `lambda_value = 20`, `eigs = 3`, and `seed = 3`.
+The trajectory configurations to test are defined in `TRAJECTORY_RUNS`. Each run generates a separate output directory, allowing different parameter settings to be compared without overwriting previous results. The example configuration uses 100 nodes, `sigma = 0.1`, `lambda_value = 100`, `eigs = 3`, and `seed = 3`.
 
 The `eigs = 3` parameter specifies that three diffusion components are used to represent cell-state relationships before fitting the trajectory. The remaining parameters control aspects of trajectory construction and fitting; their effects should be evaluated by comparing the resulting graphs and pseudotime patterns.
 
@@ -711,7 +711,7 @@ The `eigs = 3` parameter specifies that three diffusion components are used to r
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=100, sigma=0.1, lambda_value=20, eigs=3, seed=3),
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=100, eigs=3, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
@@ -725,3 +725,13 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 ```
 
 The outputs include the inferred trajectory graph, a pseudotime visualization, and a plot showing the selected root cell **(Figure 16)**. Results are saved under `results/09_pseudotime/`, within the output folder corresponding to each trajectory run.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.78\linewidth]{assets/fig16_pseudotime.png}
+\end{center}
+
+\small
+**Figure 16. Pseudotime visualization overlaid on the force-directed layout of epidermis cotyledon cells (eigs = 3).** Trajectory inference was performed on the selected epidermis cotyledon cells to reconstruct their developmental progression. The starting point (root cell) was defined to establish the direction of pseudotime ordering. The figure shows the inferred trajectory graph, the distribution of cells along pseudotime, and the selected root cell used to orient the trajectory.
+\normalsize
