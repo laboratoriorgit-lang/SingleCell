@@ -50,7 +50,7 @@ adata_sub = preview_trajectory_selection(
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [
-    trajectory_run(nodes=100, sigma=0.1, lambda_value=20, eigs=3, seed=3),
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=100, eigs=3, seed=3),
 ]
 
 adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
