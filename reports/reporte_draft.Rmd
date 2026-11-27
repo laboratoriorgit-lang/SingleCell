@@ -735,3 +735,79 @@ The outputs include the inferred trajectory graph, a pseudotime visualization, a
 \small
 **Figure 16. Pseudotime visualization overlaid on the force-directed layout of epidermis cotyledon cells (eigs = 3).** Trajectory inference was performed on the selected epidermis cotyledon cells to reconstruct their developmental progression. The starting point (root cell) was defined to establish the direction of pseudotime ordering. The figure shows the inferred trajectory graph, the distribution of cells along pseudotime, and the selected root cell used to orient the trajectory.
 \normalsize
+
+### Step 4.5. Plotting gene expression along the trajectory {-}
+
+This step visualizes the expression of selected genes along the inferred cotyledon epidermis trajectory. The `plot_genes_on_trajectory()` function takes a list of gene identifiers and, optionally, panel titles. To examine a different marker or compare several genes, simply modify the gene list and provide the corresponding titles if needed.
+
+In this workflow, the analysis focuses on *ATML1*, a marker associated with epidermal cell identity. In the expression matrix, *ATML1* is identified by its *Arabidopsis thaliana* locus code, AT4G21750. Therefore, the function uses AT4G21750 as input while the plot label identifies the gene as *ATML1*.
+
+```python
+plot_genes_on_trajectory(
+    adata_traj,
+    genes=["AT4G21750"],
+    titles=["ATML1 (AT4G21750)"],
+    run_dir=selected_trajectory_dir,
+)
+```
+
+The resulting figure shows the distribution of *ATML1* expression across the inferred trajectory, helping visualize how its expression varies among cells positioned along the trajectory **(Figure 17)**. The plot is saved automatically in the corresponding run directory under `gene_plots/`, with a filename based on the plotted gene identifiers. For this example, the output is `gene_plots/trajectory_gene_AT4G21750.pdf`. When multiple genes are plotted, their identifiers are joined with underscores in the filename. The output path is also printed by the function.
+
+**Interpretation note:** The plot describes gene expression in relation to the inferred trajectory and its pseudotime ordering. It does not, by itself, establish that *ATML1* expression changes causally drive cell differentiation or that the inferred trajectory represents a confirmed developmental lineage.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.5\linewidth]{assets/fig17_atml1_trajectory.png}
+\end{center}
+
+\small
+**Figure 17. *ATML1* (AT4G21750) expression on the epidermis cotyledon trajectory.**
+\normalsize
+
+### Step 4.6. Gene expression trends along pseudotime {-}
+
+This step identifies genes whose expression patterns are associated with pseudotime along the inferred cotyledon epidermis trajectory. The function tests genes for association with pseudotime, fits smooth expression curves to capture changes along the trajectory, ranks genes according to their trend signal, and generates heatmaps to visualize the resulting expression patterns.
+
+The analysis uses the trajectory inferred in Step 4.4, with the following parameters: `nodes = 100`, `sigma = 0.1`, `lambda = 100`, `eigs = 3`, and `seed = 3`.
+
+`TOP_N` resulting trend heatmaps help reveal genes with changing expression patterns along pseudotime and identify candidate genes associated with transitions in cell state **(Figure 18)**.
+
+```python
+SPLINE_DF = 3
+
+adata_fitted = compute_gene_trends(
+    adata_traj,
+    selected_trajectory_dir,
+    n_jobs=N_JOBS,
+    spline_df=SPLINE_DF,
+)
+```
+
+```python
+TOP_N = 10
+HIGHLIGHT_GENES = ["AT4G21750"]
+ORDERING = "max"
+
+adata_fitted = plot_gene_trends(
+    adata_fitted,
+    selected_trajectory_dir,
+    custom_genes=HIGHLIGHT_GENES,
+    top_n=TOP_N,
+    ordering=ORDERING,
+    adata=adata_traj,
+    n_jobs=N_JOBS,
+)
+```
+
+**Interpretation note:** An association between gene expression and pseudotime indicates that expression varies along the inferred trajectory; it does not establish causality or prove a developmental sequence. The ranking reflects the trend statistic used by the function, so highly ranked genes should be interpreted as candidates for further biological investigation.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.8\linewidth]{assets/fig18_gene_trends.png}
+\end{center}
+
+\small
+**Figure 18.** Caption pending.
+\normalsize
