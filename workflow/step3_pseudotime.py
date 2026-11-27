@@ -71,10 +71,7 @@ plot_genes_on_trajectory(
     genes    = ["AT4G21750"],                         # ATML1
     titles   = ["ATML1 (AT4G21750)"],
     run_dir  = selected_trajectory_dir,
-    filename = "trajectory_genes_ATML1.pdf",
 )
-
-print("SECTION 22 COMPLETE: gene trajectory plots saved")
 
 # ==============================================================================
 # Section 23 - Gene trends

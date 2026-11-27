@@ -811,6 +811,7 @@ def plot_genes_on_trajectory(adata, genes, run_dir, titles=None, title_size=38,
     save_plot_18x18(fig, path)
     plt.close(fig)
     print(f"✓ Gene plots saved: {path}")
+    print("\nOK 4.5 COMPLETE: Plotting gene expression along the trajectory")
     return path
 
 
