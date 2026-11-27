@@ -39,7 +39,6 @@ adata_sub = preview_trajectory_selection(
     dir_pseudotime = dir_pseudotime,
 )
 
-print("SECTION 20 COMPLETE: cell type selection saved")
 
 # ==============================================================================
 # Section 21 - Trajectory inference

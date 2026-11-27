@@ -160,7 +160,8 @@ def preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime
     plot_celltype_umap(adata_sub, annotation_col,
                        os.path.join(dir_pseudotime, "umap_selection.pdf"))
 
-    print("\nSTEP 26 COMPLETE: continue only if this UMAP looks biologically sensible")
+    print("\nOK 4.3 COMPLETE: Selecting cell types for trajectory inference")
+    print("Continue only if this UMAP looks biologically sensible.")
     return adata_sub
 
 
