@@ -394,3 +394,109 @@ The UMAP plots by sample before and after Harmony are saved to `results/01_qc/`,
 \small
 **Figure 5. UMAP visualization after Harmony integration, colored by sample identity.** The plot shows the distribution of cells from wild-type (WT) and *pifq* mutant samples following batch-effect correction with Harmony, allowing assessment of sample mixing and the effectiveness of batch-effect correction.
 \normalsize
+
+### Step 2.4. Clustering resolution and final clustering {-}
+
+At this stage, the samples have been merged and batch-corrected. Before identifying cell populations, we need to make two important decisions: how many principal components (PCs) to include in the analysis and which clustering resolution to use. These parameters influence how cells are grouped according to similarities in their gene-expression profiles. To help guide these decisions, we have prepared the `run_clustering()` function, which generates three visualizations: an elbow plot **(Figure 6)**, a clustree plot **(Figure 7)**, and a UMAP showing the resulting cell clusters **(Figure 8)**.
+
+In this workflow, we selected a resolution of 0.35. The clustree visualization indicates a relatively stable clustering structure at this resolution, with most clusters showing clear correspondence to clusters at the preceding resolution. However, the choice of resolution is not universal and should be guided by the dataset, clustering stability, and expected biological diversity.
+
+```r
+ath_sc <- run_clustering(
+  ath_sc,
+  resolutions_test   = c(0.15, 0.35, 0.45, 0.55, 1.0),
+  cluster_resolution = 0.35,
+  dims               = 1:30
+)
+```
+
+Once these parameters have been defined, the workflow performs Leiden clustering and assigns each cell a numerical cluster identifier, stored in the Seurat metadata column `seurat_clusters` **(Figure 8)**. These cluster IDs provide the starting point for cell-type annotation in the next section. The resulting elbow plots and clustree are saved in `results/02_clustering/` and then clusters the cells at `cluster_resolution` (Section 6), saving the UMAP of the clusters.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.5\linewidth]{assets/fig6_elbow.png}
+\end{center}
+
+\small
+**Figure 6. Elbow plot showing the variance explained by each principal component (PC).** The plot displays the standard deviation (or variance) associated with each PC, helping identify the number of PCs to retain for downstream analyses, including UMAP dimensionality reduction and clustering.
+\normalsize
+
+\newpage
+
+\begin{center}
+\includegraphics[width=0.62\linewidth]{assets/fig7_clustree.png}
+\end{center}
+
+\small
+**Figure 7. Selection of clustering resolution using clustree plot.** The plot illustrates how cell clusters are organized and split across different clustering resolutions, helping identify a suitable resolution that provides stable and biologically meaningful cell populations for downstream analysis.
+\normalsize
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.55\linewidth]{assets/fig8_umap_clusters.png}
+\end{center}
+
+\small
+**Figure 8. UMAP visualization of Seurat cell clusters.** Cells are colored according to their assigned cluster identities, with each cluster represented by a unique number. Clustering was performed using the selected resolution, allowing visualization of the transcriptionally distinct cell populations identified in the dataset.
+\normalsize
+
+### Step 2.5. Cell-type annotation and gene expression {-}
+
+In this section, we assign biological identities to the clusters identified in the previous step. To interpret these clusters, we use marker genes reported in the scientific literature as references for identifying known cell populations. The marker gene reference table is provided in `data/biblio_marks.txt`. The marker gene table contains one row per marker gene and three required columns: i) `celltype`: the cell type associated with the marker, ii) `symbol`: the gene symbol, and `ID`: the gene identifier, using the *Arabidopsis thaliana* AGI locus code. These identifiers must match the gene names used in the Seurat object.
+
+The `run_annotation()` function incorporates Seurat's `FindAllMarkers()` function to identify marker genes that are differentially expressed in each cluster compared with all other cells. To assign cell-type identities, the pipeline compares the significant marker genes identified for each cluster with a reference list of marker genes compiled from the scientific literature (`biblio_marks.txt`). When a match is found, the annotation function selects the reference marker with the lowest adjusted p-value and assigns its corresponding cell-type label to the cluster. If the same cell-type label is assigned to multiple clusters, a numerical suffix is added to distinguish them (e.g., Mesophyll.1 and Mesophyll.2). A dotplot is generated to assess whether the expected marker genes support the proposed annotations, while a UMAP plot displays the resulting cell-type labels across the dataset. In a dot plot, the color typically represents average gene expression, while the dot size indicates the proportion of cells expressing each gene. Together, these features help assess whether the selected markers are consistent with the assigned identities **(Figure 9)**.
+
+**Interpretation:** Treat the assigned labels as putative cell identities rather than definitive classifications. Marker expression can vary between cell types, developmental stages, and experimental conditions. Whenever possible, use multiple marker genes and consider the biological context to validate each annotation.
+
+In addition, we can visualize the expression of a selected gene across the annotated cell types. This allows you to explore where a gene is expressed, compare its expression levels between cell populations, and assess whether its expression pattern is consistent with its known or expected biological function. As an example, we used AT4G21750 (*ATML1*), a well-established marker gene for epidermal cells in *Arabidopsis*, to illustrate the identification and visualization of cell-type-specific gene expression. The pipeline generates two complementary visualizations: a Violin plot, which shows the distribution of *ATML1* expression across cell clusters, and a FeaturePlot, which displays its expression pattern across cells in the UMAP embedding. Together, these plots illustrate how marker gene expression can be used to support cell-type annotation **(Figure 10)**. Keep in mind that low or undetected expression does not necessarily indicate that a gene is biologically inactive, as transcript detection can be affected by sequencing depth and the inherent sparsity of scRNA-seq data. The resulting figures are saved in `results/03_annotation/` and `results/04_expression/`.
+
+```r
+ath_sc <- run_annotation(
+  ath_sc,
+  marker_file = "data/biblio_marks.txt",
+  gene        = "AT4G21750"
+)
+```
+
+\bigskip
+
+```{=latex}
+\begin{center}
+\includegraphics[width=0.485\linewidth]{assets/fig9a_dotplot.png}\hfill
+\includegraphics[width=0.485\linewidth]{assets/fig9b_umap_annotation.png}
+\end{center}
+```
+
+\small
+**Figure 9. Cell-type annotation based on established marker genes.** Biological identities were assigned to the clusters identified in the previous step using marker genes previously reported in the scientific literature. The dot plot shows the expression patterns of selected marker genes across clusters, providing support for the proposed cell-type annotations. The UMAP plot displays the spatial distribution of the annotated cell types across the dataset.
+\normalsize
+
+\bigskip
+
+```{=latex}
+\begin{center}
+\begin{minipage}[t]{0.485\linewidth}\centering\textbf{(i)}\\[2pt]\includegraphics[width=\linewidth]{assets/fig10a_violin.png}\end{minipage}\hfill
+\begin{minipage}[t]{0.485\linewidth}\centering\textbf{(ii)}\\[2pt]\includegraphics[width=\linewidth]{assets/fig10b_featureplot.png}\end{minipage}
+\end{center}
+```
+
+\small
+**Figure 10. Gene expression visualization across annotated cell types.** Expression of a selected gene is visualized using two complementary plots: (i) a violin plot showing the distribution of gene expression levels across annotated cell types, allowing comparisons of expression levels between cell populations; and (ii) a FeaturePlot showing the spatial distribution of gene expression across the UMAP embedding.
+\normalsize
+
+### Step 2.6. Exporting the curated Seurat object {-}
+
+This final step of the R workflow exports the curated Seurat object in two formats to support downstream analyses in both R and Python. The `.rds` file preserves the R object for future use in Seurat, whereas the `.h5ad` file provides an AnnData-compatible representation for analysis with Python-based tools.
+
+```r
+run_export_object(ath_sc, name = "ath_sc_annotated")
+```
+
+Both files are saved in `results/objects/`:
+
+- `ath_sc_annotated.rds`: the curated Seurat object for subsequent analyses in R.
+- `ath_sc_annotated.h5ad`: the corresponding AnnData object for downstream analyses in Python.
+
+Before proceeding, verify that both files were generated successfully. Because conversion between Seurat and AnnData objects may not preserve every data structure or metadata field identically, check that the relevant expression data, cell annotations, dimensionality reductions, and other required metadata are available in the exported object before using it in subsequent analyses.
