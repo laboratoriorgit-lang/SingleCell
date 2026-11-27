@@ -73,4 +73,17 @@ save_pdf(
 
 message("\nOK S3 COMPLETE: Subcluster inspection and manual curation")
 
+# ==============================================================================
+# Supplementary Section S5 - Gene expression feature plots
+# ==============================================================================
+# FeaturePlot of any gene on the UMAP (Step 2.5 only draws the gene given to
+# run_annotation()). Use one AGI locus code, or a vector of them (one panel per gene).
+output_dir <- dir_04
+ath_sc <- JoinLayers(ath_sc)
 
+save_pdf(
+  plot_gene_umap(ath_sc, "AT4G21750"),
+  "feature_gene_AT4G21750.pdf"
+)
+
+message("\nOK S5 COMPLETE: Gene expression feature plots")
