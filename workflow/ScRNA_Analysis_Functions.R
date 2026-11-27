@@ -1352,7 +1352,7 @@ subcluster_cell_type <- function(obj, ctype, annot_col = "celltype_grouped",
   if (!annot_col %in% colnames(obj@meta.data)) {
     stop("Column '", annot_col, "' not found in the object. ",
          if (annot_col == "celltype_grouped")
-           "Run Supplementary Section S2 first: it creates celltype_grouped. " else "",
+           "Run Supplementary Section S1 first: it creates celltype_grouped. " else "",
          "Available annotation columns: ",
          paste(grep("^celltype", colnames(obj@meta.data), value = TRUE), collapse = ", "))
   }
@@ -1563,7 +1563,7 @@ apply_subcluster_reassignment <- function(obj, subcluster_list, reassign,
 #' @param output_dir   Directory for the per-cluster inspection figures.
 #' @param annot_col    Column where the keys of `reassign` are looked up
 #'   (default "celltype"). Use "celltype_grouped" when the keys are labels
-#'   created by Supplementary Section S2 (e.g. "Mesophyll", which merges
+#'   created by Supplementary Section S1 (e.g. "Mesophyll", which merges
 #'   Mesophyll.1 and Mesophyll.2).
 #' @param source_col   Baseline annotation column (default "celltype").
 #' @param dest_col     Output curated column (default "celltype_curated").
@@ -5820,7 +5820,7 @@ run_tf_coexpression_network <- function(...) {
 # dir_01..dir_08, dir_objects).
 # ==============================================================================
 
-# -- internal: marker table for the subcluster functions (Supplementary S3) ----
+# -- internal: marker table for the subcluster functions (Supplementary S2) ----
 # Uses the table given, else the one left by run_annotation() in this session, else
 # reads data/biblio_marks.txt.
 .get_marker_table <- function(marker_table = NULL, marker_file = "data/biblio_marks.txt") {
@@ -5890,8 +5890,7 @@ run_clustering <- function(ath_sc,
                            k_param            = 20) {
   # elbow plot and clustree
   plot_resolution_elbow(ath_sc, output_dir = dir_02)
-  clu <- run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
-  assign("clu", clu, envir = globalenv())   # used by plot_annotated_clustree() (Supplementary S1)
+  run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
   message("\n[2.4] elbow plot and clustree saved")
 
   # final clustering
@@ -5909,7 +5908,7 @@ run_clustering <- function(ath_sc,
 run_annotation <- function(ath_sc, marker_file, gene = NULL) {
   marker_file  <- file.path(DATA_DIR, marker_file)
   marker_table <- standardize_marker_table(marker_file)
-  assign("marker_table", marker_table, envir = globalenv())   # reused by Supplementary S3
+  assign("marker_table", marker_table, envir = globalenv())   # reused by Supplementary S2
 
   # annotation
   .set_output_dir(dir_03)

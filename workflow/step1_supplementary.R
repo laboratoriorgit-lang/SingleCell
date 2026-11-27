@@ -1,22 +1,9 @@
 # Step 1 (supplementary) - optional steps of the single-cell analysis (R)
-# Run after Section 7 of step1_singlecell.R (needs `ath_sc` annotated,
-# the directories created in the init block and, for S1, optionally `clu` from run_clustering()).
+# Run after Step 2.5 (needs `ath_sc` annotated and the directories created by init_pipeline()).
 # These steps are not needed by the rest of the workflow.
 
 # ==============================================================================
-# Supplementary Section S1 - Annotated clustree
-# ==============================================================================
-output_dir <- dir_03
-
-plot_annotated_clustree(
-  ath_sc, annot_col = "celltype", output_dir = output_dir
-)
-
-message("\nOK S1 COMPLETE: Annotated clustree")
-
-
-# ==============================================================================
-# Supplementary Section S2 - Cell-type grouping
+# Supplementary Section S1 - Cell-type grouping
 # ==============================================================================
 # Merge the two mesophyll subclusters into a single label.
 # Set grouping <- c() to skip this step (celltype_grouped == celltype).
@@ -37,11 +24,11 @@ save_pdf(
   "umap_grouped.pdf"
 )
 
-message("\nOK S2 COMPLETE: Cell-type grouping")
+message("\nOK S1 COMPLETE: Cell-type grouping")
 
 
 # ==============================================================================
-# Supplementary Section S3 - Subcluster marker inspection
+# Supplementary Section S2 - Subcluster marker inspection
 # ==============================================================================
 output_dir <- dir_05
 Idents(ath_sc) <- "celltype"
@@ -56,7 +43,7 @@ inspect_subcluster_markers(
 #    to "Mesophyll" (no relabeling) -- use this pattern when inspection
 #    confirms the original label was already correct.
 #    The keys of `reassign` are labels of celltype_grouped (created in
-#    Supplementary Section S2), so annot_col and source_col point to that column:
+#    Supplementary Section S1), so annot_col and source_col point to that column:
 reassign <- list(
   "Mesophyll" = c("others" = "Mesophyll")
 )
@@ -71,10 +58,10 @@ save_pdf(
   "umap_curated.pdf"
 )
 
-message("\nOK S3 COMPLETE: Subcluster inspection and manual curation")
+message("\nOK S2 COMPLETE: Subcluster inspection and manual curation")
 
 # ==============================================================================
-# Supplementary Section S4 - Gene expression violin and feature plots
+# Supplementary Section S3 - Gene expression violin and feature plots
 # ==============================================================================
 # Violin plot and FeaturePlot of any gene (Step 2.5 only draws the gene given to
 # run_annotation()). Use one AGI locus code, or a vector of them (one panel per gene).
@@ -94,4 +81,4 @@ save_pdf(
   paste0("feature_gene_", gene_tag, ".pdf")
 )
 
-message("\nOK S4 COMPLETE: Gene expression violin and feature plots")
+message("\nOK S3 COMPLETE: Gene expression violin and feature plots")

@@ -16,7 +16,7 @@ init_pipeline(data_dir="/workspace/.")
 # ==============================================================================
 INPUT_H5AD     = "/workspace/results/objects/ath_sc_annotated.h5ad"
 # "celltype" (Section 7) is always present. Switch to "celltype_grouped" if
-# Supplementary Section S2 was used, or "celltype_curated" if Supplementary Section S3 was used.
+# Supplementary Section S1 was used, or "celltype_curated" if Supplementary Section S2 was used.
 ANNOTATION_COL = "celltype"
 N_JOBS         = 4
 

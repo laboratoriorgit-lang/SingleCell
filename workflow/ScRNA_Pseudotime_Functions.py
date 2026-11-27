@@ -33,7 +33,7 @@ def ensure_expression_in_X(adata, layer="logcounts"):
 
 # The R workflow can export up to three annotation columns depending on which
 # optional sections were run: "celltype" (Section 7, always present), plus
-# "celltype_grouped" (Supplementary Section S2) and/or "celltype_curated" (Supplementary Section S3) if
+# "celltype_grouped" (Supplementary Section S1) and/or "celltype_curated" (Supplementary Section S2) if
 # the curation steps were used. Checked here so a missing ANNOTATION_COL fails
 # with a clear message instead of a raw KeyError deep inside sc.pl.umap.
 KNOWN_ANNOTATION_COLS = ["celltype", "celltype_grouped", "celltype_curated"]
@@ -123,7 +123,7 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
             f"ANNOTATION_COL = '{annotation_col}' not found in this object. "
             f"Available annotation columns: {available_annots}. Set ANNOTATION_COL "
             "to one of these -- 'celltype_grouped'/'celltype_curated' are only "
-            "present if Supplementary Section S2/11 were run in Step 1."
+            "present if Supplementary Section S1/S2 were run in Step 2."
         )
 
     sc.settings.figdir = dir_pseudotime
@@ -137,7 +137,7 @@ def load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4):
     for i, ct in enumerate(sorted(adata.obs[annotation_col].unique()), 1):
         print(f"  {i:2d}.  {ct:<30s}  {counts[ct]:>5d} cells")
 
-    print("\nSTEP 25 COMPLETE: full object loaded")
+    print("\nOK 4.2 COMPLETE: Loading the annotated AnnData object")
     return adata, n_jobs
 
 
