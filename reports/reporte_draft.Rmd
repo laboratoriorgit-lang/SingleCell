@@ -805,7 +805,7 @@ adata_fitted = plot_gene_trends(
 \bigskip
 
 \begin{center}
-\includegraphics[width=0.8\linewidth]{assets/fig18_gene_trends.png}
+\includegraphics[width=0.95\linewidth]{assets/fig18_gene_trends.png}
 \end{center}
 
 \small
