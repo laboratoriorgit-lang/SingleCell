@@ -809,5 +809,21 @@ adata_fitted = plot_gene_trends(
 \end{center}
 
 \small
-**Figure 18.** Caption pending.
+**Figure 18. Gene expression trends along pseudotime in the epidermis cotyledon trajectory.** Heatmaps are generated to visualize the resulting expression patterns along the trajectory. Left: Expression trends of the 10 most variable genes along pseudotime, showing changes in gene expression across the inferred trajectory. Right: Expression trend of *ATML1* (AT4G21750), highlighted using the same fitted-trend workflow.
 \normalsize
+
+### Step 4.7. Final export {-}
+
+This section saves the final AnnData object after trajectory inference and gene-trend analysis. The exported object retains the pseudotime values, trajectory-related results, and cell-layout coordinates generated during the analysis. Saving these results in `.h5ad` format allows the object to be reloaded for further analysis or visualization without repeating the entire workflow.
+
+```python
+export_final_object(adata_traj, name="ath_sc_pseudotime_final")
+```
+
+The final object is saved to `results/objects/ath_sc_pseudotime_final.h5ad`.
+
+This is the final step of the pipeline. Exit the Python REPL explicitly by running `exit()`, in the same way that `q()` is used to quit the R session. This closes the interactive Python session and returns you to the container’s command-line interface.
+
+```python
+exit()          # leave Python
+```
