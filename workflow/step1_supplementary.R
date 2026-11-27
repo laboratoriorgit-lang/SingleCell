@@ -1,6 +1,6 @@
 # Step 1 (supplementary) - optional steps of the single-cell analysis (R)
 # Run after Section 7 of step1_singlecell.R (needs `ath_sc` annotated, `marker_table`,
-# the directories created in the init block and, for S1, `clu` from Section 5).
+# the directories created in the init block and, for S1, optionally `clu` from run_clustering()).
 # These steps are not needed by the rest of the workflow.
 
 # ==============================================================================
@@ -9,7 +9,7 @@
 output_dir <- dir_03
 
 plot_annotated_clustree(
-  ath_sc, clu, annot_col = "celltype", output_dir = output_dir
+  ath_sc, annot_col = "celltype", output_dir = output_dir
 )
 
 message("\nOK S1 COMPLETE: Annotated clustree")

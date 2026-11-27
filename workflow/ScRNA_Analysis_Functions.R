@@ -413,15 +413,27 @@ Mode <- function(x) {
 #' cluster IDs, and saves it.
 #'
 #' @param seurat_obj Annotated Seurat object.
-#' @param clu        Clustering object returned by run_resolution_sweep().
+#' @param clu        Clustering object returned by run_resolution_sweep() (optional, see below).
 #' @param annot_col  Metadata column with the cell-type annotation to label nodes with.
 #' @param output_dir Folder to save the clustree pdf into.
 #' @param filename   Output pdf filename (default: "clustree_annotated.pdf").
 #' @return Invisibly, the table of cell-type labels used for annotation.
 #' @export
-plot_annotated_clustree <- function(seurat_obj, clu, annot_col, output_dir,
-                                     filename = "clustree_annotated.pdf") {
+plot_annotated_clustree <- function(seurat_obj, clu = NULL, annot_col, output_dir,
+                                     filename = "clustree_annotated.pdf",
+                                     resolutions = c(0.15, 0.35, 0.45, 0.55, 1.0)) {
   stopifnot(annot_col %in% colnames(seurat_obj@meta.data))
+
+  # clu = NULL: use the object left by run_clustering() in this session or, if it is not
+  # there (e.g. the annotated object was loaded from disk), recompute the resolution sweep.
+  if (is.null(clu)) {
+    clu <- if (exists("clu", envir = globalenv(), inherits = FALSE)) {
+      get("clu", envir = globalenv())
+    } else {
+      run_resolution_sweep(seurat_obj, resolutions = resolutions, output_dir = output_dir,
+                           filename = "clustree_resolutions.pdf")
+    }
+  }
 
   celltype_label <- as.character(seurat_obj[[annot_col, drop = TRUE]])
   names(celltype_label) <- Cells(seurat_obj)
@@ -5866,7 +5878,8 @@ run_clustering <- function(ath_sc,
                            k_param            = 20) {
   # elbow plot and clustree
   plot_resolution_elbow(ath_sc, output_dir = dir_02)
-  run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
+  clu <- run_resolution_sweep(ath_sc, resolutions = resolutions_test, output_dir = dir_02)
+  assign("clu", clu, envir = globalenv())   # used by plot_annotated_clustree() (Supplementary S1)
   message("\n[2.4] elbow plot and clustree saved")
 
   # final clustering
