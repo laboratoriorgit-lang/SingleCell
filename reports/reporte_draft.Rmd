@@ -486,6 +486,8 @@ ath_sc <- run_annotation(
 **Figure 10. Gene expression visualization across annotated cell types.** Expression of a selected gene is visualized using two complementary plots: (i) a violin plot showing the distribution of gene expression levels across annotated cell types, allowing comparisons of expression levels between cell populations; and (ii) a FeaturePlot showing the spatial distribution of gene expression across the UMAP embedding.
 \normalsize
 
+**Optional.** The same two plots can be drawn for any other gene at any time, without rerunning the annotation and without repeating the full calculation of `run_annotation()` (which includes `FindAllMarkers()`). This lightweight visualization method only needs the annotated Seurat object, so it can be used to explore the expression of additional genes of interest quickly. The code and an example are described in Supplementary Section S3.
+
 ### Step 2.6. Exporting the curated Seurat object {-}
 
 This final step of the R workflow exports the curated Seurat object in two formats to support downstream analyses in both R and Python. The `.rds` file preserves the R object for future use in Seurat, whereas the `.h5ad` file provides an AnnData-compatible representation for analysis with Python-based tools.
