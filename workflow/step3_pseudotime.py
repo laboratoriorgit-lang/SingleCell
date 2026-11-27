@@ -109,8 +109,4 @@ adata_fitted = plot_gene_trends(
 # Save the fully processed pseudotime object (trajectory tree, pseudotime `t`,
 # milestones, segments and the force-directed layout) as the pipeline's final
 # Chapter 3 output, next to the curated Chapter 1 object.
-final_h5ad = os.path.join(base_dir, "objects", "ath_sc_pseudotime_final.h5ad")
-os.makedirs(os.path.dirname(final_h5ad), exist_ok=True)
-adata_traj.write_h5ad(final_h5ad)
-
-print(f"SECTION 24 COMPLETE: final pseudotime object saved -> {final_h5ad}")
+export_final_object(adata_traj, name="ath_sc_pseudotime_final")

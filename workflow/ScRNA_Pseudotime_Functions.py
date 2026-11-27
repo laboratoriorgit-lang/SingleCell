@@ -1213,6 +1213,22 @@ def run_step29_gene_trends(
                             top_n=top_n, ordering=ordering, spread_top=spread_top)
 
 
+# =============================================================================
+# STEP 4.7 - Final export
+# =============================================================================
+# Saves the final AnnData object (pseudotime values, trajectory results and layout
+# coordinates) as <name>.h5ad in results/objects/ (the Python counterpart of
+# run_export_object() in R). Returns the saved path.
+def export_final_object(adata, name="ath_sc_pseudotime_final", out_dir=None):
+    out_dir = out_dir or os.path.join(base_dir, "objects")
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{name}.h5ad")
+    adata.write_h5ad(path)
+    print("\nOK 4.7 COMPLETE: Final export")
+    print(f"  saved: {path}")
+    return path
+
+
 # Redraws the three trajectory figures of Section 21 (nodes, pseudotime, root cell)
 # from the saved <run_dir>/<name>_trajectory.h5ad, without running the inference
 # again. Use it after changing a plotting function.
