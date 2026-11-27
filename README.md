@@ -1,6 +1,6 @@
 # SingleCell — Arabidopsis scRNA-seq Pipeline
 
-A complete single-cell RNA-seq pipeline for *Arabidopsis thaliana* (readily extensible to other organisms), from raw Cell Ranger processing through QC, integration, clustering, cell-type annotation, pseudobulk differential expression, GO enrichment, gene co-expression / regulatory network inference, and pseudotime trajectory analysis. The analytical logic lives in two documented function libraries (R + Python); the `workflow/stepN_*` scripts are thin, numbered drivers that call them in sequence and mirror the accompanying **Methods in Molecular Biology** protocol (`reports/arabidopsis_scRNAseq_pipeline.Rmd`/`.pdf`).
+A complete single-cell RNA-seq pipeline for *Arabidopsis thaliana* (readily extensible to other organisms), from raw Cell Ranger processing through QC, integration, clustering, cell-type annotation, pseudobulk differential expression, GO enrichment, gene co-expression / regulatory network inference, and pseudotime trajectory analysis. The analytical logic lives in two documented function libraries (R + Python); the user runs a few short commands per step, exactly as written in the accompanying protocol, *A step-by-step procedure for inferring gene regulatory networks and pseudotime-based trajectories from single-cell RNA-sequencing data* (`reports/reporte_draft.Rmd`/`.pdf`). Each step ends with a completion message, `OK <step> COMPLETE: <step title>`, so you can check that it finished. The `workflow/stepN_*` scripts are the long, section-by-section versions of the same analysis.
 
 Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant (public dataset CRA010863, Han et al. 2023, *Nature Plants*).
 
@@ -9,55 +9,32 @@ Worked example throughout: *Arabidopsis thaliana* root, **WT vs. *pifq*** mutant
 ## Project Map
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────┐
-│                 Raw data: FASTQ (CRA010863) · TAIR10.1 genome            │
-│                          · Araport11 annotation                          │
-└───────────────────────────────┬──────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│  Step 0 — Cell Ranger (bash)                 workflow/step0_cellranger.sh│
-│                                                                          │
-│  download FASTQ → cellranger mkref (TAIR10.1+Araport11)                 │
-│    → cellranger count  →  filtered_feature_bc_matrix/ per sample        │
-└───────────────────────────────┬──────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│  Part 1 — Single-cell analysis (R)  ·  Sections 1-9                     │
-│                                          workflow/step1_singlecell.R    │
-│                                                                          │
-│   load + QC → filter → doublets → merge → Harmony integration           │
-│     → resolution sweep → clustering → cell-type annotation              │
-│     → subcluster curation → export (.rds + .h5ad)                       │
-│                                                                          │
-│   Helpers: ScRNA_Analysis_Functions.R                                   │
-│   Output:  results/01_qc … 05_curation/, results/objects/               │
-└───────────────────────────────┬──────────────────────────────────────────┘
-                                 │  ath_sc_annotated.rds / ath_sc_annotated.h5ad
-              ┌──────────────────┴───────────────────┐
-              ▼                                       ▼
-┌─────────────────────────────────────┐   ┌─────────────────────────────────┐
-│ Part 2 — Pseudobulk DE / GO /        │   │ Part 3 — Pseudotime (Python)    │
-│  co-expression networks (R)          │   │  Sections 18-24                 │
-│  Sections 10-17                      │   │  workflow/step3_pseudotime.py   │
-│  workflow/step2_degs.R               │   │                                 │
-│                                       │   │  cell-type selection            │
-│  pseudobulk per cell type            │   │    → Palantir diffusion maps    │
-│    → DESeq2 (WT vs pifq)             │   │    → scFates PPT tree           │
-│    → volcano / DE tables             │   │    → root + pseudotime          │
-│    → GO enrichment (clusterProfiler) │   │    → gene trends (top-N +       │
-│    → log2FC heatmap                  │   │      custom highlight)          │
-│    → hdWGCNA / GENIE3 / WGCNA /      │   │                                 │
-│      synergy networks → TF-DE network│   │  Helpers:                       │
-│                                       │   │  ScRNA_Pseudotime_Functions.py  │
-│  Helpers: ScRNA_Analysis_Functions.R │   │                                 │
-│  Output: results/06_de_results …     │   │  Output: results/09_pseudotime/ │
-│          08_networks/                │   │                                 │
-└───────────────────────────────────────┘   └─────────────────────────────────┘
+Step 1 - Set up and raw data                     (bash)
+  tmux, clone the repository, start the container, Cell Ranger
+  -> filtered_feature_bc_matrix/ per sample  (ScWT/outs, Scpifq/outs are already included)
+        |
+        v
+Step 2 - Single-cell analysis in R               workflow/init.R, ScRNA_Analysis_Functions.R
+  2.1 Initialization                     init_pipeline()
+  2.2 Quality control and cell filtering run_qc_filtering()
+  2.3 UMAP and Harmony integration       run_umap_integration()
+  2.4 Clustering resolution and final clustering   run_clustering()
+  2.5 Cell-type annotation and gene expression     run_annotation()
+  2.6 Exporting the curated Seurat object          run_export_object()  -> .rds + .h5ad
+        |
+        +--------------------------------------------+
+        v                                            v
+Step 3 - Pseudobulk DE, GO, networks (R)     Step 4 - Pseudotime trajectory (Python)
+  3.1 Assigning pseudo-replicates              4.1 Setting up the Python environment
+      run_pseudobulk_de(): DESeq2, volcano,    4.2 Loading the annotated AnnData object
+      GO, log2FC heatmap                       4.3 Selecting cell types for trajectory inference
+  3.2 Gene co-expression and TF networks       4.4 Trajectory inference and root selection
+      run_tf_network(): hdWGCNA + TF-DE        4.5 Plotting gene expression along the trajectory
+                                               4.6 Gene expression trends along pseudotime
+                                               4.7 Final export (.h5ad)
 ```
 
-The **Rmd** in `reports/` is the literate, publication-ready version of the same three parts (plus Cell Ranger as Part 1) — it interleaves the identical code chunks from `step0`–`step3` with narrative text, figures and interpretation, and renders to `reports/arabidopsis_scRNAseq_pipeline.pdf`.
+The **Rmd** in `reports/` is the literate, publication-ready version of this workflow: the same commands with narrative text, figures, notes and the supplementary sections. It renders to `reports/reporte_draft.pdf`.
 
 ---
 
@@ -70,7 +47,7 @@ The **Rmd** in `reports/` is the literate, publication-ready version of the same
 | Disk space | 80 GB free | 100 GB free |
 | Container runtime | any OCI-compatible runtime | Singularity/Apptainer (primary), or Docker |
 
-Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is **not bundled** in `psblab/scrnaseq:latest` — but since it is proprietary software that ends up installed under the cloned repository (e.g. `cellranger-9.0.1/` alongside `workflow/`), it lands inside the same `/workspace` bind either runtime provides, so it is reachable from `PATH` within the same container session as the rest of the pipeline (see Part 0 below) — no separate host shell needed.
+Not hard limits — below them the pipeline still runs, just slower, and the heavier steps (Cell Ranger, sample merging, PCA/UMAP) risk stalling or exhausting memory. Cell Ranger itself is CPU- and memory-intensive and is **not bundled** in `psblab/scrnaseq:latest` — but since it is proprietary software that ends up installed under the cloned repository (e.g. `cellranger-9.0.1/` alongside `workflow/`), it lands inside the same `/workspace` bind either runtime provides, so it is reachable from `PATH` within the same container session as the rest of the pipeline (see Step 1.4 of the report) — no separate host shell needed.
 
 ---
 
@@ -85,14 +62,14 @@ singularity exec --bind "$(pwd)":/workspace --pwd /workspace scrnaseq.sif /bin/b
 
 Run the `singularity exec` line every time you come back to work on this pipeline, from inside the cloned repository directory (so `$(pwd)` resolves to it). `--pwd /workspace` starts the shell inside the bound repo (otherwise Apptainer warns the host working directory doesn't exist in the container and falls back to `$HOME`). The bundled Python (`/opt/venv`) and R packages stay on `PATH` since Apptainer imports the full image environment.
 
-Once inside the container (`/workspace` = repo root):
+Once inside the container (`/workspace` = repo root), follow the report: start `R` and run `source("/workspace/workflow/init.R")` (Step 2.1), or `python3` and `exec(open("/workspace/workflow/init.py").read(), globals())` (Step 4.1). The commands below are also available:
 
 ```bash
 R                                          # interactive R console
 python3                                    # interactive Python console (venv on PATH)
-Rscript workflow/step1_singlecell.R        # run Part 1 end-to-end
-Rscript workflow/step2_degs.R              # run Part 2 end-to-end
-python3 workflow/step3_pseudotime.py       # run Part 3 end-to-end
+Rscript workflow/step1_singlecell.R        # long version of Step 2, section by section
+Rscript workflow/step2_degs.R              # long version of Step 3
+python3 workflow/step3_pseudotime.py       # long version of Step 4
 ```
 
 Always pull/convert the published image rather than rebuilding from the `Dockerfile` — it pins no versions and would drift from the tested build.
@@ -139,40 +116,30 @@ SingleCell/
 ├── data/
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz
 │   ├── Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz
-│   ├── biblio_marks.txt             # cell-type marker table (celltype, symbol, ID)
+│   ├── biblio_marks.txt                # cell-type marker table (celltype, symbol, ID)
 │   └── AtTFDB_loci.txt                 # Arabidopsis transcription-factor loci, one per line
 ├── params.yaml                         # optional: all editable values in one file
 ├── workflow/
-│   ├── step0_cellranger.sh             # Part 0: FASTQ download + mkref + cellranger count
-│   ├── step1_singlecell.R              # Part 1: Sections 1-9 (QC → annotated object)
-│   ├── step1_supplementary.R           # Optional steps S1-S3 (annotated clustree, grouping, curation)
-│   ├── step2_degs.R                    # Part 2: Sections 10-17 (pseudobulk DE → networks)
-│   ├── step3_pseudotime.py             # Part 3: Sections 18-24 (pseudotime trajectory)
-│   ├── run_all.sh                      # optional: runs Steps 1-3 with params.yaml
-│   ├── make_param_steps.py             # optional: generates parameter-driven copies of the steps (used by run_all.sh)
-│   ├── init.R / init.py                # init_pipeline(): loads libraries + functions, sets seed, creates results folders
+│   ├── init.R / init.py                # Steps 2.1 / 4.1: init_pipeline() loads libraries + functions, sets seed, creates results folders
 │   ├── load_libraries.R                # loads every R package the pipeline needs
-│   ├── load_libraries_python.py        # loads every Python package Part 3 needs
-│   ├── ScRNA_Analysis_Functions.R      # 75 R functions backing Parts 1-2 (documented below)
-│   └── ScRNA_Pseudotime_Functions.py   # Python functions backing Part 3 (documented below)
+│   ├── load_libraries_python.py        # loads every Python package Step 4 needs
+│   ├── ScRNA_Analysis_Functions.R      # R functions (condensed wrappers run_* + the functions behind them)
+│   ├── ScRNA_Pseudotime_Functions.py   # Python functions backing Step 4
+│   ├── step0_cellranger.sh             # Step 1.4: FASTQ download + mkref + cellranger count
+│   ├── step1_singlecell.R              # long version of Step 2 (Sections 1-9)
+│   ├── step1_supplementary.R           # optional Supplementary Sections S1-S3 (grouping, curation, gene plots)
+│   ├── step2_degs.R                    # long version of Step 3 (Sections 10-17)
+│   ├── step3_pseudotime.py             # long version of Step 4 (Sections 18-24)
+│   ├── run_all.sh                      # optional: runs the long versions with params.yaml
+│   └── make_param_steps.py             # optional: generates parameter-driven copies of the steps (used by run_all.sh)
 └── reports/
-    ├── arabidopsis_scRNAseq_pipeline.Rmd   # literate Methods-paper source (WT vs pifq)
-    ├── arabidopsis_scRNAseq_pipeline.pdf   # rendered report
-    ├── lang_box.lua / latex_header.tex     # Pandoc/LaTeX helpers for the PDF render
-    └── assets/                             # figures embedded in the report
+    ├── reporte_draft.Rmd               # protocol source (WT vs pifq)
+    ├── reporte_draft.pdf               # rendered protocol with supplementary sections S1-S5
+    ├── lang_box.lua / latex_header_draft.tex   # Pandoc/LaTeX helpers for the PDF render
+    └── assets/                         # figures embedded in the report
 ```
 
-`workflow/step1_singlecell.R` and `step2_degs.R` both call `create_pipeline_dirs()` on `results/`, which creates:
-
-```
-results/
-├── 01_qc/            02_clustering/     03_annotation/     04_expression/
-├── 05_curation/       06_de_results/     07_go/             08_networks/
-├── 09_pseudotime/     (created directly by step3_pseudotime.py)
-└── objects/           # .rds / .h5ad checkpoints (ath_sc_annotated.rds, ath_sc_annotated.h5ad, ...)
-```
-
-`results/` itself is not tracked in git — it is generated fresh by running the pipeline against your own data.
+All the steps write into `results/`, one subfolder per step: `01_qc`, `02_clustering`, `03_annotation`, `04_expression`, `05_curation` (optional), `06_de_results`, `07_go`, `08_networks`, `09_pseudotime` and `objects/` (`.rds` / `.h5ad` checkpoints). The full file tree is shown in Supplementary Section S5 of the report. `results/` itself is not tracked in git: it is generated fresh by running the pipeline against your own data.
 
 ---
 
@@ -180,7 +147,7 @@ results/
 
 The step scripts and the report contain, in each code block, the values you may want to change. Nothing else is needed to follow the workflow.
 
-**`params.yaml`** gathers all those values in one file (project folder, seed, results folder, names of the objects passed between steps, samples and colors, QC thresholds, resolutions, annotation file, genes, pseudobulk comparisons, GO and network settings, supplementary sections S2-S3, trajectory settings). It is for running the workflow with other values without editing the scripts.
+**`params.yaml`** gathers all those values in one file (project folder, seed, results folder, names of the objects passed between steps, samples and colors, QC thresholds, resolutions, annotation file, genes, pseudobulk comparisons, GO and network settings, supplementary sections S1-S2, trajectory settings). It is for running the workflow with other values without editing the scripts.
 
 The scripts in `workflow/` do not read it. `workflow/make_param_steps.py` generates, from them, copies where every value is read from `params.yaml` (and keeps the script's value if the file does not give one); `run_all.sh` generates them and runs them. The copies are always rebuilt, so they cannot drift from the scripts.
 
@@ -204,84 +171,81 @@ PARAMS_FILE=/workspace/params.yaml Rscript results/params_steps/step1_singlecell
 
 ## Pipeline walkthrough
 
-### Part 0 — Cell Ranger (`workflow/step0_cellranger.sh`)
+Each row is one command block of the report and the message printed when it finishes.
 
-**Quick test without Part 0:** `ScWT/` and `Scpifq/` are already in the repository (only `outs/filtered_feature_bc_matrix/`, `metrics_summary.csv` and `web_summary.html` of each sample, about 110 MB in total), at the paths read by `step1_singlecell.R`. Clone the repository and start directly at Part 1. Part 0 is only needed to reproduce these matrices from the FASTQ files or to process other samples.
+### Step 1 - Set up and raw data
 
-Reference script (not meant to run unattended): install Cell Ranger 9.0.1, download FASTQ for accession CRA010863 (WT = CRR775298, *pifq* = CRR775297) from the BIG Data Center, build the Cell Ranger reference from the bundled TAIR10.1 genome + Araport11 GTF (`cellranger mkref`), then run `cellranger count` per sample. Requires a signed, account-tied 10x download URL that cannot be hard-coded — copy it from the 10x Genomics downloads page.
+tmux session (1.1), clone the repository (1.2), start the container (1.3), and raw data download and Cell Ranger (1.4, `workflow/step0_cellranger.sh`). **Quick test without Cell Ranger:** `ScWT/` and `Scpifq/` are already in the repository (only `outs/filtered_feature_bc_matrix/`, `metrics_summary.csv` and `web_summary.html` of each sample, about 110 MB in total), so you can start directly at Step 2. Cell Ranger is only needed to reproduce these matrices from the FASTQ files (accession CRA010863; WT = CRR775298, *pifq* = CRR775297) or to process other samples; it needs a signed, account-tied 10x download URL that cannot be hard-coded.
 
-### Part 1 — Single-cell analysis (`workflow/step1_singlecell.R`, Sections 1–9)
+### Step 2 - Single-cell analysis in R
 
-| Section | What happens |
+| Step | Command | Message when it finishes |
+|---|---|---|
+| 2.1 | `source("/workspace/workflow/init.R")` | `OK 2.1 COMPLETE: Initialization` |
+| 2.2 | `run_qc_filtering(samples, colors, ...)` | `OK 2.2 COMPLETE: Quality control and cell filtering` |
+| 2.3 | `run_umap_integration(...)` (merge, PCA, UMAP, Harmony) | `OK 2.3 COMPLETE: UMAP and Harmony integration` |
+| 2.4 | `run_clustering(...)` (resolution sweep, clustree, final clusters) | `OK 2.4 COMPLETE: Clustering resolution and final clustering` |
+| 2.5 | `run_annotation(ath_sc, marker_file, gene)` (`FindAllMarkers`, marker-based annotation, violin and feature plot) | `OK 2.5 COMPLETE: Cell-type annotation and gene expression` |
+| 2.6 | `run_export_object(ath_sc, name = "ath_sc_annotated")` | `OK 2.6 COMPLETE: Exporting the curated Seurat object` |
+
+### Step 3 - Pseudobulk differential expression, GO and networks (R)
+
+| Step | Command | Message when it finishes |
+|---|---|---|
+| 3.1 | `run_pseudobulk_de(...)`: pseudo-replicates, DESeq2, volcano plots, DE tables, GO enrichment, log2FC heatmap | `OK 3.1 COMPLETE: Assigning pseudo-replicates` |
+| 3.2 | `run_tf_network(...)`: hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`) | `OK 3.2 COMPLETE: Gene co-expression and transcription factor networks` |
+
+### Step 4 - Pseudotime trajectory (Python)
+
+| Step | Command | Message when it finishes |
+|---|---|---|
+| 4.1 | `exec(open("/workspace/workflow/init.py").read(), globals())` | `OK 4.1 COMPLETE: Setting up the Python environment` |
+| 4.2 | `load_curated_object(...)`: reads the `.h5ad` of Step 2.6 | `OK 4.2 COMPLETE: Loading the annotated AnnData object` |
+| 4.3 | `preview_trajectory_selection(...)`: choose the cell type(s) of the trajectory | `OK 4.3 COMPLETE: Selecting cell types for trajectory inference` |
+| 4.4 | `run_trajectory_runs(...)`: Palantir diffusion maps, scFates tree, root, pseudotime | `OK 4.4 COMPLETE: Trajectory inference and root selection` |
+| 4.5 | `plot_genes_on_trajectory(...)` | `OK 4.5 COMPLETE: Plotting gene expression along the trajectory` |
+| 4.6 | `compute_gene_trends(...)` and `plot_gene_trends(...)` | `OK 4.6 COMPLETE: Gene expression trends along pseudotime` |
+| 4.7 | `export_final_object(adata_traj, name = "ath_sc_pseudotime_final")` | `OK 4.7 COMPLETE: Final export` |
+
+### Supplementary sections (optional)
+
+| Section | What it is |
 |---|---|
-| 1 | Load each CellRanger `filtered_feature_bc_matrix/` (`load_seurat_samples`), compute `percent.mt`, save pre-filter QC violins (`plot_qc_batch`) |
-| 2 | Filter cells (`filter_seurat_samples`/`filter_sample`), save post-filter QC, checkpoint `.rds` |
-| 3 | `merge_and_preprocess` — merge samples, `NormalizeData` → `FindVariableFeatures` → `ScaleData` → `RunPCA` → `RunUMAP` (pre-Harmony); the UMAP and `.rds` are saved in the step |
-| 4 | `run_harmony_umap` — `RunHarmony("orig.ident")` batch correction → post-Harmony UMAP; the UMAP and `.rds` are saved in the step |
-| 5 | Optional elbow plot (`plot_resolution_elbow`) to check how many PCs to use, and `clustree` across 5 candidate resolutions (`run_resolution_sweep`) |
-| 6 | `cluster_cells` — final `RunUMAP`/`FindNeighbors`/`FindClusters` (Leiden, `algorithm = 4`) at the chosen resolution, on `cluster_dims` (default `1:30`); identities and UMAP are set/saved in the step |
-| 7 | Marker-based annotation: `find_markers` (`FindAllMarkers`, TSV-cached) + `annotate_by_markers` against `data/biblio_marks.txt` + `plot_marker_dotplot` |
-| 8 | Gene expression violin + feature plots for genes of interest |
-| 9 | Export the annotated object as `.rds` and, via `export_to_scanpy`, as `.h5ad` for Part 3 |
+| S1 | Cell-type grouping (`celltype_grouped`), `workflow/step1_supplementary.R` |
+| S2 | Subcluster inspection and manual curation (`celltype_curated`) |
+| S3 | Violin and feature plots of any gene, without repeating the annotation |
+| S4 | Root selection methods for the pseudotime |
+| S5 | Output layout: all the files and folders of the pipeline |
 
-### Supplementary steps (optional, `workflow/step1_supplementary.R`)
-
-These steps start from the annotation of Section 7. They are not needed by the rest of the workflow.
-
-| Step | What happens |
-|---|---|
-| S1 | Annotated `clustree` (cluster tree labeled by majority cell type) |
-| S2 | Merge duplicate cluster labels into `celltype_grouped` |
-| S3 | Subcluster inspection and curation (`inspect_subcluster_markers`, `curate_clusters`) → `celltype_curated` |
-
-### Part 2 — Pseudobulk DE, GO enrichment, networks (`workflow/step2_degs.R`, Sections 10–17)
-
-| Section | What happens |
-|---|---|
-| 10 | `create_cell_type_subsets` — one Seurat subset per annotated cell type |
-| 11 | `assign_pseudoreplicates_batch` — random pseudo-replicate groups per condition (no biological replicates needed) |
-| 12 | `run_pseudobulk_deseq2_analysis` — pseudobulk count tables + `run_deseq2` per cell type, per comparison (WT vs *pifq*) |
-| 13 | `render_volcano_plots` — per-cell-type volcano plots + combined PDF |
-| 14 | `build_differential_tables` — combined classification (up/down/none) and log2FC tables across cell types |
-| 15 | `run_go_enrichment_for_contrast` — `clusterProfiler::enrichGO` per cell type on significant genes |
-| 16 | `build_logfc_heatmap` — staircase-ordered log2FC heatmap across cell types |
-| 17 | `run_hdwgcna_tf_network` — hdWGCNA co-expression network on DE genes, filtered to transcription factors (`data/AtTFDB_loci.txt`), colored by up/down direction |
-
-### Part 3 — Pseudotime trajectory (`workflow/step3_pseudotime.py`, Sections 18–24)
-
-| Section | What happens |
-|---|---|
-| 18 | Setup: `init_pipeline()` (`init.py`) loads `load_libraries_python.py` + `ScRNA_Pseudotime_Functions.py`, creates `results/09_pseudotime/` |
-| 19 | `load_curated_object` — read the Part 1 `.h5ad`, fix Seurat→scanpy `obsm` key names, plot overview UMAP |
-| 20 | `preview_trajectory_selection` — subset to the cell type(s) that form the trajectory (e.g. `"Epidermis"`) |
-| 21 | `run_trajectory_runs` → `build_pseudotime_trajectory` — Palantir diffusion maps → scFates Principal Polynomial Tree (PPT) → root selection (see [Root selection for pseudotime](#root-selection-for-pseudotime)) → pseudotime assignment; supports sweeping multiple parameter sets in one call |
-| 22 | Gene expression plotted directly on the force-directed trajectory graph |
-| 23 | `compute_gene_trends` — `scFates.tl.test_association` + `.fit` (saved and reused); then `plot_gene_trends` — top-N and custom-gene trend heatmaps, one plot per highlighted gene |
-| 24 | Export the final trajectory object as `results/objects/ath_sc_pseudotime_final.h5ad` |
+The full pipeline, from a clean clone of the repository to Step 4.7, was run block by block following the report, and every step printed its message.
 
 ### Root selection for pseudotime
 
-Pseudotime is measured from a **root**. A trajectory tree has no direction of its own: the same tree read from one end or from the other fits the data equally well, so the start has to be anchored to something outside the tree. Trajectory tools ask for a start cell or population based on biological knowledge (Haghverdi et al. 2016; Setty et al. 2019; Saelens et al. 2019). `build_pseudotime_trajectory()` (called by `run_trajectory_runs()`) sets the root as follows, with `root_method = "auto"` (the default):
+Pseudotime is measured from a **root**. A trajectory tree has no direction of its own: the same tree read from one end or from the other fits the data equally well, so the start has to be anchored to something outside the tree (Haghverdi et al. 2016; Setty et al. 2019; Saelens et al. 2019). The root is set with the `root_method` argument of `run_trajectory_runs()`:
 
-| Trajectory | Root |
+| `root_method` | How the root is chosen |
 |---|---|
-| **Two or more cell types** | The most-connected cell of the cell type selected in `root_cluster` (for example `guard cell`). |
-| **A single cell type** | The tip of the tree with the highest mean of `root_score` (default: the number of detected genes per cell, `nFeature_RNA`). The root cell is the cell of that tip with the lowest pseudotime. |
+| `"auto"` (default) | Tree tip with the highest mean number of detected genes (`nFeature_RNA`), a proxy for low differentiation (Gulati et al. 2020). The root cell is the cell of that tip with the lowest pseudotime. |
+| `"score"` | Same rule as `auto`, with your own `root_score` (an `obs` column or a gene ID); `root_lowest = True` takes the lowest mean. |
+| `"most_connected"` | Cell with the highest connectivity in the nearest-neighbor graph, following the idea that progenitors are the most connected cells (Grün et al. 2016). |
+| `"medoid"` | Cell closest, on average, to all other cells in PCA space (Domingo et al. 2023). |
+| `"tip"` | Tree tip given in `root_tip` (the node number shown in the tree figure). |
 
-**Why this rule for a single cell type.** With one cell type there is no population to name as the root, and the most-connected cell is the center of the cloud: it falls in the middle of the tree and moves when the graph parameters change. Instead, the root is anchored to a score that tells how "early" a cell looks. The default score is the number of detected genes per cell, which correlates with developmental potential in single-cell data (Gulati et al. 2020, the basis of CytoTRACE), and scFates supports choosing the root tip automatically from an `obs` column or a gene (Faure et al. 2023).
+With a `ROOT_CLUSTER`, `auto`, `score`, `most_connected` and `medoid` only consider the cells of that cell type. Details and examples are in Supplementary Section S4 of the report.
 
 **What to keep in mind**
 
 - It is an assumption, not a measurement. The number of detected genes was established as a potency proxy in animal datasets and has not been validated broadly in plants. The direction of pseudotime is conventional, and the function prints a note when it applies the rule.
-- It can be set from your own biology: `root_score` (an `obs` column or a gene ID, for example a progenitor marker; `root_lowest = True` for an end-state marker), `root_method = "tip"` with `root_tip` (the node number shown in the tree figure), or `root_method = "score"` to use the tip rule also with several cell types.
+- `most_connected` and `medoid` are simple criteria implemented in this pipeline; no published method uses them as root rules. The connectivity of a cell also depends on local density.
 - Always look at the tree: `plot_root_cell()` and `plot_pseudotime_trajectory()` mark the root cell with a red dot.
 - `summarize_along_pseudotime()` (optional, not called by the workflow) gives the mean of numeric columns and genes, and the share of each group (for example `condition`), along pseudotime bins. Use it to check what the axis mixes with.
-- In the WT vs *pifq* epidermis example, the rule put the root at the same end in 12 of 12 settings of seed, number of nodes, `eigs`, neighbors, `sigma` and `lambda` (position 0.06-0.15 of the main axis, the first principal component of the Harmony embedding; pseudotime correlation with the base run of at least 0.93), and at the same transcriptional end when WT and *pifq* cells were analyzed separately. The most-connected cell moved between 0.49 and 0.88 of the axis. Stability does not prove that the direction is right: in that example the axis also separated a WT-enriched end from a *pifq*-enriched region.
-- The previous behaviour (the most-connected cell of `root_cluster`, also with a single cell type) remains available as `root_method = "most_connected"` to reproduce older results. It is not used by the workflow.
+- Trajectory settings matter: in the example, `lambda_value = 100` removes a spurious short branch of the tree that appears with `lambda_value = 20`.
 
 **References**
 
+- Domingo J, León T, Dura E (2023). Scellpam: an R package/C++ library to perform parallel partitioning around medoids on scRNAseq data sets. *BMC Bioinformatics* 24: 342. doi:10.1186/s12859-023-05471-1
 - Faure L, Soldatov R, Kharchenko PV, Adameyko I (2023). scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. *Bioinformatics* 39(1): btac746.
+- Grün D, et al. (2016). De novo prediction of stem cell identity using single-cell transcriptome data. *Cell Stem Cell* 19(2): 266-277. doi:10.1016/j.stem.2016.05.010
 - Gulati GS, et al. (2020). Single-cell transcriptional diversity is a hallmark of developmental potential. *Science* 367(6476): 405-411. doi:10.1126/science.aax0249
 - Haghverdi L, Büttner M, Wolf FA, Buettner F, Theis FJ (2016). Diffusion pseudotime robustly reconstructs lineage branching. *Nature Methods* 13: 845-848. doi:10.1038/nmeth.3971
 - Saelens W, Cannoodt R, Todorov H, Saeys Y (2019). A comparison of single-cell trajectory inference methods. *Nature Biotechnology* 37: 547-554. doi:10.1038/s41587-019-0071-9
@@ -290,6 +254,22 @@ Pseudotime is measured from a **root**. A trajectory tree has no direction of it
 ---
 
 ## Function reference
+
+### 0. Condensed wrappers (the commands of the report)
+
+These functions run a whole step with one call and print `OK <step> COMPLETE: <title>` at the end. They call the functions documented below.
+
+| Function | Step | What it does |
+|---|---|---|
+| `run_qc_filtering(samples, colors, ...)` | 2.2 | Loads the samples, saves pre-filter QC, filters cells (with DoubletFinder), saves post-filter QC and the filtered list |
+| `run_umap_integration(seurat_list, colors, ...)` | 2.3 | Merge, normalization, PCA, UMAP before and after Harmony |
+| `run_clustering(ath_sc, ...)` | 2.4 | Elbow plot, clustree across resolutions, final clustering |
+| `run_annotation(ath_sc, marker_file, gene = NULL)` | 2.5 | `FindAllMarkers`, annotation by markers, dot plot, UMAP, violin and feature plot of `gene`; creates the global `marker_table` |
+| `run_export_object(ath_sc, name = "ath_sc_annotated")` | 2.6 | Saves `<name>.rds` and `<name>.h5ad` in `results/objects/` |
+| `run_pseudobulk_de(ath_sc, marker_file, ...)` | 3.1 | Pseudo-replicates, DESeq2, volcano plots, DE tables, GO enrichment, log2FC heatmap |
+| `run_tf_network(ath_sc, contrast_tag, ...)` | 3.2 | hdWGCNA network on DE genes and TF-DE network |
+
+---
 
 ### 1. QC and Visualization
 
@@ -615,7 +595,7 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 |---|---|
 | `save_plot_18x18(fig, path)` | Saves a matplotlib figure at 18×18 in, 200 dpi, white background |
 | `ensure_expression_in_X(adata, layer="logcounts")` | Copies `adata.layers[layer]` into `.X` if `.X` is empty — required before any scanpy gene-color plot |
-| `load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4)` | Step 25: loads the Part 1 `.h5ad`, remaps Seurat-style `obsm` keys (`UMAP`→`X_umap`, `PCA`→`X_pca`, `HARMONY`→`X_harmony`), plots overview UMAP with a side legend, prints per-cell-type counts |
+| `load_curated_object(input_h5ad, dir_pseudotime, annotation_col, n_jobs=4)` | Step 25: loads the `.h5ad` of Step 2.6, remaps Seurat-style `obsm` keys (`UMAP`→`X_umap`, `PCA`→`X_pca`, `HARMONY`→`X_harmony`), plots overview UMAP with a side legend, prints per-cell-type counts |
 | `preview_trajectory_selection(adata, clusters, annotation_col, dir_pseudotime)` | Step 26: subsets to selected cell types, plots a preview UMAP; `raise`s if a requested cluster name doesn't exist |
 | `trajectory_run(nodes=50, sigma=0.2, lambda_value=60, eigs=20, seed=3)` | Builds a named parameter-set dict for `run_trajectory_runs`; the name encodes every parameter so identical configs share a folder |
 | `build_pseudotime_trajectory(adata, clusters, root_cluster, annotation_col, nodes=150, sigma=0.2, ppt_lambda=60, n_components=50, n_eigs=20, n_neighbors=50, seed=3, root_method="auto", root_score="nFeature_RNA", root_lowest=False, root_tip=None)` | Core Step 27 pipeline: subset → Palantir diffusion maps → neighbors graph → `scFates.tl.tree` (PPT) → root selection → `scFates.tl.pseudotime`. Root: with several cell types, the most-connected cell of `root_cluster`; with a single cell type, the tip of the tree with the highest mean of `root_score` (see [Root selection for pseudotime](#root-selection-for-pseudotime)) |
@@ -643,10 +623,10 @@ Stacks a list of plots into one column (`patchwork::wrap_plots(ncol = 1)`), save
 
 | File | Format | Used by |
 |---|---|---|
-| `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Part 0) |
-| `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Part 0) |
+| `Arabidopsis_thaliana_TAIR10.1_Araport11_genome.fasta.gz` | FASTA, gzipped | `cellranger mkref` (Step 1.4) |
+| `Arabidopsis_thaliana_TAIR10.1_Araport11_annotation.gtf.gz` | GTF, gzipped | `cellranger mkref` (Step 1.4) |
 | `biblio_marks.txt` | TSV marker table with columns `celltype`, `symbol`, `ID`, found by header name via `standardize_marker_table()` (an older two-column format, cell type and gene ID, is also accepted). 28 genes, 9 cell types, chosen from `FindAllMarkers` specificity of the WT vs pifq run plus published markers | `annotate_by_markers`, `plot_marker_dotplot`, `build_logfc_heatmap` (Parts 1–2) |
-| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Part 2, Section 17) |
+| `AtTFDB_loci.txt` | plain text, one AGI locus per line | `run_hdwgcna_tf_network` / `plot_hdwgcna_network_tf` (Step 3.2) |
 
 ---
 
