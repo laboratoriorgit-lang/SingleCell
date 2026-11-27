@@ -865,3 +865,694 @@ This work was supported by the funding ANID-Millennium Science Initiative Progra
 19. M. Setty et al., Characterization of cell fate probabilities in single-cell data with Palantir. Nature biotechnology 37, 451-460 (2019).
 20. L. Faure, R. Soldatov, P. V. Kharchenko, I. Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. Bioinformatics (Oxford, England) 39 (2023).
 21. G. S. Gulati et al., Single-cell transcriptional diversity is a hallmark of developmental potential. Science 367, 405-411 (2020).
+
+\newpage
+
+# Supplementary methods {-}
+
+The steps below are optional. They start from the annotation of Step 2.5
+and write their results to separate columns (`celltype_grouped`,
+`celltype_curated`) or figures, so the main workflow runs without them. If you
+use one of them, set the annotation column of Supplementary Section S1 accordingly. The code is
+also available in `workflow/step1_supplementary.R`.
+
+## Supplementary Section S1 - Cell-type grouping {-}
+
+This optional section simplifies annotation labels by merging selected cell types
+or subclusters into broader groups. It uses the `grouping` object as a small
+renaming table: the names on the left are the current labels, and the values on
+the right are the new labels.
+
+For example, in this report the two mesophyll subclusters, `Mesophyll.1` and
+`.2`, are renamed as `Mesophyll`. Any cell type that is not listed in `grouping` keeps its
+original label.
+
+Use this section when the detailed annotation is useful for inspection but a
+simpler grouping is better for figures or downstream summaries. The grouped
+labels are stored in `celltype_grouped`, and the grouped UMAP is saved as
+`results/05_curation/umap_grouped.pdf`.
+
+```{r supp_s2_cell_type_grouping_optional, strip_comments=FALSE}
+# Merge the two mesophyll subclusters into a single label
+grouping <- c(
+  "Mesophyll.1" = "Mesophyll",
+  "Mesophyll.2" = "Mesophyll"
+)
+
+output_dir <- dir_05
+
+current <- as.character(ath_sc$celltype)
+ath_sc$celltype_grouped <- ifelse(
+  current %in% names(grouping), grouping[current], current
+)
+
+save_pdf(
+  plot_umap(ath_sc, "celltype_grouped"),
+  "umap_grouped.pdf"
+)
+
+message("\nOK S1 COMPLETE: Cell-type grouping")
+```
+
+Representative output from Supplementary Section S1:
+
+```{=latex}
+\begin{center}
+\includegraphics[width=0.30\linewidth]{assets/umap_grouped.png}
+\end{center}
+```
+
+\small
+**Figure S1.** UMAP colored by grouped cell-type labels.
+\normalsize
+
+
+
+## Supplementary Section S2 - Subcluster inspection and manual curation {-}
+
+This optional section is for manual curation when one annotated cluster needs a
+closer look. First, `inspect_subcluster_markers()` takes one cluster, splits it
+into smaller subclusters, and saves a figure with the subcluster UMAP and marker
+gene patterns. This helps decide whether the original label should be kept or
+refined.
+
+If refinement is needed, `reassign` is edited as a small mapping table. The outer
+name is the cluster being curated, the names inside are subcluster IDs, and the
+values are the new labels. The special label `others` is used for any subcluster
+not listed explicitly.
+
+In this example the inspected cluster is `Mesophyll.1`, one of the two mesophyll
+subclusters that Supplementary Section S1 merges into `Mesophyll`. The inspection
+confirms the original label, so `reassign` maps every Mesophyll subcluster back to
+`"Mesophyll"` and no cell is relabeled; this is the pattern to use when the
+inspection shows that the original annotation was already correct.
+
+The names of `reassign` are looked up in the column given by `annot_col`. Because
+`Mesophyll` is a label of `celltype_grouped` (created in Supplementary Section S1)
+and not of `celltype`, which only has `Mesophyll.1` and `Mesophyll.2`, the call uses
+`annot_col = "celltype_grouped"`; S1 must be run first, otherwise the function stops
+with a message that says so.
+
+Then `curate_clusters()` applies those manual labels and stores the result in
+`celltype_curated`. The final curated UMAP is saved as
+`results/05_curation/umap_curated.pdf`. This block is not executed automatically
+because the label choices depend on inspecting the figures.
+
+```{r supp_s3_interactive_cell_type_curation_optional, eval=FALSE, strip_comments=FALSE}
+output_dir <- dir_05
+Idents(ath_sc) <- "celltype"
+
+# 1. Inspect a cluster (saves the combined subcluster + marker figure)
+inspect_subcluster_markers(
+  ath_sc, cluster_id = "Mesophyll.1", output_dir = output_dir
+)
+
+# 2. Map each cluster's subclusters to labels ("others" = any ID not listed),
+#    then curate them in one call. Here Mesophyll's subclusters all map back
+#    to "Mesophyll" (no relabeling), which is the pattern to use when the
+#    subcluster inspection confirms the original label was already correct.
+#    The keys of `reassign` are labels of celltype_grouped (created in
+#    Supplementary Section S1), so annot_col and source_col point to that column:
+reassign <- list(
+  "Mesophyll" = c("others" = "Mesophyll")
+)
+ath_sc <- curate_clusters(
+  ath_sc, reassign, output_dir = output_dir,
+  annot_col = "celltype_grouped", source_col = "celltype_grouped"
+)
+
+# 3. Save the curated annotation UMAP
+save_pdf(
+  plot_umap(ath_sc, "celltype_curated"),
+  "umap_curated.pdf"
+)
+
+message("\nOK S2 COMPLETE: Subcluster inspection and manual curation")
+```
+
+Representative output from Supplementary Section S2 — subcluster inspection of the
+Mesophyll population (UMAP of its subclusters plus marker-gene panels used to
+decide whether to keep or split the label):
+
+```{=latex}
+\begin{center}
+\includegraphics[width=0.45\linewidth]{assets/subcluster_markers_mesophyll.png}
+\end{center}
+```
+
+\small
+**Figure S2.** Mesophyll subcluster inspection: subcluster UMAP, marker dotplot, and per-gene marker panels.
+\normalsize
+
+*In this example the Mesophyll subclusters are mapped back to `Mesophyll` (no
+relabeling), which shows the inspect-then-curate mechanism without changing any
+label. The main workflow does not need this step: it continues with the labels
+from Step 2.5.*
+
+\newpage
+
+## Supplementary Section S3 - Gene expression violin and feature plots {-}
+
+This optional section shows how to visualize the expression of any gene across the
+annotated cell types, in addition to the gene used in Step 2.5. Two plots are drawn: a
+violin plot, with the distribution of the expression of the gene in each cell type, and a
+FeaturePlot, which colors each cell on the UMAP according to the expression of the gene
+and shows directly where in the dataset it is expressed. In Step 2.5, `run_annotation()`
+generates both plots for one gene (`gene = "AT4G21750"`, *ATML1*; Figure 10). The same plots
+can be made for any other gene, at any time, without repeating the annotation.
+
+To visualize another gene, change the gene identifier (AGI locus code). Several
+identifiers can be given as a vector, in which case one panel is drawn per gene. The
+figures are saved in `results/04_expression/`.
+
+```r
+gene <- "AT4G21750"
+gene_tag <- paste(gene, collapse = "_")
+
+output_dir <- dir_04
+ath_sc <- JoinLayers(ath_sc)
+Idents(ath_sc) <- "celltype"
+
+save_vln(
+  plot_gene_violin(ath_sc, gene),
+  paste0("vln_gene_", gene_tag, ".pdf")
+)
+save_pdf(
+  plot_gene_umap(ath_sc, gene),
+  paste0("feature_gene_", gene_tag, ".pdf")
+)
+
+message("\nOK S3 COMPLETE: Gene expression violin and feature plots")
+```
+
+Representative output from Supplementary Section S3 (violin plot on the left and
+FeaturePlot on the right, as in Figure 10):
+
+```{=latex}
+\begin{center}
+\includegraphics[width=0.40\linewidth]{assets/fig10a_violin.png}\hspace{0.03\linewidth}
+\includegraphics[width=0.40\linewidth]{assets/fig10b_featureplot.png}
+\end{center}
+```
+
+## Supplementary Section S4 - Root selection methods {-}
+
+Pseudotime has no direction by itself: the root, where pseudotime is 0, has to be chosen
+(Step 4.4). It is set with the `root_method` argument of `run_trajectory_runs()`. Five
+methods are available:
+
+| `root_method` | How the root is chosen | When to use it |
+|---|---|---|
+| `"auto"` (default) | Automatic rule of Gulati et al. (2020): the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). With several cell types and a `ROOT_CLUSTER`, only the cells of that cell type are scored. | No prior knowledge of the starting point. Cells with more detected genes are assumed to be less differentiated. |
+| `"score"` | The same rule with your own `root_score` (a metadata column or a gene); `root_lowest = True` takes the lowest mean instead of the highest. It needs a `ROOT_CLUSTER` that is an existing cell type. | A gene or column marks the start (or the end) of the trajectory better than the number of detected genes. |
+| `"most_connected"` | The cell with the highest summed connectivity in the nearest-neighbor graph, among the cells of `ROOT_CLUSTER` (or among all cells if it is empty). | The root must lie inside a cell type chosen by the user. It favors dense regions, which are not always the center. |
+| `"medoid"` | The most average cell: the cell with the smallest mean distance to all the other cells in PCA space. With a `ROOT_CLUSTER`, only the cells of that cell type are used. | A neutral start in the center of the population. Pseudotime then measures the distance to the center rather than developmental time. |
+| `"tip"` | The tree tip with the node number given in `root_tip`. | The biological starting point is known and can be identified in the tree figure (manual override, described below). |
+
+**Manual root override (`"tip"`).**
+
+If the automatic root selection (Step 4.4) does not match the expected
+biological starting point, the root can be set manually by specifying a tree
+node number. This requires two runs:
+
+1. **First run with `auto`:** Run the trajectory with default settings. The
+   pipeline generates an FA (ForceAtlas2) plot showing the tree structure with
+   numbered nodes at each tip. Inspect this plot to identify which tip
+   corresponds to the biological root (e.g., the progenitor population).
+
+2. **Second run with `tip`:** Re-run with `root_method = "tip"` and `root_tip`
+   set to the node number identified in step 1.
+
+```python
+# Example: re-run with manual root at node 42
+adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
+    adata           = adata,
+    clusters        = TRAJECTORY_CLUSTERS,
+    root_cluster    = ROOT_CLUSTER,
+    annotation_col  = ANNOTATION_COL,
+    root_method     = "tip",
+    root_tip        = 42,  # node number from FA plot
+)
+```
+
+This approach is useful when the Gulati score (number of detected genes) does
+not correctly identify the progenitor population, for example in datasets where
+differentiated cells have higher transcriptional diversity than progenitors.
+
+# Supplementary Table — Software dependencies and versions {-}
+
+Package versions are those bundled in the `psblab/scrnaseq:latest` Docker image
+(the public image used for all R and Python steps). R **base-priority** packages
+are omitted. Cell Ranger is 10x Genomics proprietary software run *outside* the
+container (Part 1); its version is fixed by the workflow.
+
+## Interpreters and command-line tools {-}
+
+| Tool | Version |
+|:-----|:--------|
+| Cell Ranger | 9.0.1 |
+| R | 4.5.3 |
+| Python | 3.12.3 |
+
+## Installing tmux or screen {-}
+
+**tmux:** see the official installation guide at https://github.com/tmux/tmux/wiki/Installing
+maintained by the tmux developers. This is the authoritative source for
+platform-specific instructions (Linux package managers, macOS Homebrew/MacPorts,
+BSD ports, building from source, and Windows via WSL2). The wiki is kept
+up-to-date with each release and covers edge cases not listed here.
+
+**screen:** `sudo apt install screen` (Debian/Ubuntu), `sudo yum install screen`
+(RHEL/CentOS/Fedora), or ships with macOS by default.
+
+Windows users: this whole pipeline (Cell Ranger, Docker/Singularity, R,
+Python) is Linux-based. The practical options on Windows are WSL2
+(https://learn.microsoft.com/windows/wsl/install) running Ubuntu locally, or
+an SSH client (Windows Terminal, PuTTY, or WSL2's own `ssh`) connecting out to
+a Linux server or HPC cluster where the rest of this guide applies directly.
+Once inside WSL2 or an SSH session on Linux, use the commands above.
+
+## Installing a container runtime (Docker or Singularity/Apptainer) {-}
+
+Pick one; both run the same `psblab/scrnaseq:latest` image (see "Container
+startup" in Part 1).
+
+**Docker**
+
+| OS | Install |
+|---|---|
+| Linux | https://docs.docker.com/engine/install/ (distro-specific packages) |
+| macOS | Docker Desktop: https://docs.docker.com/desktop/install/mac-install/ |
+| Windows | Docker Desktop with the WSL2 backend: https://docs.docker.com/desktop/install/windows-install/ |
+
+**Singularity / Apptainer** (no root required; common on HPC clusters where
+Docker is not permitted)
+
+| OS | Install |
+|---|---|
+| Linux | https://apptainer.org/docs/admin/main/installation.html |
+| macOS / Windows | not natively supported — use a Linux VM, WSL2, or the remote server/cluster itself |
+
+On a shared HPC cluster, Singularity/Apptainer is usually already installed
+system-wide — check with `singularity --version` or `apptainer --version`
+before installing anything.
+
+## Troubleshooting Singularity/Apptainer {-}
+
+**Symptom.** `singularity build` finishes, but the startup command
+(`singularity exec ... scrnaseq.sif /bin/bash`) fails with `squashfuse not
+found` followed by `Operation not permitted` during extraction.
+
+**Cause.** A `.sif` file is a compressed (squashfs) filesystem that must be
+mounted to run. Where Apptainer is installed with its setuid helper (common on
+shared clusters), this works with no further setup. In a rootless installation
+without that helper, Apptainer mounts the image through FUSE using
+`squashfuse`; if it is missing, Apptainer falls back to extracting the image,
+which fails when user namespaces are disabled or restricted, or when the
+temporary directory is unusable.
+
+**Prerequisite check.** Run these three commands:
+
+```bash
+apptainer --version                        # must print a version number
+which squashfuse fusermount                # must print a path for both programs
+cat /proc/sys/user/max_user_namespaces     # must print a number greater than 0
+```
+
+The first command must always work. If Apptainer was installed with its setuid
+helper (common on shared clusters), nothing else is needed. Otherwise the
+second command must print a path for both programs, and the third must print a
+number greater than 0. If either is missing, the error above is expected.
+
+**Fixes, in order of effort.**
+
+1. Install `squashfuse` and `fuse` (on a cluster, ask the administrators).
+2. Point Apptainer to a local disk with free space that is not mounted
+   `noexec`, then retry:
+
+```bash
+export APPTAINER_TMPDIR=/path/to/local/disk/tmp
+export APPTAINER_CACHEDIR=/path/to/local/disk/cache
+mkdir -p "$APPTAINER_TMPDIR" "$APPTAINER_CACHEDIR"
+```
+
+3. Avoid mounting by building a directory instead of a `.sif`, and run that:
+
+```bash
+apptainer build --sandbox scrnaseq/ docker://psblab/scrnaseq:latest
+apptainer exec --bind $(pwd):/workspace --pwd /workspace scrnaseq/ /bin/bash
+```
+
+4. If none of these work, contact your system administrators, or use Docker
+   (Option B) on a machine where it is permitted.
+
+On Ubuntu 24.04 and similar distributions, AppArmor can restrict unprivileged
+user namespaces by default; this requires an administrator to allow Apptainer.
+
+## R packages (421) {-}
+
+**Note on package versions:** The tables below list the package versions installed
+in the `psblab/scrnaseq:latest` container image at the time of writing. These
+versions are locked inside the container, so anyone who pulls the image gets
+exactly these versions — there is nothing to install manually. **The authoritative
+source is the container itself**, not this list; if the image is updated in the
+future, the container's installed versions take precedence. To inspect the current
+versions inside a running container, use `R -e "installed.packages()[,3]"` for R
+or `pip list` for Python.
+
+```{=latex}
+\footnotesize
+```
+| Package | Version | Package | Version |
+|:--------|:--------|:--------|:--------|
+| `abind` | 1.4-8 | `locfit` | 1.5-9.12 |
+| `anndataR` | 1.0.2 | `lubridate` | 1.9.5 |
+| `AnnotationDbi` | 1.72.0 | `magrittr` | 2.0.5 |
+| `ape` | 5.8-1 | `maps` | 3.4.3 |
+| `aplot` | 0.2.9 | `MASS` | 7.3-65 |
+| `askpass` | 1.2.1 | `Matrix` | 1.7-5 |
+| `assertthat` | 0.2.1 | `MatrixGenerics` | 1.22.0 |
+| `assorthead` | 1.4.0 | `MatrixModels` | 0.5-4 |
+| `backports` | 1.5.1 | `matrixStats` | 1.5.0 |
+| `base64enc` | 0.1-6 | `memoise` | 2.0.1 |
+| `basilisk` | 1.22.0 | `mgcv` | 1.9-4 |
+| `batchelor` | 1.26.0 | `microbenchmark` | 1.5.0 |
+| `beachmat` | 2.26.0 | `mime` | 0.13 |
+| `beeswarm` | 0.4.0 | `miniUI` | 0.1.2 |
+| `BH` | 1.90.0-1 | `minqa` | 1.2.8 |
+| `biglm` | 0.9-3 | `modelr` | 0.1.11 |
+| `Biobase` | 2.70.0 | `monocle3` | 1.4.27 |
+| `BiocGenerics` | 0.56.0 | `nlme` | 3.1-169 |
+| `BiocManager` | 1.30.27 | `nloptr` | 2.2.1 |
+| `BiocNeighbors` | 2.4.0 | `nnet` | 7.3-20 |
+| `BiocParallel` | 1.44.0 | `numDeriv` | 2016.8-1.1 |
+| `BiocSingular` | 1.26.1 | `openssl` | 2.4.1 |
+| `BiocVersion` | 3.22.0 | `org.At.tair.db` | 3.22.0 |
+| `Biostrings` | 2.78.0 | `otel` | 0.2.0 |
+| `bit` | 4.6.0 | `pak` | 0.9.5 |
+| `bit64` | 4.8.2 | `parallelly` | 1.47.0 |
+| `bitops` | 1.0-9 | `patchwork` | 1.3.2 |
+| `blob` | 1.3.0 | `pbapply` | 1.7-4 |
+| `boot` | 1.3-32 | `pbkrtest` | 0.5.5 |
+| `BPCells` | 0.3.1 | `pbmcapply` | 1.5.1 |
+| `brew` | 1.0-10 | `pheatmap` | 1.0.13 |
+| `brio` | 1.1.5 | `pillar` | 1.11.1 |
+| `broom` | 1.0.13 | `pkgbuild` | 1.4.8 |
+| `bslib` | 0.11.0 | `pkgconfig` | 2.0.3 |
+| `cachem` | 1.1.0 | `pkgdown` | 2.2.0 |
+| `Cairo` | 1.7-0 | `pkgload` | 1.5.2 |
+| `callr` | 3.7.6 | `plotly` | 4.12.0 |
+| `car` | 3.1-5 | `plyr` | 1.8.9 |
+| `carData` | 3.0-6 | `png` | 0.1-9 |
+| `caTools` | 1.18.3 | `polyclip` | 1.10-7 |
+| `cellranger` | 1.1.0 | `polynom` | 1.4-1 |
+| `checkmate` | 2.3.4 | `praise` | 1.0.0 |
+| `circlize` | 0.4.18 | `preprocessCore` | 1.72.0 |
+| `class` | 7.3-23 | `prettyunits` | 1.2.0 |
+| `classInt` | 0.4-11 | `processx` | 3.9.0 |
+| `cli` | 3.6.6 | `profvis` | 0.4.0 |
+| `clipr` | 0.8.1 | `progress` | 1.2.3 |
+| `clue` | 0.3-68 | `progressr` | 0.19.0 |
+| `cluster` | 2.1.8.2 | `promises` | 1.5.0 |
+| `clusterProfiler` | 4.18.4 | `proxy` | 0.4-29 |
+| `clustree` | 0.5.1 | `ps` | 1.9.3 |
+| `codetools` | 0.2-20 | `pscl` | 1.5.9 |
+| `colorspace` | 2.1-2 | `purrr` | 1.2.2 |
+| `commonmark` | 2.0.0 | `quadprog` | 1.5-8 |
+| `ComplexHeatmap` | 2.26.1 | `quantreg` | 6.1 |
+| `conflicted` | 1.2.0 | `qvalue` | 2.42.0 |
+| `corrplot` | 0.95 | `R.methodsS3` | 1.8.2 |
+| `cowplot` | 1.2.0 | `R.oo` | 1.27.1 |
+| `cpp11` | 0.5.5 | `R.utils` | 2.13.0 |
+| `crayon` | 1.5.3 | `R6` | 2.6.1 |
+| `credentials` | 2.0.3 | `ragg` | 1.5.2 |
+| `crosstalk` | 1.2.2 | `RANN` | 2.6.2 |
+| `curl` | 7.1.0 | `rappdirs` | 0.3.4 |
+| `data.table` | 1.18.4 | `rbibutils` | 2.4.1 |
+| `DBI` | 1.3.0 | `rcmdcheck` | 1.4.0 |
+| `dbplyr` | 2.5.2 | `RColorBrewer` | 1.1-3 |
+| `DelayedArray` | 0.36.1 | `Rcpp` | 1.1.1-1.1 |
+| `DelayedMatrixStats` | 1.32.0 | `RcppAnnoy` | 0.0.23 |
+| `deldir` | 2.0-4 | `RcppArmadillo` | 15.2.7-1 |
+| `Deriv` | 4.2.0 | `RcppEigen` | 0.3.4.0.2 |
+| `desc` | 1.4.3 | `RcppHNSW` | 0.7.0 |
+| `DESeq2` | 1.50.2 | `RcppML` | 0.3.7.1 |
+| `devtools` | 2.5.2 | `RcppProgress` | 0.4.2 |
+| `diffobj` | 0.3.6 | `RcppRoll` | 0.3.2 |
+| `digest` | 0.6.39 | `RcppTOML` | 0.2.3 |
+| `dir.expiry` | 1.18.0 | `Rdpack` | 2.6.6 |
+| `distributional` | 0.7.0 | `readr` | 2.2.0 |
+| `doBy` | 4.7.1 | `readxl` | 1.5.0 |
+| `docopt` | 0.7.2 | `reformulas` | 0.4.4 |
+| `doParallel` | 1.0.17 | `rematch` | 2.0.0 |
+| `DOSE` | 4.4.0 | `rematch2` | 2.1.2 |
+| `dotCall64` | 1.2 | `remotes` | 2.5.0 |
+| `DoubletFinder` | 2.0.6 | `reprex` | 2.1.1 |
+| `downlit` | 0.4.5 | `reshape2` | 1.4.5 |
+| `dplyr` | 1.2.1 | `ResidualMatrix` | 1.20.0 |
+| `dqrng` | 0.4.1 | `reticulate` | 1.46.0 |
+| `dtplyr` | 1.3.3 | `rhdf5` | 2.54.1 |
+| `dynamicTreeCut` | 1.63-1 | `rhdf5filters` | 1.22.0 |
+| `e1071` | 1.7-17 | `Rhdf5lib` | 1.32.0 |
+| `ellipsis` | 0.3.3 | `RhpcBLASctl` | 0.23-42 |
+| `enrichplot` | 1.30.5 | `Rhtslib` | 3.6.0 |
+| `enrichR` | 3.4 | `rjson` | 0.2.23 |
+| `eulerr` | 8.0.0 | `rlang` | 1.2.0 |
+| `evaluate` | 1.0.5 | `rmarkdown` | 2.31 |
+| `fansi` | 1.0.7 | `ROCR` | 1.0-12 |
+| `farver` | 2.1.2 | `roxygen2` | 8.0.0 |
+| `fastcluster` | 1.3.0 | `rpart` | 4.1.24 |
+| `fastDummies` | 1.7.6 | `rprojroot` | 2.1.1 |
+| `fastmap` | 1.2.0 | `rsample` | 1.3.2 |
+| `fastmatch` | 1.1-8 | `Rsamtools` | 2.26.0 |
+| `fgsea` | 1.36.2 | `RSpectra` | 0.16-2 |
+| `fields` | 17.3 | `RSQLite` | 3.53.1 |
+| `filelock` | 1.0.3 | `rstatix` | 0.7.3 |
+| `fitdistrplus` | 1.2-6 | `rstudioapi` | 0.18.0 |
+| `FNN` | 1.1.4.1 | `rsvd` | 1.0.5 |
+| `fontawesome` | 0.5.3 | `Rtsne` | 0.17 |
+| `fontBitstreamVera` | 0.1.1 | `rversions` | 3.0.0 |
+| `fontLiberation` | 0.1.0 | `rvest` | 1.0.5 |
+| `fontquiver` | 0.2.1 | `s2` | 1.1.11 |
+| `forcats` | 1.0.1 | `S4Arrays` | 1.10.1 |
+| `foreach` | 1.5.2 | `S4Vectors` | 0.48.1 |
+| `forecast` | 9.0.2 | `S7` | 0.2.2 |
+| `foreign` | 0.8-91 | `sass` | 0.4.10 |
+| `formatR` | 1.14 | `ScaledMatrix` | 1.18.0 |
+| `Formula` | 1.2-5 | `scales` | 1.4.0 |
+| `fracdiff` | 1.5-4 | `scater` | 1.38.1 |
+| `fs` | 2.1.0 | `scattermore` | 1.2 |
+| `furrr` | 0.4.0 | `scatterpie` | 0.2.6 |
+| `futile.logger` | 1.4.9 | `sctransform` | 0.4.3 |
+| `futile.options` | 1.0.1 | `scuttle` | 1.20.0 |
+| `future` | 1.70.0 | `selectr` | 0.5-1 |
+| `future.apply` | 1.20.2 | `Seqinfo` | 1.0.0 |
+| `gargle` | 1.6.1 | `sessioninfo` | 1.2.3 |
+| `gdtools` | 0.5.1 | `Seurat` | 5.5.0 |
+| `GeneOverlap` | 1.46.0 | `SeuratDisk` | 0.0.0.9021 |
+| `generics` | 0.1.4 | `SeuratObject` | 5.4.0 |
+| `GENIE3` | 1.32.0 | `SeuratWrappers` | 0.4.0 |
+| `GenomeInfoDb` | 1.46.2 | `sf` | 1.1-1 |
+| `GenomicRanges` | 1.62.1 | `shape` | 1.4.6.1 |
+| `gert` | 2.3.1 | `shiny` | 1.13.0 |
+| `GetoptLong` | 1.1.1 | `SingleCellExperiment` | 1.32.0 |
+| `ggbeeswarm` | 0.7.3 | `sitmo` | 2.0.2 |
+| `ggdist` | 3.3.3 | `slam` | 0.1-55 |
+| `ggforce` | 0.5.0 | `slider` | 0.3.3 |
+| `ggfun` | 0.2.0 | `snow` | 0.4-4 |
+| `ggiraph` | 0.9.6 | `sourcetools` | 0.1.7-2 |
+| `ggnewscale` | 0.5.2 | `sp` | 2.2-1 |
+| `ggplot2` | 4.0.3 | `spam` | 2.11-4 |
+| `ggplotify` | 0.1.3 | `SparseArray` | 1.10.10 |
+| `ggpubr` | 0.6.3 | `SparseM` | 1.84-2 |
+| `ggraph` | 2.2.2 | `sparseMatrixStats` | 1.22.0 |
+| `ggrastr` | 1.0.2 | `spatial` | 7.3-18 |
+| `ggrepel` | 0.9.8 | `spatstat.data` | 3.1-9 |
+| `ggridges` | 0.5.7 | `spatstat.explore` | 3.8-1 |
+| `ggsci` | 5.0.0 | `spatstat.geom` | 3.8-1 |
+| `ggsignif` | 0.6.4 | `spatstat.random` | 3.5-0 |
+| `ggtangle` | 0.1.2 | `spatstat.sparse` | 3.2-0 |
+| `ggtree` | 4.0.5 | `spatstat.univar` | 3.2-0 |
+| `ggvenn` | 0.1.19 | `spatstat.utils` | 3.2-3 |
+| `gh` | 1.6.0 | `spData` | 2.3.5 |
+| `gitcreds` | 0.1.2 | `spdep` | 1.4-2 |
+| `GlobalOptions` | 0.1.4 | `speedglm` | 0.3-4 |
+| `globals` | 0.19.1 | `statmod` | 1.5.2 |
+| `glue` | 1.8.1 | `stringi` | 1.8.7 |
+| `GO.db` | 3.22.0 | `stringr` | 1.6.0 |
+| `goftest` | 1.2-3 | `SummarizedExperiment` | 1.40.0 |
+| `googledrive` | 2.1.2 | `survival` | 3.8-6 |
+| `googlesheets4` | 1.1.2 | `svglite` | 2.2.2 |
+| `GOSemSim` | 2.36.0 | `sys` | 3.4.3 |
+| `gplots` | 3.3.0 | `systemfonts` | 1.3.2 |
+| `graphlayouts` | 1.2.3 | `tensor` | 1.5.1 |
+| `gridExtra` | 2.3 | `tester` | 0.3.0 |
+| `gridGraphics` | 0.5-1 | `testthat` | 3.3.2 |
+| `grr` | 0.9.5 | `textshaping` | 1.0.5 |
+| `gson` | 0.1.0 | `tibble` | 3.3.1 |
+| `gtable` | 0.3.6 | `tidydr` | 0.0.6 |
+| `gtools` | 3.9.5 | `tidygraph` | 1.3.1 |
+| `h5mread` | 1.2.1 | `tidyr` | 1.3.2 |
+| `harmony` | 2.0.3 | `tidyselect` | 1.2.1 |
+| `haven` | 2.5.5 | `tidytree` | 0.4.7 |
+| `HDF5Array` | 1.38.0 | `tidyverse` | 2.0.0 |
+| `hdf5r` | 1.3.12 | `timechange` | 0.4.0 |
+| `hdWGCNA` | 0.4.11 | `timeDate` | 4052.112 |
+| `here` | 1.0.2 | `tinytex` | 0.59 |
+| `hexbin` | 1.28.5 | `treeio` | 1.34.0 |
+| `highr` | 0.12 | `tweenr` | 2.0.3 |
+| `Hmisc` | 5.2-5 | `tzdb` | 0.5.0 |
+| `hms` | 1.1.4 | `UCell` | 2.14.0 |
+| `htmlTable` | 2.5.0 | `UCSC.utils` | 1.6.1 |
+| `htmltools` | 0.5.9 | `units` | 1.0-1 |
+| `htmlwidgets` | 1.6.4 | `UpSetR` | 1.4.1 |
+| `httpuv` | 1.6.17 | `urca` | 1.3-4 |
+| `httr` | 1.4.8 | `urlchecker` | 1.0.1 |
+| `httr2` | 1.2.2 | `usethis` | 3.2.1 |
+| `ica` | 1.0-3 | `utf8` | 1.2.6 |
+| `ids` | 1.0.1 | `uuid` | 1.2-2 |
+| `igraph` | 2.3.2 | `uwot` | 0.2.4 |
+| `impute` | 1.84.0 | `vctrs` | 0.7.3 |
+| `ini` | 0.3.1 | `VennDiagram` | 1.8.2 |
+| `IRanges` | 2.44.0 | `vipor` | 0.4.7 |
+| `irlba` | 2.3.7 | `viridis` | 0.6.5 |
+| `isoband` | 0.3.0 | `viridisLite` | 0.4.3 |
+| `iterators` | 1.0.14 | `vroom` | 1.7.1 |
+| `jquerylib` | 0.1.4 | `waldo` | 0.6.2 |
+| `jsonlite` | 2.0.0 | `warp` | 0.2.3 |
+| `kableExtra` | 1.4.0 | `WGCNA` | 1.74 |
+| `KEGGREST` | 1.50.0 | `whisker` | 0.4.1 |
+| `KernSmooth` | 2.23-26 | `withr` | 3.0.2 |
+| `knitr` | 1.51 | `wk` | 0.9.5 |
+| `labeling` | 0.4.3 | `WriteXLS` | 6.8.0 |
+| `lambda.r` | 1.2.4 | `xfun` | 0.58 |
+| `later` | 1.4.8 | `xml2` | 1.5.2 |
+| `lattice` | 0.22-9 | `xopen` | 1.0.1 |
+| `lazyeval` | 0.2.3 | `xtable` | 1.8-8 |
+| `leidenbase` | 0.1.37 | `XVector` | 0.50.0 |
+| `lifecycle` | 1.0.5 | `yaml` | 2.3.12 |
+| `limma` | 3.66.0 | `yulab.utils` | 0.2.4 |
+| `listenv` | 0.10.1 | `zellkonverter` | 1.20.1 |
+| `littler` | 0.3.23 | `zip` | 2.3.3 |
+| `lme4` | 2.0-1 | `zoo` | 1.8-15 |
+| `lmtest` | 0.9-40 |  | |
+```{=latex}
+\normalsize
+```
+
+
+## Python packages (207) {-}
+
+
+```{=latex}
+\footnotesize
+```
+| Package | Version | Package | Version |
+|:--------|:--------|:--------|:--------|
+| `adjustText` | 1.3.0 | `notebook` | 6.5.7 |
+| `anndata` | 0.12.16 | `notebook_shim` | 0.2.4 |
+| `annotated-types` | 0.7.0 | `numba` | 0.65.1 |
+| `anyio` | 4.13.0 | `numcodecs` | 0.16.5 |
+| `argon2-cffi` | 25.1.0 | `numexpr` | 2.14.1 |
+| `argon2-cffi-bindings` | 25.1.0 | `numpy` | 2.4.6 |
+| `array-api-compat` | 1.14.0 | `numpy-groupies` | 0.11.3 |
+| `arrow` | 1.4.0 | `nvidia-cublas` | 13.1.1.3 |
+| `asttokens` | 3.0.1 | `nvidia-cuda-cupti` | 13.0.85 |
+| `async-lru` | 2.3.0 | `nvidia-cuda-nvrtc` | 13.0.88 |
+| `attrs` | 26.1.0 | `nvidia-cuda-runtime` | 13.0.96 |
+| `babel` | 2.18.0 | `nvidia-cudnn-cu13` | 9.20.0.48 |
+| `beautifulsoup4` | 4.14.3 | `nvidia-cufft` | 12.0.0.61 |
+| `bleach` | 6.3.0 | `nvidia-cufile` | 1.15.1.6 |
+| `blosc2` | 4.4.1 | `nvidia-curand` | 10.4.0.35 |
+| `cellbender` | 0.3.2 | `nvidia-cusolver` | 12.0.4.66 |
+| `certifi` | 2026.5.20 | `nvidia-cusparse` | 12.6.3.3 |
+| `cffi` | 2.0.0 | `nvidia-cusparselt-cu13` | 0.8.1 |
+| `charset-normalizer` | 3.4.7 | `nvidia-nccl-cu13` | 2.29.7 |
+| `click` | 8.4.1 | `nvidia-nvjitlink` | 13.0.88 |
+| `comm` | 0.2.3 | `nvidia-nvshmem-cu13` | 3.4.5 |
+| `contourpy` | 1.3.3 | `nvidia-nvtx` | 13.0.85 |
+| `cuda-bindings` | 13.3.1 | `opt_einsum` | 3.4.0 |
+| `cuda-pathfinder` | 1.5.5 | `packaging` | 26.2 |
+| `cuda-toolkit` | 13.0.2 | `palantir` | 1.4.4 |
+| `cycler` | 0.12.1 | `pandas` | 2.3.3 |
+| `debugpy` | 1.8.21 | `pandocfilters` | 1.5.1 |
+| `decorator` | 5.3.1 | `parso` | 0.8.7 |
+| `defusedxml` | 0.7.1 | `patsy` | 1.0.2 |
+| `donfig` | 0.8.1.post1 | `pexpect` | 4.9.0 |
+| `elpigraph-python` | 0.3.4 | `pillow` | 12.2.0 |
+| `entrypoints` | 0.4 | `pip` | 26.1.2 |
+| `executing` | 2.2.1 | `platformdirs` | 4.10.0 |
+| `fa2_modified` | 0.4 | `plotly` | 6.7.0 |
+| `fast-array-utils` | 1.4.1 | `prometheus_client` | 0.25.0 |
+| `fastjsonschema` | 2.21.2 | `prompt_toolkit` | 3.0.52 |
+| `filelock` | 3.29.0 | `psutil` | 7.2.2 |
+| `fonttools` | 4.63.0 | `ptyprocess` | 0.7.0 |
+| `fqdn` | 1.5.1 | `pure_eval` | 0.2.3 |
+| `fsspec` | 2026.4.0 | `py-cpuinfo` | 9.0.0 |
+| `google-crc32c` | 1.8.0 | `pycparser` | 3.0 |
+| `h11` | 0.16.0 | `pydantic` | 2.13.4 |
+| `h5py` | 3.16.0 | `pydantic_core` | 2.46.4 |
+| `httpcore` | 1.0.9 | `Pygments` | 2.20.0 |
+| `httpx` | 0.28.1 | `pynndescent` | 0.6.0 |
+| `idna` | 3.18 | `pyparsing` | 3.3.2 |
+| `igraph` | 1.0.0 | `pyro-api` | 0.1.2 |
+| `ipykernel` | 6.29.5 | `pyro-ppl` | 1.9.1 |
+| `ipython` | 9.14.0 | `python-dateutil` | 2.9.0.post0 |
+| `ipython-genutils` | 0.2.0 | `python-igraph` | 1.0.0 |
+| `ipython_pygments_lexers` | 1.1.1 | `python-json-logger` | 4.1.0 |
+| `ipywidgets` | 8.1.8 | `pytz` | 2026.2 |
+| `isoduration` | 20.11.0 | `PyYAML` | 6.0.3 |
+| `jax` | 0.10.1 | `pyzmq` | 27.1.0 |
+| `jaxlib` | 0.10.1 | `referencing` | 0.37.0 |
+| `jaxopt` | 0.8.5 | `requests` | 2.34.2 |
+| `jedi` | 0.20.0 | `rfc3339-validator` | 0.1.4 |
+| `Jinja2` | 3.1.6 | `rfc3986-validator` | 0.1.1 |
+| `joblib` | 1.5.3 | `rfc3987-syntax` | 1.1.0 |
+| `json5` | 0.14.0 | `rpds-py` | 2026.5.1 |
+| `jsonpointer` | 3.1.1 | `rpy2` | 3.6.7 |
+| `jsonschema` | 4.26.0 | `rpy2-rinterface` | 3.6.6 |
+| `jsonschema-specifications` | 2025.9.1 | `rpy2-robjects` | 3.6.5 |
+| `jupyter` | 1.1.1 | `scanpy` | 1.12.1 |
+| `jupyter-console` | 6.6.3 | `scFates` | 1.2.4 |
+| `jupyter-events` | 0.12.1 | `scikit-learn` | 1.9.0 |
+| `jupyter-highlight-selected-word` | 0.2.0 | `scikit-misc` | 0.5.2 |
+| `jupyter-lsp` | 2.3.1 | `scipy` | 1.17.1 |
+| `jupyter_client` | 7.4.9 | `scverse-misc` | 0.0.7 |
+| `jupyter_contrib_core` | 0.4.2 | `seaborn` | 0.13.2 |
+| `jupyter_contrib_nbextensions` | 0.7.0 | `Send2Trash` | 2.1.0 |
+| `jupyter_core` | 5.9.1 | `session-info2` | 0.4.1 |
+| `jupyter_nbextensions_configurator` | 0.6.4 | `setuptools` | 81.0.0 |
+| `jupyter_server` | 2.19.0 | `shapely` | 2.1.2 |
+| `jupyter_server_terminals` | 0.5.4 | `simpleppt` | 1.1.7 |
+| `jupyterlab` | 4.5.7 | `six` | 1.17.0 |
+| `jupyterlab_pygments` | 0.3.0 | `soupsieve` | 2.8.4 |
+| `jupyterlab_server` | 2.28.0 | `stack-data` | 0.6.3 |
+| `jupyterlab_widgets` | 3.0.16 | `statsmodels` | 0.14.6 |
+| `kiwisolver` | 1.5.0 | `sympy` | 1.14.0 |
+| `lark` | 1.3.1 | `tables` | 3.11.1 |
+| `legacy-api-wrap` | 1.5 | `terminado` | 0.18.1 |
+| `leidenalg` | 0.12.0 | `texttable` | 1.7.0 |
+| `llvmlite` | 0.47.0 | `threadpoolctl` | 3.6.0 |
+| `loompy` | 3.0.8 | `tinycss2` | 1.5.1 |
+| `lxml` | 6.1.1 | `torch` | 2.12.0 |
+| `lxml_html_clean` | 0.4.5 | `tornado` | 6.5.6 |
+| `MarkupSafe` | 3.0.3 | `tqdm` | 4.67.3 |
+| `matplotlib` | 3.10.9 | `traitlets` | 5.15.0 |
+| `matplotlib-inline` | 0.2.2 | `triton` | 3.7.0 |
+| `mellon` | 1.7.1 | `typing-inspection` | 0.4.2 |
+| `mistune` | 0.8.4 | `typing_extensions` | 4.15.0 |
+| `ml_dtypes` | 0.5.4 | `tzdata` | 2026.2 |
+| `mpmath` | 1.3.0 | `tzlocal` | 5.4.4 |
+| `msgpack` | 1.1.2 | `umap-learn` | 0.5.12 |
+| `narwhals` | 2.22.0 | `uri-template` | 1.3.0 |
+| `natsort` | 8.4.0 | `urllib3` | 2.7.0 |
+| `nbclassic` | 1.3.3 | `wcwidth` | 0.7.0 |
+| `nbclient` | 0.10.4 | `webcolors` | 25.10.0 |
+| `nbconvert` | 6.5.4 | `webencodings` | 0.5.1 |
+| `nbformat` | 5.10.4 | `websocket-client` | 1.9.0 |
+| `ndindex` | 1.10.1 | `widgetsnbextension` | 4.0.15 |
+| `nest-asyncio` | 1.6.0 | `zarr` | 3.2.1 |
+| `networkx` | 3.6.1 |  | |
+```{=latex}
+\normalsize
+```

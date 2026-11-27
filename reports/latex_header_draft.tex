@@ -32,3 +32,7 @@
   title={\includegraphics{assets/lang_labels/lang_#1.pdf}},
   fonttitle=\normalfont
 }
+
+% Long code lines wrap inside the box instead of running out of it.
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breaksymbolleft={},commandchars=\\\{\}}
