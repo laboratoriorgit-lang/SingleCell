@@ -701,7 +701,7 @@ This step fits a pseudotime trajectory to the selected cells and determines its 
 
 By default, the pipeline uses `root_method = "auto"` to automatically select the root. This method identifies the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). This approach is based on Gulati et al. (2020), who used transcriptional diversity (the number of detected genes) as an indicator of developmental potential (21). Cells with higher transcriptional diversity may represent less differentiated states and are therefore potential candidates for the starting point of a developmental trajectory. When multiple cell types are included in the analysis, the root selection is restricted to cells belonging to `ROOT_CLUSTER`. This ensures that the starting point is located within the cell type specified by the user.
 
-Users can also customize the root selection criteria using two additional parameters. The `root_score` parameter can specify a cell-level observation column (`obs`) or a gene identifier to guide root selection; set `root_lowest = True` when an end-state marker is expected to have lower expression at the root. The different root selection methods (`auto`, `most_connected`, `score` and `tip`) are described in Supplementary Section S4.
+Users can also customize the root selection criteria using two additional parameters. The `root_score` parameter can specify a cell-level observation column (`obs`) or a gene identifier to guide root selection; set `root_lowest = True` when an end-state marker is expected to have lower expression at the root. The different root selection methods (`auto`, `score`, `most_connected`, `medoid` and `tip`) are described in Supplementary Section S4.
 
 The trajectory configurations to test are defined in `TRAJECTORY_RUNS`. Each run generates a separate output directory, allowing different parameter settings to be compared without overwriting previous results. The example configuration uses 100 nodes, `sigma = 0.1`, `lambda_value = 100`, `eigs = 3`, and `seed = 3`.
 
@@ -1063,7 +1063,7 @@ methods are available:
 
 | `root_method` | How the root is chosen | When to use it |
 |---|---|---|
-| `"auto"` (default) | Automatic rule of Gulati et al. (2020): the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). With several cell types and a `ROOT_CLUSTER`, only the cells of that cell type are scored. | No prior knowledge of the starting point. Cells with more detected genes are assumed to be less differentiated. |
+| `"auto"` (default) | Automatic rule of Gulati et al. (2020) (21), who showed that the number of detected genes per cell is higher in less differentiated cells: the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). With several cell types and a `ROOT_CLUSTER`, only the cells of that cell type are scored. | No prior knowledge of the starting point. Cells with more detected genes are assumed to be less differentiated. |
 | `"score"` | The same rule with your own `root_score` (a metadata column or a gene); `root_lowest = True` takes the lowest mean instead of the highest. It needs a `ROOT_CLUSTER` that is an existing cell type. | A gene or column marks the start (or the end) of the trajectory better than the number of detected genes. |
 | `"most_connected"` | The cell with the highest summed connectivity in the nearest-neighbor graph, among the cells of `ROOT_CLUSTER` (or among all cells if it is empty). | The root must lie inside a cell type chosen by the user. It favors dense regions, which are not always the center. |
 | `"medoid"` | The most average cell: the cell with the smallest mean distance to all the other cells in PCA space. With a `ROOT_CLUSTER`, only the cells of that cell type are used. | A neutral start in the center of the population. Pseudotime then measures the distance to the center rather than developmental time. |
@@ -1095,7 +1095,7 @@ adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
 )
 ```
 
-This approach is useful when the Gulati score (number of detected genes) does
+This approach is useful when the Gulati score (21) (number of detected genes) does
 not correctly identify the progenitor population, for example in datasets where
 differentiated cells have higher transcriptional diversity than progenitors.
 
