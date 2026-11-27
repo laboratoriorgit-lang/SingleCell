@@ -1136,7 +1136,7 @@ results/
 |-- 04_expression/
 |   |-- feature_gene_<gene>.pdf
 |   `-- vln_gene_<gene>.pdf
-|-- 05_curation/
+|-- 05_curation/                         # optional (Supplementary Sections S1-S2)
 |   |-- umap_grouped.pdf
 |   |-- subcluster_markers_<cluster>.pdf
 |   `-- umap_curated.pdf
