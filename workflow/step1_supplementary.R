@@ -27,12 +27,10 @@ grouping <- c(
 
 output_dir <- dir_05
 
-if (length(grouping) > 0) {
-  current <- as.character(ath_sc$celltype)
-  ath_sc$celltype_grouped <- ifelse(current %in% names(grouping), grouping[current], current)
-} else {
-  ath_sc$celltype_grouped <- ath_sc$celltype
-}
+current <- as.character(ath_sc$celltype)
+ath_sc$celltype_grouped <- ifelse(
+  current %in% names(grouping), grouping[current], current
+)
 
 save_pdf(
   plot_umap(ath_sc, "celltype_grouped"),
