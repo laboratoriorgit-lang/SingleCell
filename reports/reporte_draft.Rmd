@@ -1065,13 +1065,17 @@ Pseudotime has no direction by itself: the root, where pseudotime is 0, has to b
 (Step 4.4). It is set with the `root_method` argument of `run_trajectory_runs()`. Five
 methods are available:
 
-| `root_method` | How the root is chosen | When to use it |
-|---|---|---|
-| `"auto"` (default) | Automatic rule of Gulati et al. (2020) (21), who showed that the number of detected genes per cell is higher in less differentiated cells: the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). With several cell types and a `ROOT_CLUSTER`, only the cells of that cell type are scored. | No prior knowledge of the starting point. Cells with more detected genes are assumed to be less differentiated. |
-| `"score"` | The same rule as `auto` (Gulati et al. (2020) (21)) with your own `root_score` (a metadata column or a gene); `root_lowest = True` takes the lowest mean instead of the highest. It needs a `ROOT_CLUSTER` that is an existing cell type. | A gene or column marks the start (or the end) of the trajectory better than the number of detected genes. |
-| `"most_connected"` | The cell with the highest summed connectivity in the nearest-neighbor graph, among the cells of `ROOT_CLUSTER` (or among all cells if it is empty). It follows the idea that progenitor populations are the most connected in the lineage tree (22), applied here to single cells. | The root must lie inside a cell type chosen by the user. It favors dense regions, which are not always the center. |
-| `"medoid"` | The most average cell (the medoid (23)): the cell with the smallest mean distance to all the other cells in PCA space. With a `ROOT_CLUSTER`, only the cells of that cell type are used. | A neutral start in the center of the population. Pseudotime then measures the distance to the center rather than developmental time. |
-| `"tip"` | The tree tip with the node number given in `root_tip`. | The biological starting point is known and can be identified in the tree figure (manual override, described below). |
+| `root_method` | How the root is chosen |
+|---|---|
+| `"auto"` (default) | Tree tip with the highest mean number of detected genes (`nFeature_RNA`), a proxy for low differentiation (21). |
+| `"score"` | Same rule as `auto` (21), using your own `root_score` (metadata column or gene). Use `root_lowest = True` to take the lowest mean. |
+| `"most_connected"` | Cell with the highest connectivity in the nearest-neighbor graph, following the idea that progenitors are the most connected cells (22). |
+| `"medoid"` | Cell closest, on average, to all other cells in PCA space (23). |
+| `"tip"` | Tree tip given in `root_tip` (manual override, described below). |
+
+With a `ROOT_CLUSTER`, `auto`, `score`, `most_connected` and `medoid` only consider the
+cells of that cell type. `auto` is the best option when the starting point is unknown; `score` and `tip` are
+for when a gene, a metadata column, or prior knowledge marks the start.
 
 **Manual root override (`"tip"`).**
 
