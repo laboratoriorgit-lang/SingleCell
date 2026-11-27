@@ -1078,7 +1078,7 @@ def plot_gene_trends(
         if single_gene_plots:
             for gene in genes_present:
                 plot_single_gene_trend(adata_fitted, gene, run_dir)
-        print("STEP 29 COMPLETE: gene trends saved")
+        print("\nOK 4.6 COMPLETE: Gene expression trends along pseudotime")
         return adata_fitted
 
     if spread_top:
@@ -1132,7 +1132,7 @@ def plot_gene_trends(
         for gene in genes_present:
             plot_single_gene_trend(adata_fitted, gene, run_dir)
 
-    print("STEP 29 COMPLETE: gene trends saved")
+    print("\nOK 4.6 COMPLETE: Gene expression trends along pseudotime")
     return adata_fitted
 
 

@@ -102,7 +102,6 @@ adata_fitted = plot_gene_trends(
     n_jobs       = N_JOBS,
 )
 
-print("SECTION 23 COMPLETE: epidermis cotyledon gene trends saved")
 
 # ==============================================================================
 # Section 24 - Final export
