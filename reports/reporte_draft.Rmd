@@ -663,3 +663,65 @@ adata, N_JOBS = load_curated_object(
     n_jobs=N_JOBS,
 )
 ```
+
+### Step 4.3. Selecting cell types for trajectory inference {-}
+
+This step specifies which cell types will be included in the trajectory analysis. The selected populations are defined in `TRAJECTORY_CLUSTERS`, and each entry must exactly match a cell-type label displayed in Step 4.2.
+
+In this workflow, trajectory inference is performed on the epidermis cotyledon, identified by the label `Epidermis Cotyledon` in the current marker table. A preview UMAP is generated to visualize the selected cells before trajectory inference, allowing you to confirm that the intended population has been selected **(Figure 15)**.
+
+```python
+TRAJECTORY_CLUSTERS = ["Epidermis Cotyledon"]
+
+adata_sub = preview_trajectory_selection(
+    adata=adata,
+    clusters=TRAJECTORY_CLUSTERS,
+    annotation_col=ANNOTATION_COL,
+    dir_pseudotime=dir_pseudotime,
+)
+```
+
+If you used the optional annotation grouping or manual curation steps (Supplementary Sections S1 and S2) in Step 2, ensure that `ANNOTATION_COL` is set to the corresponding column in Step 4.2. The labels specified in `TRAJECTORY_CLUSTERS` must match the labels in that selected annotation column.
+
+Restricting the analysis to a biologically relevant cell population can help characterize developmental or transcriptional trajectories without combining cell types that are not within the same lineage. However, the selected population should contain sufficient cells and transcriptional variation to support meaningful trajectory inference.
+
+\bigskip
+
+\begin{center}
+\includegraphics[width=0.5\linewidth]{assets/fig15_umap_epidermis_cotyledon.png}
+\end{center}
+
+\small
+**Figure 15. UMAP visualization of epidermis cotyledon cells selected for trajectory inference.** The UMAP displays the distribution of the selected cell population, providing a visual quality check to confirm that the intended cell type was correctly identified before trajectory inference.
+\normalsize
+
+### Step 4.4. Trajectory inference and root selection {-}
+
+This step fits a pseudotime trajectory to the selected cells and determines its root, which defines the starting point for ordering cells along the inferred trajectory. A trajectory graph has no inherent direction: the same graph can be interpreted from either end. Therefore, the root must be selected using biological knowledge or an explicit computational criterion.
+
+By default, the pipeline uses `root_method = "auto"` to automatically select the root. This method identifies the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). This approach is based on Gulati et al. (2020), who used transcriptional diversity (the number of detected genes) as an indicator of developmental potential (21). Cells with higher transcriptional diversity may represent less differentiated states and are therefore potential candidates for the starting point of a developmental trajectory. When multiple cell types are included in the analysis, the root selection is restricted to cells belonging to `ROOT_CLUSTER`. This ensures that the starting point is located within the cell type specified by the user.
+
+Users can also customize the root selection criteria using two additional parameters. The `root_score` parameter can specify a cell-level observation column (`obs`) or a gene identifier to guide root selection; set `root_lowest = True` when an end-state marker is expected to have lower expression at the root. The different root selection methods (`auto`, `most_connected`, `score` and `tip`) are described in Supplementary Section S4.
+
+The trajectory configurations to test are defined in `TRAJECTORY_RUNS`. Each run generates a separate output directory, allowing different parameter settings to be compared without overwriting previous results. The example configuration uses 100 nodes, `sigma = 0.1`, `lambda_value = 20`, `eigs = 3`, and `seed = 3`.
+
+The `eigs = 3` parameter specifies that three diffusion components are used to represent cell-state relationships before fitting the trajectory. The remaining parameters control aspects of trajectory construction and fitting; their effects should be evaluated by comparing the resulting graphs and pseudotime patterns.
+
+```python
+ROOT_CLUSTER = "Epidermis Cotyledon"
+
+TRAJECTORY_RUNS = [
+    trajectory_run(nodes=100, sigma=0.1, lambda_value=20, eigs=3, seed=3),
+]
+
+adata_traj, selected_trajectory_dir, trajectory_runs = run_trajectory_runs(
+    adata=adata,
+    clusters=TRAJECTORY_CLUSTERS,
+    root_cluster=ROOT_CLUSTER,
+    annotation_col=ANNOTATION_COL,
+    output_base_dir=dir_pseudotime,
+    runs=TRAJECTORY_RUNS,
+)
+```
+
+The outputs include the inferred trajectory graph, a pseudotime visualization, and a plot showing the selected root cell **(Figure 16)**. Results are saved under `results/09_pseudotime/`, within the output folder corresponding to each trajectory run.
