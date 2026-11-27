@@ -63,3 +63,4 @@ def init_pipeline(data_dir="/workspace/.", params_file=None, pipeline_dir=None):
 
     g.update(DATA_DIR=data_dir, PIPELINE_DIR=pipeline_dir,
              base_dir=base_dir, dir_pseudotime=dir_pseudotime)
+    print("\nOK 4.1 COMPLETE: Setting up the Python environment")

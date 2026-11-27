@@ -11,8 +11,6 @@
 exec(open("/workspace/workflow/init.py").read(), globals())
 init_pipeline(data_dir="/workspace/.")
 
-print("SECTION 18 COMPLETE: setup done")
-
 # ==============================================================================
 # Section 19 - Load curated object
 # ==============================================================================
