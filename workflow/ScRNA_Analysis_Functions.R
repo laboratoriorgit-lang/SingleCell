@@ -6002,7 +6002,7 @@ run_pseudobulk_de <- function(ath_sc, marker_file,
       output_dir = file.path(dir_06, tag), limits = heatmap_limits,
       cell_order = unique(marker_table$cell.types))
   }
-  message("\nOK 3.1 COMPLETE: pseudobulk DESeq2, volcano, tables, GO and heatmap complete")
+  message("\nOK 3.1 COMPLETE: Assigning pseudo-replicates")
   invisible(list(deseq2 = deseq2_results, diff_tables = diff_tables, go = go_results))
 }
 
@@ -6019,5 +6019,5 @@ run_tf_network <- function(ath_sc, contrast_tag, annot_col = "celltype",
     n_metacells = n_metacells, min_module_size = min_module_size,
     deep_split = deep_split, soft_power = soft_power,
     tom_threshold = tom_threshold, n_hub_label = n_hub_label)
-  message("\nOK 3.2 COMPLETE: TF coexpression network saved")
+  message("\nOK 3.2 COMPLETE: Gene co-expression and transcription factor networks")
 }
