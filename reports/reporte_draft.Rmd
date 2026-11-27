@@ -865,6 +865,8 @@ This work was supported by the funding ANID-Millennium Science Initiative Progra
 19. M. Setty et al., Characterization of cell fate probabilities in single-cell data with Palantir. Nature biotechnology 37, 451-460 (2019).
 20. L. Faure, R. Soldatov, P. V. Kharchenko, I. Adameyko, scFates: a scalable python package for advanced pseudotime and bifurcation analysis from single-cell data. Bioinformatics (Oxford, England) 39 (2023).
 21. G. S. Gulati et al., Single-cell transcriptional diversity is a hallmark of developmental potential. Science 367, 405-411 (2020).
+22. D. Grün et al., De novo prediction of stem cell identity using single-cell transcriptome data. Cell Stem Cell 19, 266-277 (2016).
+23. L. Kaufman, P. J. Rousseeuw, Finding Groups in Data: An Introduction to Cluster Analysis (Wiley, 1990).
 
 \newpage
 
@@ -1065,8 +1067,8 @@ methods are available:
 |---|---|---|
 | `"auto"` (default) | Automatic rule of Gulati et al. (2020) (21), who showed that the number of detected genes per cell is higher in less differentiated cells: the tree tip with the highest mean number of detected genes per cell (`nFeature_RNA`). With several cell types and a `ROOT_CLUSTER`, only the cells of that cell type are scored. | No prior knowledge of the starting point. Cells with more detected genes are assumed to be less differentiated. |
 | `"score"` | The same rule as `auto` (Gulati et al. (2020) (21)) with your own `root_score` (a metadata column or a gene); `root_lowest = True` takes the lowest mean instead of the highest. It needs a `ROOT_CLUSTER` that is an existing cell type. | A gene or column marks the start (or the end) of the trajectory better than the number of detected genes. |
-| `"most_connected"` | The cell with the highest summed connectivity in the nearest-neighbor graph, among the cells of `ROOT_CLUSTER` (or among all cells if it is empty). | The root must lie inside a cell type chosen by the user. It favors dense regions, which are not always the center. |
-| `"medoid"` | The most average cell: the cell with the smallest mean distance to all the other cells in PCA space. With a `ROOT_CLUSTER`, only the cells of that cell type are used. | A neutral start in the center of the population. Pseudotime then measures the distance to the center rather than developmental time. |
+| `"most_connected"` | The cell with the highest summed connectivity in the nearest-neighbor graph, among the cells of `ROOT_CLUSTER` (or among all cells if it is empty). It follows the idea that progenitor populations are the most connected in the lineage tree (22), applied here to single cells. | The root must lie inside a cell type chosen by the user. It favors dense regions, which are not always the center. |
+| `"medoid"` | The most average cell (the medoid (23)): the cell with the smallest mean distance to all the other cells in PCA space. With a `ROOT_CLUSTER`, only the cells of that cell type are used. | A neutral start in the center of the population. Pseudotime then measures the distance to the center rather than developmental time. |
 | `"tip"` | The tree tip with the node number given in `root_tip`. | The biological starting point is known and can be identified in the tree figure (manual override, described below). |
 
 **Manual root override (`"tip"`).**
