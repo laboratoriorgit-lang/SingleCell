@@ -45,8 +45,8 @@ adata_sub = preview_trajectory_selection(
 # ==============================================================================
 # ROOT_CLUSTER is the cell type used to choose the root when the trajectory has two or more
 # cell types. root_method of run_trajectory_runs() selects how the root is chosen: "auto"
-# (default, the most average cell), "most_connected", "score" or "tip"; see Supplementary
-# Section S4. root_score, root_lowest and root_tip complete "score" and "tip".
+# (default, the tip with the highest mean number of detected genes), "score", "most_connected",
+# "medoid" or "tip"; see Supplementary Section S4.
 ROOT_CLUSTER = "Epidermis Cotyledon"
 
 TRAJECTORY_RUNS = [

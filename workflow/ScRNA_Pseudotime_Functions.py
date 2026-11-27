@@ -242,7 +242,7 @@ def build_pseudotime_trajectory(
     n_eigs      = 20,   # dimensions retained (must be strictly < n_components)
     n_neighbors = 50,   # neighbors for final graph (higher = smoother layout)
     seed        = 3,    # random seed for reproducibility across runs
-    root_method = "auto",           # "auto" (default: medoid), "tip", "score" or "most_connected"; see the root selection notes below
+    root_method = "auto",           # "auto" (default: Gulati score), "score", "tip", "most_connected" or "medoid"; see the root selection notes below
     root_score  = "nFeature_RNA",   # obs column or gene ID that anchors the root (single cell type)
     root_lowest = False,            # True = the root is where root_score is lowest
     root_tip    = None,             # "tip": node number of the tip (see the tree figure)
@@ -280,17 +280,18 @@ def build_pseudotime_trajectory(
     )
 
     # Root selection (Gulati et al. 2020: nFeature_RNA as developmental potential proxy).
-    #   "auto" (default) = "medoid": the root is the most average cell (smallest mean
-    #       distance to all the other cells, PCA space). If root_cluster is given and there
-    #       are several cell types, only the cells of root_cluster are used.
-    #   "score": uses root_score (nFeature_RNA by default) to find the tree tip with the
-    #       highest mean score. With several cell types and a root_cluster, only the cells
-    #       from root_cluster are scored (root_cluster must be a real cell type).
+    #   "auto" (default): the same rule as "score" with the default root_score (nFeature_RNA): the
+    #       tree tip with the highest mean number of detected genes (Gulati et al. 2020). With
+    #       several cell types and a root_cluster, only the cells of root_cluster are scored.
+    #   "score": that rule with a user-defined root_score (an obs column or a gene) and
+    #       root_lowest=True to take the lowest mean (root_cluster must be a real cell type).
     #   "tip": manual override — the root is the tip with node number root_tip.
     #   "most_connected": the root is the most connected cell (summed kNN connectivity) of
     #       root_cluster; if root_cluster is empty, of all the cells.
+    #   "medoid": the root is the most average cell (smallest mean distance to all the other
+    #       cells, PCA space); with a root_cluster, only the cells of that cell type are used.
     n_types = adata.obs[annotation_col].nunique()
-    method  = root_method if root_method != "auto" else "medoid"
+    method  = root_method if root_method != "auto" else "score"
     label   = f"Gulati score ({root_score})" if method == "score" else method
 
     if method == "tip":
@@ -327,7 +328,7 @@ def build_pseudotime_trajectory(
         if "_root_score_masked" in adata.obs.columns:
             del adata.obs["_root_score_masked"]
     elif method == "medoid":
-        # "auto" default: the root is the most average cell (medoid, PCA space).
+        # medoid: the root is the most average cell (PCA space).
         root_cell = _medoid_cell(adata, annotation_col, root_cluster if n_types > 1 else None)
         adata.obs["is_root"] = adata.obs_names == root_cell
         scf.tl.root(adata, root="is_root")
